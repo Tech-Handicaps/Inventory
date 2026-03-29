@@ -5,7 +5,11 @@ const ANON =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
-export async function middleware(request: NextRequest) {
+/**
+ * Next.js 16+: `middleware` was renamed to `proxy` (same behavior at the network edge).
+ * Refreshes Supabase session cookies and gates pages + `/api/*` (see also RBAC in route handlers).
+ */
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
