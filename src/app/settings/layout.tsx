@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Settings · Handicaps Network Africa",
   description:
-    "Zoho Assist API connection and device templates for the inventory system",
+    "Zoho Assist API, device templates, and audit log for the inventory system",
 };
 
 export default function SettingsLayout({

@@ -50,4 +50,5 @@ const EXACT_ROUTE_ROLES: Record<string, Role> = {
   "POST /api/settings/zoho/test": "accounts",
   "GET /api/settings/zoho/oauth-url": "accounts",
   "GET /api/settings/zoho/callback": "accounts",
+  "GET /api/audit-logs": "management",
 };

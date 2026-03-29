@@ -3,12 +3,14 @@
 import { Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { InventoryHeader } from "@/components/InventoryHeader";
+import { AuditLogSettingsSection } from "./audit-log-settings-section";
 import { ZohoAssistSettingsSection } from "./zoho-settings-section";
 import { DeviceTemplatesSettingsSection } from "./device-templates-settings-section";
 
 const TABS = [
   { id: "zoho", label: "Zoho Assist API" },
   { id: "templates", label: "Device templates" },
+  { id: "audit", label: "Audit log" },
 ] as const;
 
 type SettingsTabId = (typeof TABS)[number]["id"];
@@ -18,8 +20,13 @@ function SettingsTabsContent() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const tabParam = searchParams.get("tab");
   const tab: SettingsTabId =
-    searchParams.get("tab") === "templates" ? "templates" : "zoho";
+    tabParam === "templates"
+      ? "templates"
+      : tabParam === "audit"
+        ? "audit"
+        : "zoho";
 
   function selectTab(next: SettingsTabId) {
     const p = new URLSearchParams(searchParams.toString());
@@ -39,8 +46,8 @@ function SettingsTabsContent() {
           Settings
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-black/65">
-          Choose a section below. Zoho Assist covers API credentials and connection
-          tests; Device templates manages your hardware catalog presets.
+          Zoho Assist API credentials, device templates, and the audit log
+          (management only) live here.
         </p>
       </header>
 
@@ -89,6 +96,14 @@ function SettingsTabsContent() {
           hidden={tab !== "templates"}
         >
           <DeviceTemplatesSettingsSection />
+        </div>
+        <div
+          id="settings-panel-audit"
+          role="tabpanel"
+          aria-labelledby="settings-tab-audit"
+          hidden={tab !== "audit"}
+        >
+          <AuditLogSettingsSection />
         </div>
       </div>
     </>

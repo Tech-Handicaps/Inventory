@@ -1,15 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-/**
- * Action types written by the API:
- * - asset.created, asset.updated, asset.write_off
- * - device_template.created | .updated | .deleted
- * - repair.created
- * - integration.zoho.settings_updated, integration.zoho.oauth_connected
- * - integration.xero.sync_triggered
- */
-
 function toInputJson(
   value: Record<string, unknown> | undefined
 ): Prisma.InputJsonValue | undefined {
