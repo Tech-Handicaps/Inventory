@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 import { exchangeAuthorizationCode, loadZohoAssistSettings } from "@/lib/zoho/client";
@@ -9,6 +10,7 @@ const STATE_COOKIE = "zoho_oauth_state";
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
+  const { user } = auth;
 
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const settingsUrl = new URL("/settings", base);
@@ -70,6 +72,13 @@ export async function GET(request: NextRequest) {
       update: {
         refreshToken: tokens.refresh_token,
       },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "integration.zoho.oauth_connected",
+      notes: "Zoho Assist OAuth completed; refresh token stored",
+      metadata: { dataCenter: c.dataCenter },
     });
 
     settingsUrl.searchParams.set("zoho", "connected");

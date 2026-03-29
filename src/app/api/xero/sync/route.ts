@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -7,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 export async function POST(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
+  const { user } = auth;
   try {
     const body = (await request.json().catch(() => ({}))) as { assetIds?: string[] };
     const assetIds = body.assetIds as string[] | undefined;
@@ -28,6 +30,17 @@ export async function POST(request: NextRequest) {
       ]);
       syncs.push(fa, inv);
     }
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "integration.xero.sync_triggered",
+      notes: "Xero sync placeholder — pending sync rows created",
+      metadata: {
+        assetCount: assets.length,
+        pendingSyncRecordCount: syncs.length,
+        filteredByAssetIds: !!(assetIds?.length),
+      },
+    });
 
     return NextResponse.json({
       message:

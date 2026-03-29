@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
+  const { user } = auth;
   try {
     const body = (await request.json()) as Record<string, unknown>;
 
@@ -95,6 +97,21 @@ export async function PUT(request: NextRequest) {
 
     const c = await loadZohoAssistSettings();
     const masked = maskZohoSecrets(c);
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "integration.zoho.settings_updated",
+      notes: "Zoho Assist API credentials or data center saved",
+      metadata: {
+        dataCenter: c.dataCenter,
+        hasClientId: !!c.clientId,
+        hasClientSecret: !!(c.clientSecret && c.clientSecret.length > 0),
+        hasRefreshToken: !!(c.refreshToken && c.refreshToken.length > 0),
+        clearedClientSecret: body.clearClientSecret === true,
+        clearedRefreshToken: body.clearRefreshToken === true,
+      },
+    });
+
     return NextResponse.json({
       ...masked,
       readyForOAuth: !!(c.clientId && c.clientSecret),

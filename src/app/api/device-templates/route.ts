@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
+  const { user } = auth;
   try {
     const body = await request.json();
     const { label, manufacturer, model, category, notes } = body;
@@ -52,6 +54,19 @@ export async function POST(request: NextRequest) {
           typeof notes === "string" && notes.trim() ? notes.trim() : undefined,
       },
     });
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "device_template.created",
+      notes: created.label,
+      metadata: {
+        templateId: created.id,
+        manufacturer: created.manufacturer,
+        model: created.model,
+        category: created.category,
+      },
+    });
+
     return NextResponse.json(created);
   } catch (error: unknown) {
     const msg =

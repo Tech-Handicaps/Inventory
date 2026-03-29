@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
+  const { user } = auth;
   try {
     const body = await request.json();
     const { assetId, repairStatus, technicianNotes } = body;
@@ -53,6 +55,17 @@ export async function POST(request: NextRequest) {
         technicianNotes,
       },
       include: { asset: { include: { status: true } } },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "repair.created",
+      notes: `Repair for ${repair.asset.assetName}`,
+      metadata: {
+        repairId: repair.id,
+        assetId: repair.assetId,
+        repairStatus: repair.repairStatus,
+      },
     });
 
     return NextResponse.json(repair);

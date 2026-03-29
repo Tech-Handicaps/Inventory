@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
+  const { user } = auth;
   try {
     const body = await request.json();
     const {
@@ -119,6 +121,18 @@ export async function POST(request: NextRequest) {
         model: resolvedModel,
       },
       include: { status: true, deviceTemplate: true },
+    });
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "asset.created",
+      notes: asset.assetName,
+      metadata: {
+        assetId: asset.id,
+        statusCode: asset.status.code,
+        category: asset.category,
+        serialNumber: asset.serialNumber,
+      },
     });
 
     return NextResponse.json(asset);
