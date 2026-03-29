@@ -1,0 +1,102 @@
+// Inventory Flow Control System - Prisma Schema
+// Extensible asset lifecycle states; Xero sync for fixed assets + inventory
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Extensible: add new rows to load additional states later
+model DeviceTemplate {
+  id             String   @id @default(cuid())
+  label          String   // display name for dropdowns (e.g. "Dell Latitude 5540")
+  manufacturer   String
+  model          String
+  category       String
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  assets         Asset[]
+
+  @@unique([manufacturer, model])
+}
+
+model AssetStatus {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g. "new", "repair", "refurbished", "written_off"
+  label       String
+  description String?
+  sortOrder   Int      @default(0)
+  assets      Asset[]
+}
+
+model Asset {
+  id                String           @id @default(cuid())
+  assetName         String
+  category          String
+  serialNumber      String?          @unique
+  manufacturer      String?
+  model             String?
+  deviceTemplateId  String?
+  deviceTemplate    DeviceTemplate?  @relation(fields: [deviceTemplateId], references: [id], onDelete: SetNull)
+  statusId          String
+  status            AssetStatus      @relation(fields: [statusId], references: [id])
+  reason            String?          // e.g. write-off reason
+  dateAdded         DateTime         @default(now())
+  dateUpdated       DateTime         @updatedAt
+  repairs           Repair[]
+  xeroSyncs         XeroSync[]
+}
+
+model Repair {
+  id             String   @id @default(cuid())
+  assetId        String
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  repairStatus   String   // pending, in_progress, completed, cancelled
+  technicianNotes String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model XeroSync {
+  id                 String   @id @default(cuid())
+  assetId            String
+  asset              Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  xeroTransactionId  String?
+  xeroType           String   // "fixed_asset" | "inventory"
+  syncStatus         String   // pending, synced, failed, conflict
+  lastSyncedAt       DateTime?
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actionType String
+  userId     String?
+  timestamp  DateTime @default(now())
+  notes      String?
+  metadata   Json?    // flexible extra data
+}
+
+// User roles for RBAC (synced from Supabase Auth or custom)
+model UserRole {
+  id       String   @id @default(cuid())
+  userId   String   @unique // Supabase auth user id
+  role     String   // accounts | operations | management
+  createdAt DateTime @default(now())
+}
+
+// Zoho Assist OAuth (client credentials + refresh token stored in-app; restrict DB access in production)
+model ZohoAssistSettings {
+  id           String   @id @default("singleton")
+  clientId     String?
+  clientSecret String?
+  refreshToken String?
+  dataCenter   String   @default("us") // us | eu | in | au | ca | jp | sa
+  updatedAt    DateTime @updatedAt
+}
