@@ -1,51 +1,85 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const ANON =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+function getSupabaseUrl(): string | undefined {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || undefined;
+}
+
+function getSupabaseAnonKey(): string | undefined {
+  const k =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  return typeof k === "string" && k.trim() ? k.trim() : undefined;
+}
 
 /**
- * Next.js 16+: `middleware` was renamed to `proxy` (same behavior at the network edge).
- * Refreshes Supabase session cookies and gates pages + `/api/*` (see also RBAC in route handlers).
+ * Next.js 16+: `middleware` was renamed to `proxy`.
+ * Refreshes Supabase session cookies and gates pages + `/api/*`.
+ *
+ * Do not call `request.cookies.set` — in the proxy runtime cookies are read-only;
+ * only set cookies on the `NextResponse` (see Supabase SSR patterns for Next.js).
  */
 export async function proxy(request: NextRequest) {
+  const supabaseUrl = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
+
+  if (!supabaseUrl || !anonKey) {
+    console.error(
+      "proxy: Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (or publishable key) on Vercel."
+    );
+    const pathname = request.nextUrl.pathname;
+    if (pathname === "/" || pathname === "/login") {
+      return NextResponse.next();
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        {
+          error:
+            "Server misconfiguration: missing NEXT_PUBLIC_SUPABASE_URL or anon/publishable key",
+        },
+        { status: 503 }
+      );
+    }
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    ANON!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(
-          cookiesToSet: {
-            name: string;
-            value: string;
-            options?: Record<string, unknown>;
-          }[]
-        ) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
+  const supabase = createServerClient(supabaseUrl, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
       },
-    }
-  );
+      setAll(
+        cookiesToSet: {
+          name: string;
+          value: string;
+          options?: Record<string, unknown>;
+        }[]
+      ) {
+        supabaseResponse = NextResponse.next({
+          request,
+        });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: { id: string } | null = null;
+  try {
+    const {
+      data: { user: u },
+    } = await supabase.auth.getUser();
+    user = u;
+  } catch (e) {
+    console.error("proxy: supabase.auth.getUser failed", e);
+    user = null;
+  }
 
   const pathname = request.nextUrl.pathname;
 
