@@ -60,7 +60,20 @@ export async function requireApiAuth(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const role = await resolveUserRole(user);
+  let role: Role;
+  try {
+    role = await resolveUserRole(user);
+  } catch (e) {
+    console.error("resolveUserRole", e);
+    return NextResponse.json(
+      {
+        error: "Database error",
+        detail: "Could not load user permissions. Check DATABASE_URL and migrations.",
+      },
+      { status: 503 }
+    );
+  }
+
   const required = getRequiredRoleForRoute(
     request.method,
     request.nextUrl.pathname

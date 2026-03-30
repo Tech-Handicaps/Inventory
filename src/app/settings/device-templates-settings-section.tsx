@@ -11,6 +11,23 @@ type DeviceTemplate = {
   notes: string | null;
 };
 
+/** Reads failed response body (JSON or plain text) so alerts are not generic "Create failed". */
+async function apiErrorMessage(res: Response): Promise<string> {
+  const text = await res.text();
+  const trimmed = text.trim();
+  if (!trimmed) return "Request failed";
+  try {
+    const j = JSON.parse(trimmed) as { error?: string; detail?: string };
+    return (
+      (typeof j.detail === "string" && j.detail) ||
+      (typeof j.error === "string" && j.error) ||
+      "Request failed"
+    );
+  } catch {
+    return "Server error (non-JSON response). Check deployment logs.";
+  }
+}
+
 export function DeviceTemplatesSettingsSection() {
   const [templates, setTemplates] = useState<DeviceTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,15 +87,7 @@ export function DeviceTemplatesSettingsSection() {
           }),
         });
         if (!res.ok) {
-          const j = (await res.json().catch(() => ({}))) as {
-            error?: string;
-            detail?: string;
-          };
-          throw new Error(
-            (typeof j.detail === "string" && j.detail) ||
-              j.error ||
-              "Update failed"
-          );
+          throw new Error(await apiErrorMessage(res));
         }
       } else {
         const res = await fetch("/api/device-templates", {
@@ -93,15 +102,7 @@ export function DeviceTemplatesSettingsSection() {
           }),
         });
         if (!res.ok) {
-          const j = (await res.json().catch(() => ({}))) as {
-            error?: string;
-            detail?: string;
-          };
-          throw new Error(
-            (typeof j.detail === "string" && j.detail) ||
-              j.error ||
-              "Create failed"
-          );
+          throw new Error(await apiErrorMessage(res));
         }
       }
       resetForm();
@@ -123,13 +124,7 @@ export function DeviceTemplatesSettingsSection() {
       return;
     const res = await fetch(`/api/device-templates/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      const j = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        detail?: string;
-      };
-      alert(
-        (typeof j.detail === "string" && j.detail) || j.error || "Delete failed"
-      );
+      alert(await apiErrorMessage(res));
       return;
     }
     if (editingId === id) resetForm();
