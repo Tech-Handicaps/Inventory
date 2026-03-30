@@ -7,7 +7,7 @@ Cloud-native inventory management platform with Xero integration. Tracks asset l
 - **Frontend**: Next.js 16 + TailwindCSS (Vercel)
 - **Backend**: Supabase (PostgreSQL + Edge Functions)
 - **ORM**: Prisma
-- **Auth**: Supabase Auth (RBAC: Accounts, Operations, Management)
+- **Auth**: Supabase Auth (signed-in users have full app access)
 - **Charts**: Chart.js
 - **Integration**: Xero API (OAuth2) — fixed assets + inventory
 - **CI/CD**: GitHub Actions
@@ -46,15 +46,11 @@ npm run db:seed    # Seed asset statuses (new, repair, refurbished, written_off)
 2. Under **Users**, **Add user** with your email and password (or use **Sign up** if you add a sign-up flow later).
 3. Open `/login` and sign in. **Home (`/`) and `/login` are public**; all other pages and **all `/api/*` routes** require a valid session.
 
-### Role-based access (RBAC)
+### Access control
 
-API routes enforce a **minimum role**: **operations** (view inventory, move/update assets on the board, repairs, PDFs, most reports), **accounts** (add new assets, write-off summaries, Xero/Zoho integration settings), **management** (full hierarchy). Higher roles satisfy lower requirements.
+**Any user with a valid Supabase session** can use the app and call authenticated APIs — there are no role-based restrictions on routes or settings.
 
-1. **Default**: users with no `UserRole` row and no Supabase metadata role get **operations** (read-only API access).
-2. **Supabase metadata**: set `role` on the user under **App metadata** (or **User metadata**) to `operations`, `accounts`, or `management`. On the next API call, the app **syncs** that value into the `UserRole` table.
-3. **Seed**: set `SEED_ADMIN_USER_ID` in `.env` to a Supabase user UUID and run `npm run db:seed` to grant **management**.
-
-Policy per route is defined in `src/lib/auth/route-policy.ts`.
+The optional `UserRole` table and Supabase `role` metadata are still supported for **reporting or future use** (e.g. `resolveUserRole`, seeding with `SEED_ADMIN_USER_ID`), but they do **not** limit what a logged-in user can do.
 
 ### 5. Run locally
 
@@ -123,7 +119,7 @@ src/
 ├── components/
 │   └── charts/       # Chart.js components
 └── lib/
-    ├── auth/         # RBAC
+    ├── auth/         # Session auth (requireApiAuth)
     ├── prisma.ts
     └── supabase/     # Supabase client
 ```

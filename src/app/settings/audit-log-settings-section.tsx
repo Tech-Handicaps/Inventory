@@ -19,7 +19,6 @@ export function AuditLogSettingsSection() {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [actionType, setActionType] = useState<string>("all");
@@ -31,7 +30,6 @@ export function AuditLogSettingsSection() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setForbidden(false);
     try {
       const params = new URLSearchParams();
       params.set("limit", String(PAGE_SIZE));
@@ -43,12 +41,6 @@ export function AuditLogSettingsSection() {
       if (to) params.set("to", to);
 
       const res = await fetch(`/api/audit-logs?${params.toString()}`);
-      if (res.status === 403) {
-        setForbidden(true);
-        setItems([]);
-        setTotal(0);
-        return;
-      }
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(typeof j.error === "string" ? j.error : "Load failed");
@@ -83,21 +75,6 @@ export function AuditLogSettingsSection() {
   const canPrev = offset > 0;
   const canNext = offset + PAGE_SIZE < total;
 
-  if (forbidden) {
-    return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-950">
-        <p className="font-heading font-bold uppercase tracking-wide">
-          Management only
-        </p>
-        <p className="mt-2 text-amber-900/90">
-          The audit log is visible only to users with the{" "}
-          <strong>management</strong> role. Ask an administrator to assign this
-          role in Supabase (user metadata or <code className="rounded bg-black/5 px-1">UserRole</code>).
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -107,8 +84,7 @@ export function AuditLogSettingsSection() {
         <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
         <p className="mt-4 text-sm leading-relaxed text-black/70">
           Immutable record of asset changes, device templates, repairs, and
-          integration activity. Filter by action or date range; only{" "}
-          <strong>management</strong> can view this list.
+          integration activity. Filter by action or date range.
         </p>
       </div>
 

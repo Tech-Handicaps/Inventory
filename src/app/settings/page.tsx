@@ -46,8 +46,8 @@ function SettingsTabsContent() {
           Settings
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-black/65">
-          Zoho Assist API credentials, device templates, and the audit log
-          (management only) live here.
+          Zoho Assist API credentials, device templates, and the audit log live
+          here.
         </p>
       </header>
 

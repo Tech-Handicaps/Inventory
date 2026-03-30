@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
-// GET /api/audit-logs — list audit entries (management only via route-policy)
+// GET /api/audit-logs — list audit entries (authenticated users)
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;

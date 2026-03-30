@@ -2,8 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getRequiredRoleForRoute } from "@/lib/auth/route-policy";
-import { hasPermission, type Role } from "@/lib/auth/roles";
+import type { Role } from "@/lib/auth/roles";
 
 function parseRole(raw: unknown): Role | null {
   if (raw !== "accounts" && raw !== "operations" && raw !== "management") {
@@ -13,8 +12,8 @@ function parseRole(raw: unknown): Role | null {
 }
 
 /**
- * Resolves role: Prisma UserRole row, else Supabase app_metadata / user_metadata.role,
- * else upserts from metadata when valid, else defaults to `operations` (read-heavy).
+ * Resolves role from Prisma or Supabase metadata (for reporting / optional sync).
+ * API access does not use this for permission checks — see `requireApiAuth`.
  */
 export async function resolveUserRole(user: User): Promise<Role> {
   const row = await prisma.userRole.findUnique({
@@ -44,12 +43,14 @@ export async function resolveUserRole(user: User): Promise<Role> {
 export type ApiAuthContext = { user: User; role: Role };
 
 /**
- * Authenticates via Supabase session and enforces RBAC for this route.
- * Returns 401 if not logged in, 403 if role is insufficient.
+ * Authenticates via Supabase session. Any signed-in user has full API access
+ * (no role-based restrictions). `role` is always `management` for callers
+ * that branch on capability.
  */
 export async function requireApiAuth(
   request: NextRequest
 ): Promise<ApiAuthContext | NextResponse> {
+  void request;
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -60,34 +61,5 @@ export async function requireApiAuth(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let role: Role;
-  try {
-    role = await resolveUserRole(user);
-  } catch (e) {
-    console.error("resolveUserRole", e);
-    return NextResponse.json(
-      {
-        error: "Database error",
-        detail: "Could not load user permissions. Check DATABASE_URL and migrations.",
-      },
-      { status: 503 }
-    );
-  }
-
-  const required = getRequiredRoleForRoute(
-    request.method,
-    request.nextUrl.pathname
-  );
-
-  if (!hasPermission(role, required)) {
-    return NextResponse.json(
-      {
-        error: "Forbidden",
-        detail: `This action requires at least the "${required}" role.`,
-      },
-      { status: 403 }
-    );
-  }
-
-  return { user, role };
+  return { user, role: "management" };
 }

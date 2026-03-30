@@ -83,7 +83,7 @@ model AuditLog {
   metadata   Json?    // flexible extra data
 }
 
-// User roles for RBAC (synced from Supabase Auth or custom)
+// Optional stored role (reporting / future use; API access is not limited by this)
 model UserRole {
   id       String   @id @default(cuid())
   userId   String   @unique // Supabase auth user id
