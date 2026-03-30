@@ -18,7 +18,8 @@ export function getRequiredRoleForRoute(method: string, pathname: string): Role 
   }
 
   if (/^\/api\/device-templates\/[^/]+$/.test(path)) {
-    if (method === "PUT" || method === "DELETE") return "accounts";
+    // Catalog presets: same bar as board (operations). Procurement still uses POST /api/assets → accounts.
+    if (method === "PUT" || method === "DELETE") return "operations";
   }
 
   const key = `${method} ${path}`;
@@ -44,7 +45,7 @@ const EXACT_ROUTE_ROLES: Record<string, Role> = {
   "POST /api/xero/sync": "accounts",
   "GET /api/xero/callback": "accounts",
   "GET /api/device-templates": "operations",
-  "POST /api/device-templates": "accounts",
+  "POST /api/device-templates": "operations",
   "GET /api/settings/zoho": "accounts",
   "PUT /api/settings/zoho": "accounts",
   "POST /api/settings/zoho/test": "accounts",
