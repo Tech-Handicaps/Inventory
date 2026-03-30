@@ -23,11 +23,14 @@ npm install
 ### 2. Set up Supabase
 
 1. Create a project at [supabase.com](https://supabase.com)
-2. In **Settings → Database → Connection string**, choose **Session pooler** (shared pooler, port `5432` on `aws-0-<region>.pooler.supabase.com`). Use **Transaction pooler** (`6543`) only if you intentionally want transaction mode.
-3. Copy values into `.env` (see `.env.example`).
+2. Click **Connect** in the dashboard. For **Vercel / serverless**, use the **Transaction pooler** URI (port **`6543`**) and ensure the query string includes **`pgbouncer=true`** (Prisma + Supabase pooler). For local long-running `npm run dev`, **Session pooler** (port **`5432`**) is fine — do **not** add `pgbouncer=true` to that URI.
+3. Avoid the **direct** `db.<project>.supabase.co` host for serverless unless your platform supports IPv6; prefer the **pooler** host (`aws-0-<region>.pooler.supabase.com`).
+4. Ensure **`sslmode=require`** is present. **URL-encode** reserved characters in the DB password (`@` → `%40`, etc.).
+5. Copy values into `.env` (see `.env.example`). On Vercel, set **`DATABASE_URL`** for **Production** (and **Preview** if needed).
 
 ```env
-DATABASE_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres?pgbouncer=true&connection_limit=1"
+# Typical production (transaction pooler / serverless)
+DATABASE_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true&connection_limit=1"
 NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT-REF].supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="[ANON-KEY]"
 SUPABASE_SERVICE_ROLE_KEY="[SERVICE-ROLE-KEY]"

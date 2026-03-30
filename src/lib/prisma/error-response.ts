@@ -42,6 +42,8 @@ export function prismaMutationError(
       body: {
         error: "Database connection failed. Check DATABASE_URL and network access.",
         code: "PRISMA_INIT",
+        detail:
+          "Supabase + Vercel: use the Transaction pooler URI (port 6543) with ?pgbouncer=true&connection_limit=1&sslmode=require — not the direct db.* host. Session pooler (5432) is for long-lived servers; do not mix pgbouncer=true on 5432. URL-encode special characters in the DB password. Confirm DATABASE_URL is set on Vercel for this environment.",
       },
     };
   }
