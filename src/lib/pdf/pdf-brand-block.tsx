@@ -3,11 +3,13 @@ import { View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 const brandGreen = "#139d4b";
 
 const styles = StyleSheet.create({
+  /* Stacked full logo (icon + text); wider box so vertical art isn’t cropped */
   logo: {
-    width: 180,
-    height: 52,
+    width: 200,
+    height: 76,
     objectFit: "contain",
-    marginBottom: 14,
+    marginBottom: 12,
+    alignSelf: "flex-start",
   },
   wordmarkWrap: {
     marginBottom: 14,
