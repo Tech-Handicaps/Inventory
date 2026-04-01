@@ -1,6 +1,7 @@
 "use client";
 
 import { InventoryHeader } from "@/components/InventoryHeader";
+import { AssetLifecycleSection } from "./asset-lifecycle-section";
 
 const REPORTS: {
   id: string;
@@ -8,6 +9,13 @@ const REPORTS: {
   title: string;
   description: string;
 }[] = [
+  {
+    id: "catalog",
+    type: "catalog",
+    title: "Device template catalog",
+    description:
+      "Every catalog preset from Settings (label, make, model, category, notes, template ID). For audits that only need the approved template list — no physical assets or serials.",
+  },
   {
     id: "overall",
     type: "overall",
@@ -55,10 +63,21 @@ export default function ReportsPage() {
           <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
           <p className="mt-4 text-sm leading-relaxed text-black/70">
             Generate printable PDFs for internal sharing, auditors, and
-            accounting. Each report includes the Handicaps Network Africa header
-            and a tabular listing with serial numbers and dates where available.
+            accounting. Inventory PDFs include serial numbers and dates where
+            available. The <strong>device template catalog</strong> PDF lists only
+            Settings presets (no assets).
+          </p>
+          <p className="mt-3 text-sm text-black/60">
+            For <strong>per-asset</strong> stage changes (distribution, repair,
+            refurbishment, write-off), use{" "}
+            <a href="#lifecycle" className="font-medium text-brand underline">
+              Asset lifecycle / movement
+            </a>{" "}
+            below — it uses the audit trail from board updates.
           </p>
         </div>
+
+        <AssetLifecycleSection />
 
         <ul className="space-y-4">
           {REPORTS.map((r) => (

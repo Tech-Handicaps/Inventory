@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
 
 type Status = {
@@ -9,14 +10,6 @@ type Status = {
   label: string;
   description: string | null;
   sortOrder: number;
-};
-
-type DeviceTemplate = {
-  id: string;
-  label: string;
-  manufacturer: string;
-  model: string;
-  category: string;
 };
 
 type Asset = {
@@ -129,22 +122,22 @@ export default function InventoryPage() {
       <InventoryHeader current="inventory" />
 
       <main className="mx-auto max-w-7xl space-y-8 p-6">
+        <HardwareCaptureForm statuses={statuses} onCreated={() => load()} />
+
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
             How this board is organized
           </h2>
           <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-black/70">
-            Each column is a lifecycle stage for hardware. Move items by
-            changing status on a card, or add rows from the form below. Use{" "}
-            <strong>Settings → Device templates</strong> to define makes/models;
-            the add form can pick a template for cleaner data. Status codes are
-            stored in the database so you can extend or rename stages later
-            without losing data.
+            Each column is a lifecycle stage for hardware. Use{" "}
+            <strong>Register hardware</strong> above (template + serial), then
+            move cards by changing status. Use{" "}
+            <strong>Settings → Device templates</strong> for reusable make/model
+            presets. Status codes live in the database so you can extend stages
+            later without losing data.
           </p>
         </div>
-
-        <QuickAddForm statuses={statuses} onCreated={() => load()} />
 
         <section>
           <h2 className="font-heading mb-4 text-sm font-bold uppercase tracking-[0.15em] text-black">
@@ -323,199 +316,5 @@ function HardwareCard({
         ))}
       </select>
     </article>
-  );
-}
-
-function QuickAddForm({
-  statuses,
-  onCreated,
-}: {
-  statuses: Status[];
-  onCreated: () => void;
-}) {
-  const defaultStatus =
-    statuses.find((s) => s.code === "new_stock") ?? statuses[0];
-  const [templates, setTemplates] = useState<DeviceTemplate[]>([]);
-  const [templateId, setTemplateId] = useState("");
-  const [assetName, setAssetName] = useState("");
-  const [category, setCategory] = useState("");
-  const [manufacturer, setManufacturer] = useState("");
-  const [model, setModel] = useState("");
-  const [serialNumber, setSerialNumber] = useState("");
-  const [statusId, setStatusId] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (defaultStatus && !statusId) setStatusId(defaultStatus.id);
-  }, [defaultStatus, statusId]);
-
-  useEffect(() => {
-    fetch("/api/device-templates")
-      .then((r) => r.json())
-      .then((data) => setTemplates(Array.isArray(data) ? data : []))
-      .catch(console.error);
-  }, []);
-
-  function applyTemplate(id: string) {
-    setTemplateId(id);
-    if (!id) return;
-    const t = templates.find((x) => x.id === id);
-    if (!t) return;
-    setAssetName(t.label);
-    setCategory(t.category);
-    setManufacturer(t.manufacturer);
-    setModel(t.model);
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const nameOk = assetName.trim() || Boolean(templateId);
-    const catOk = category.trim() || Boolean(templateId);
-    if (!nameOk || !catOk || !statusId) return;
-    setBusy(true);
-    try {
-      const payload: Record<string, unknown> = {
-        assetName: assetName.trim(),
-        category: category.trim(),
-        statusId,
-        serialNumber: serialNumber.trim() || undefined,
-        manufacturer: manufacturer.trim() || undefined,
-        model: model.trim() || undefined,
-      };
-      if (templateId) payload.deviceTemplateId = templateId;
-
-      const res = await fetch("/api/assets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to create");
-      setTemplateId("");
-      setAssetName("");
-      setCategory("");
-      setManufacturer("");
-      setModel("");
-      setSerialNumber("");
-      onCreated();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!statuses.length) return null;
-
-  return (
-    <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-      <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
-        Add hardware
-      </h2>
-      <div className="mt-2 h-0.5 w-12 rounded-full bg-brand" />
-      <p className="mb-4 mt-4 text-sm text-black/65">
-        Choose a <strong>device template</strong> to fill make/model/category, or
-        leave “Custom” and type everything by hand. Manage templates under{" "}
-        <strong>Settings</strong>.
-      </p>
-      <form
-        onSubmit={submit}
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
-      >
-        <div className="min-w-0 xl:col-span-2">
-          <label className="text-xs font-medium text-black/70">
-            Device template
-          </label>
-          <select
-            value={templateId}
-            onChange={(e) => applyTemplate(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-          >
-            <option value="">Custom (no template)</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label} — {t.manufacturer} {t.model}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="min-w-0 sm:col-span-2">
-          <label className="text-xs font-medium text-black/70">
-            Name / description
-          </label>
-          <input
-            value={assetName}
-            onChange={(e) => setAssetName(e.target.value)}
-            placeholder="Filled from template or type your own"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-black/70">
-            Category
-          </label>
-          <input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="e.g. Laptop"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-black/70">
-            Manufacturer
-          </label>
-          <input
-            value={manufacturer}
-            onChange={(e) => setManufacturer(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-black/70">
-            Model
-          </label>
-          <input
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-black/70">
-            Serial
-          </label>
-          <input
-            value={serialNumber}
-            onChange={(e) => setSerialNumber(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-black/70">
-            Initial stage
-          </label>
-          <select
-            value={statusId}
-            onChange={(e) => setStatusId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-          >
-            {statuses.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-end xl:col-span-6">
-          <button
-            type="submit"
-            disabled={busy}
-            className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
-          >
-            {busy ? "Saving…" : "Add item"}
-          </button>
-        </div>
-      </form>
-    </section>
   );
 }

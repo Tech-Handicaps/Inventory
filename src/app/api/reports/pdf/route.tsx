@@ -5,7 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 import type { PdfAssetRow } from "@/lib/pdf/inventory-report-document";
+import type { PdfCatalogRow } from "@/lib/pdf/catalog-report-document";
 import { renderInventoryReportPdf } from "@/lib/pdf/render-inventory-report";
+import { renderCatalogReportPdf } from "@/lib/pdf/render-catalog-report";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,6 +70,38 @@ export async function GET(request: NextRequest) {
 
   try {
     const raw = request.nextUrl.searchParams.get("type");
+    const generatedAt = new Date().toLocaleString("en-ZA");
+    const logoDataUri = loadLogoDataUri();
+
+    if (raw === "catalog") {
+      const templates = await prisma.deviceTemplate.findMany({
+        orderBy: [{ manufacturer: "asc" }, { model: "asc" }],
+      });
+      const categories = new Set(templates.map((t) => t.category));
+      const rows: PdfCatalogRow[] = templates.map((t) => ({
+        label: t.label,
+        manufacturer: t.manufacturer,
+        model: t.model,
+        category: t.category,
+        notes: t.notes,
+        updatedAt: formatDate(t.updatedAt),
+      }));
+      const summaryRows = [
+        { label: "Catalog entries", value: String(templates.length) },
+        { label: "Unique categories", value: String(categories.size) },
+      ];
+      const buffer = await renderCatalogReportPdf({
+        title: "Device template catalog",
+        subtitle:
+          "Approved presets from Settings (make / model / category) — for audit of catalog only; excludes physical assets on the board",
+        generatedAt,
+        logoDataUri,
+        summaryRows,
+        rows,
+      });
+      return pdfResponse(buffer, "hna-catalog-device-templates");
+    }
+
     const type = isReportType(raw) ? raw : "overall";
 
     const statuses = await prisma.assetStatus.findMany({
@@ -76,8 +110,6 @@ export async function GET(request: NextRequest) {
     const byCode = Object.fromEntries(statuses.map((s) => [s.code, s.id]));
 
     const include = { status: true as const };
-    const generatedAt = new Date().toLocaleString("en-ZA");
-    const logoDataUri = loadLogoDataUri();
 
     if (type === "overall") {
       const title = "Overall inventory report";

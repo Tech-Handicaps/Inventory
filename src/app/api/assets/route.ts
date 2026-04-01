@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
@@ -137,6 +138,26 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(asset);
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const fields = error.meta?.target;
+      const target =
+        Array.isArray(fields) && fields.includes("serialNumber")
+          ? "serialNumber"
+          : "unique field";
+      return NextResponse.json(
+        {
+          error:
+            target === "serialNumber"
+              ? "That serial number is already on the board."
+              : "This record conflicts with an existing entry.",
+          code: "UNIQUE_VIOLATION",
+        },
+        { status: 409 }
+      );
+    }
     console.error("POST /api/assets", error);
     return NextResponse.json(
       { error: "Failed to create asset" },

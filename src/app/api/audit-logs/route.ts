@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       0
     );
     const actionType = searchParams.get("actionType")?.trim();
+    const assetId = searchParams.get("assetId")?.trim();
     const from = searchParams.get("from")?.trim();
     const to = searchParams.get("to")?.trim();
 
@@ -32,6 +33,13 @@ export async function GET(request: NextRequest) {
 
     if (actionType && actionType !== "all") {
       where.actionType = actionType;
+    }
+
+    if (assetId) {
+      where.metadata = {
+        path: ["assetId"],
+        equals: assetId,
+      };
     }
 
     const ts: { gte?: Date; lte?: Date } = {};

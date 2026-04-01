@@ -43,7 +43,7 @@ export function prismaMutationError(
         error: "Database connection failed. Check DATABASE_URL and network access.",
         code: "PRISMA_INIT",
         detail:
-          "Supabase + Vercel: use the Transaction pooler URI (port 6543) with ?pgbouncer=true&connection_limit=1&sslmode=require — not the direct db.* host. Session pooler (5432) is for long-lived servers; do not mix pgbouncer=true on 5432. URL-encode special characters in the DB password. Confirm DATABASE_URL is set on Vercel for this environment.",
+          "Set DATABASE_URL to the Supabase Transaction pooler (port 6543, not db.*). Add ?pgbouncer=true&connection_limit=1&sslmode=require. On 5432 session pooler, omit pgbouncer. URL-encode password specials (e.g. @ as %40). Set this env on Vercel for Production/Preview.",
       },
     };
   }

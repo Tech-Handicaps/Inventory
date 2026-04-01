@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
 
 type Asset = {
@@ -23,18 +24,32 @@ export default function AssetsPage() {
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/assets").then((r) => r.json()),
-      fetch("/api/statuses").then((r) => r.json()),
-    ])
-      .then(([a, s]) => {
-        setAssets(a.assets ?? []);
-        setStatuses(s ?? []);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    const [aRes, sRes] = await Promise.all([
+      fetch("/api/assets"),
+      fetch("/api/statuses"),
+    ]);
+    const a = await aRes.json();
+    const s = await sRes.json();
+    setAssets(a.assets ?? []);
+    setStatuses(Array.isArray(s) ? s : []);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        await load();
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
 
   if (loading) {
     return (
@@ -48,14 +63,27 @@ export default function AssetsPage() {
     <div className="min-h-screen bg-surface">
       <InventoryHeader current="assets" />
 
-      <main className="mx-auto max-w-6xl p-6">
+      <main className="mx-auto max-w-6xl space-y-8 p-6">
+        <HardwareCaptureForm statuses={statuses} onCreated={() => load()} />
+
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
             All assets
           </h2>
           <div className="mt-2 h-0.5 w-14 rounded-full bg-brand" />
+          <p className="mt-4 max-w-3xl text-sm text-black/70">
+            The table lists every unit. Use <strong>Register hardware</strong>{" "}
+            above to add one <strong>physical unit</strong> at a time. Pick a{" "}
+            <strong>device template</strong> (from Settings) so you don’t retype
+            the same make/model — you still enter this unit’s{" "}
+            <strong>serial</strong> and optional display name so each row is
+            unique.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           {assets.length ? (
-            <div className="mt-6 overflow-x-auto">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-black/10">
@@ -95,12 +123,12 @@ export default function AssetsPage() {
             </div>
           ) : (
             <p className="py-8 text-center text-black/50">
-              No assets. Add via API or seed data.
+              No assets yet. Use the form above to register hardware.
             </p>
           )}
         </div>
 
-        <div className="mt-6 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           <h3 className="font-heading mb-2 text-sm font-bold uppercase tracking-wide text-black">
             Lifecycle states (extensible)
           </h3>

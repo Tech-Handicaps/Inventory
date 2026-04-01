@@ -7,14 +7,13 @@ import {
 } from "@react-pdf/renderer";
 import { PdfBrandBlock } from "@/lib/pdf/pdf-brand-block";
 
-export type PdfAssetRow = {
-  assetName: string;
+export type PdfCatalogRow = {
+  label: string;
+  manufacturer: string;
+  model: string;
   category: string;
-  manufacturer: string | null;
-  model: string | null;
-  serialNumber: string | null;
-  statusLabel: string;
-  dateUpdated: string;
+  notes: string | null;
+  updatedAt: string;
 };
 
 const brandGreen = "#139d4b";
@@ -86,7 +85,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   th: {
-    fontSize: 7,
+    fontSize: 6.5,
     fontFamily: "Helvetica-Bold",
     textTransform: "uppercase",
     color: black,
@@ -95,16 +94,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 0.5,
     borderBottomColor: "#eeeeee",
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
-  td: { fontSize: 7, color: black },
-  col1: { width: "18%" },
-  col2: { width: "11%" },
-  col3: { width: "13%" },
-  col4: { width: "11%" },
-  col5: { width: "14%" },
-  col6: { width: "14%" },
-  col7: { width: "19%" },
+  td: { fontSize: 6.5, color: black },
+  labelCol: { width: "22%" },
+  mfrCol: { width: "15%" },
+  modelCol: { width: "15%" },
+  catCol: { width: "13%" },
+  notesCol: { width: "23%" },
+  dateCol: { width: "12%" },
   footer: {
     position: "absolute",
     bottom: 24,
@@ -116,12 +114,6 @@ const styles = StyleSheet.create({
     borderTopColor: "#cccccc",
     paddingTop: 8,
   },
-  pageNum: {
-    fontSize: 7,
-    color: muted,
-    textAlign: "right",
-    marginTop: 4,
-  },
 });
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -130,7 +122,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-export function InventoryReportDocument({
+export function CatalogReportDocument({
   title,
   subtitle,
   generatedAt,
@@ -143,25 +135,26 @@ export function InventoryReportDocument({
   generatedAt: string;
   logoDataUri: string | null;
   summaryRows: { label: string; value: string }[];
-  rows: PdfAssetRow[];
+  rows: PdfCatalogRow[];
 }) {
-  const rowChunks = chunk(rows, 24);
+  const rowChunks = chunk(rows, 26);
   const pagesNeeded = Math.max(1, rowChunks.length);
 
   return (
     <Document
       title={title}
       author="Handicaps Network Africa"
-      subject="Hardware inventory report"
+      subject="Device template catalog report"
     >
-      {/* First page: branding + summary + first chunk of rows */}
       <Page size="A4" style={styles.page}>
         <View style={styles.headerBar} fixed />
         <PdfBrandBlock logoDataUri={logoDataUri} />
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
         <Text style={styles.meta}>
-          Generated {generatedAt} · For stakeholder & accounting use
+          Generated {generatedAt} · Catalog presets only (not physical assets).
+          Each row is identified by label, manufacturer, and model; internal
+          database IDs are omitted for readability.
         </Text>
 
         {summaryRows.length > 0 ? (
@@ -178,27 +171,25 @@ export function InventoryReportDocument({
           </>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Detail</Text>
+        <Text style={styles.sectionTitle}>Catalog entries</Text>
         <View style={styles.tableHeader}>
-          <Text style={[styles.th, styles.col1]}>Asset</Text>
-          <Text style={[styles.th, styles.col2]}>Category</Text>
-          <Text style={[styles.th, styles.col3]}>Mfr</Text>
-          <Text style={[styles.th, styles.col4]}>Model</Text>
-          <Text style={[styles.th, styles.col5]}>Serial</Text>
-          <Text style={[styles.th, styles.col6]}>Status</Text>
-          <Text style={[styles.th, styles.col7]}>Updated</Text>
+          <Text style={[styles.th, styles.labelCol]}>Label</Text>
+          <Text style={[styles.th, styles.mfrCol]}>Mfr</Text>
+          <Text style={[styles.th, styles.modelCol]}>Model</Text>
+          <Text style={[styles.th, styles.catCol]}>Category</Text>
+          <Text style={[styles.th, styles.notesCol]}>Notes</Text>
+          <Text style={[styles.th, styles.dateCol]}>Updated</Text>
         </View>
         {(rowChunks[0] ?? []).map((r, i) => (
           <View key={`r0-${i}`} style={styles.row}>
-            <Text style={[styles.td, styles.col1]}>{r.assetName}</Text>
-            <Text style={[styles.td, styles.col2]}>{r.category}</Text>
-            <Text style={[styles.td, styles.col3]}>
-              {r.manufacturer ?? "—"}
+            <Text style={[styles.td, styles.labelCol]}>{r.label}</Text>
+            <Text style={[styles.td, styles.mfrCol]}>{r.manufacturer}</Text>
+            <Text style={[styles.td, styles.modelCol]}>{r.model}</Text>
+            <Text style={[styles.td, styles.catCol]}>{r.category}</Text>
+            <Text style={[styles.td, styles.notesCol]}>
+              {r.notes?.trim() ? r.notes : "—"}
             </Text>
-            <Text style={[styles.td, styles.col4]}>{r.model ?? "—"}</Text>
-            <Text style={[styles.td, styles.col5]}>{r.serialNumber ?? "—"}</Text>
-            <Text style={[styles.td, styles.col6]}>{r.statusLabel}</Text>
-            <Text style={[styles.td, styles.col7]}>{r.dateUpdated}</Text>
+            <Text style={[styles.td, styles.dateCol]}>{r.updatedAt}</Text>
           </View>
         ))}
 
@@ -206,47 +197,42 @@ export function InventoryReportDocument({
           style={styles.footer}
           fixed
           render={({ pageNumber, totalPages }) =>
-            `Handicaps Network Africa · Hardware inventory · Page ${pageNumber} of ${totalPages}`
+            `Handicaps Network Africa · Device template catalog · Page ${pageNumber} of ${totalPages}`
           }
         />
       </Page>
 
-      {/* Continuation pages */}
       {rowChunks.slice(1).map((chunkRows, pageIdx) => (
         <Page key={`p-${pageIdx}`} size="A4" style={styles.page}>
           <View style={styles.headerBar} fixed />
           <Text style={styles.sectionTitle}>
-            Detail (continued) · {pageIdx + 2} / {pagesNeeded}
+            Catalog (continued) · {pageIdx + 2} / {pagesNeeded}
           </Text>
           <View style={styles.tableHeader}>
-            <Text style={[styles.th, styles.col1]}>Asset</Text>
-            <Text style={[styles.th, styles.col2]}>Category</Text>
-            <Text style={[styles.th, styles.col3]}>Mfr</Text>
-            <Text style={[styles.th, styles.col4]}>Model</Text>
-            <Text style={[styles.th, styles.col5]}>Serial</Text>
-            <Text style={[styles.th, styles.col6]}>Status</Text>
-            <Text style={[styles.th, styles.col7]}>Updated</Text>
+            <Text style={[styles.th, styles.labelCol]}>Label</Text>
+            <Text style={[styles.th, styles.mfrCol]}>Mfr</Text>
+            <Text style={[styles.th, styles.modelCol]}>Model</Text>
+            <Text style={[styles.th, styles.catCol]}>Category</Text>
+            <Text style={[styles.th, styles.notesCol]}>Notes</Text>
+            <Text style={[styles.th, styles.dateCol]}>Updated</Text>
           </View>
           {chunkRows.map((r, i) => (
             <View key={`r-${pageIdx}-${i}`} style={styles.row}>
-              <Text style={[styles.td, styles.col1]}>{r.assetName}</Text>
-              <Text style={[styles.td, styles.col2]}>{r.category}</Text>
-              <Text style={[styles.td, styles.col3]}>
-                {r.manufacturer ?? "—"}
+              <Text style={[styles.td, styles.labelCol]}>{r.label}</Text>
+              <Text style={[styles.td, styles.mfrCol]}>{r.manufacturer}</Text>
+              <Text style={[styles.td, styles.modelCol]}>{r.model}</Text>
+              <Text style={[styles.td, styles.catCol]}>{r.category}</Text>
+              <Text style={[styles.td, styles.notesCol]}>
+                {r.notes?.trim() ? r.notes : "—"}
               </Text>
-              <Text style={[styles.td, styles.col4]}>{r.model ?? "—"}</Text>
-              <Text style={[styles.td, styles.col5]}>
-                {r.serialNumber ?? "—"}
-              </Text>
-              <Text style={[styles.td, styles.col6]}>{r.statusLabel}</Text>
-              <Text style={[styles.td, styles.col7]}>{r.dateUpdated}</Text>
+              <Text style={[styles.td, styles.dateCol]}>{r.updatedAt}</Text>
             </View>
           ))}
           <Text
             style={styles.footer}
             fixed
             render={({ pageNumber, totalPages }) =>
-              `Handicaps Network Africa · Hardware inventory · Page ${pageNumber} of ${totalPages}`
+              `Handicaps Network Africa · Device template catalog · Page ${pageNumber} of ${totalPages}`
             }
           />
         </Page>

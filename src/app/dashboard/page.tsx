@@ -63,6 +63,24 @@ export default function DashboardPage() {
       <InventoryHeader current="dashboard" />
 
       <main className="mx-auto max-w-7xl space-y-8 p-6">
+        <section className="rounded-xl border border-brand/25 bg-brand-muted/30 p-5 shadow-sm">
+          <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+            Per-asset lifecycle
+          </h2>
+          <p className="mt-2 text-sm text-black/75">
+            These charts are <strong>roll-ups</strong> (how many assets are in
+            each stage). To see <strong>one unit’s journey</strong> through new
+            stock, in stock, repair, refurbished, and written off, open{" "}
+            <a
+              href="/reports#lifecycle"
+              className="font-semibold text-brand underline underline-offset-2"
+            >
+              Reports → Asset lifecycle / movement
+            </a>
+            .
+          </p>
+        </section>
+
         {/* Stock Overview - Pie Chart */}
         <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
