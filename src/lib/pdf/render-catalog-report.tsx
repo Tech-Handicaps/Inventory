@@ -9,7 +9,7 @@ export type CatalogReportPdfInput = {
   title: string;
   subtitle: string;
   generatedAt: string;
-  logoDataUri: string | null;
+  logoSource: Buffer | string | null;
   summaryRows: { label: string; value: string }[];
   rows: PdfCatalogRow[];
 };
@@ -20,7 +20,7 @@ export async function renderCatalogReportPdf(input: CatalogReportPdfInput) {
       title: input.title,
       subtitle: input.subtitle,
       generatedAt: input.generatedAt,
-      logoDataUri: input.logoDataUri,
+      logoSource: input.logoSource,
       summaryRows: input.summaryRows,
       rows: input.rows,
     })

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
+import { LogRepairModal } from "@/components/LogRepairModal";
 
 type Status = {
   id: string;
@@ -46,6 +47,7 @@ export default function InventoryPage() {
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [repairAsset, setRepairAsset] = useState<Asset | null>(null);
 
   const load = useCallback(async () => {
     const [aRes, sRes] = await Promise.all([
@@ -172,6 +174,7 @@ export default function InventoryPage() {
                         statuses={statuses}
                         disabled={savingId === asset.id}
                         onStatusChange={updateAssetStatus}
+                        onLogRepair={() => setRepairAsset(asset)}
                       />
                     </li>
                   ))}
@@ -254,6 +257,11 @@ export default function InventoryPage() {
             </div>
           </section>
         )}
+        <LogRepairModal
+          asset={repairAsset}
+          onClose={() => setRepairAsset(null)}
+          onSuccess={() => load()}
+        />
       </main>
     </div>
   );
@@ -264,11 +272,13 @@ function HardwareCard({
   statuses,
   disabled,
   onStatusChange,
+  onLogRepair,
 }: {
   asset: Asset;
   statuses: Status[];
   disabled: boolean;
   onStatusChange: (id: string, statusId: string) => void;
+  onLogRepair: () => void;
 }) {
   return (
     <article className="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
@@ -300,21 +310,33 @@ function HardwareCard({
           ) : null}
         </div>
       </div>
-      <label className="mt-3 block text-[10px] font-medium uppercase tracking-wide text-black/40">
-        Move to
-      </label>
-      <select
-        className="mt-1 w-full rounded-md border border-black/15 bg-surface px-2 py-1.5 text-xs"
-        value={asset.status.id}
-        disabled={disabled}
-        onChange={(e) => onStatusChange(asset.id, e.target.value)}
-      >
-        {statuses.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.label}
-          </option>
-        ))}
-      </select>
+      <div className="mt-3 flex flex-col gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onLogRepair}
+          className="font-heading w-full rounded-md border-2 border-orange-500/80 bg-orange-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-orange-900 transition-colors hover:bg-orange-100 disabled:opacity-50"
+        >
+          Log repair
+        </button>
+        <div>
+          <label className="block text-[10px] font-medium uppercase tracking-wide text-black/40">
+            Move to
+          </label>
+          <select
+            className="mt-1 w-full rounded-md border border-black/15 bg-surface px-2 py-1.5 text-xs"
+            value={asset.status.id}
+            disabled={disabled}
+            onChange={(e) => onStatusChange(asset.id, e.target.value)}
+          >
+            {statuses.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
     </article>
   );
 }

@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { AuthNav } from "@/components/AuthNav";
 import { BrandLogo } from "@/components/BrandLogo";
+import { useAppRole } from "@/components/RoleProvider";
+import { isNavLinkVisible, type NavKey } from "@/lib/auth/nav-access";
 
 const link = "text-black/70 transition-colors hover:text-brand";
 const active =
@@ -16,7 +20,23 @@ type Props = {
     | "settings";
 };
 
+const NAV_ITEMS: { href: string; key: NavKey; label: string }[] = [
+  { href: "/", key: "home", label: "Home" },
+  { href: "/dashboard", key: "dashboard", label: "Dashboard" },
+  { href: "/inventory", key: "inventory", label: "Hardware board" },
+  { href: "/assets", key: "assets", label: "All assets" },
+  { href: "/reports", key: "reports", label: "Reports" },
+  { href: "/settings", key: "settings", label: "Settings" },
+];
+
 export function InventoryHeader({ current }: Props) {
+  const { role, loading } = useAppRole();
+
+  const visible = (key: NavKey) => {
+    if (loading || role === null) return true;
+    return isNavLinkVisible(role, key);
+  };
+
   return (
     <header className="border-b-4 border-brand bg-white shadow-sm">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 sm:flex-row sm:items-start sm:justify-between">
@@ -28,7 +48,9 @@ export function InventoryHeader({ current }: Props) {
               Hardware inventory
             </p>
             <p className="text-xs text-black/55">
-              Track stock, repairs, and refurbishment
+              {role === "reports_only" && !loading
+                ? "PDF reports and downloads"
+                : "Track stock, repairs, and refurbishment"}
             </p>
           </div>
         </div>
@@ -37,36 +59,17 @@ export function InventoryHeader({ current }: Props) {
           className="font-heading flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold uppercase tracking-wide sm:justify-end"
           aria-label="Main"
         >
-          <Link href="/" className={current === "home" ? active : link}>
-            Home
-          </Link>
-          <Link
-            href="/dashboard"
-            className={current === "dashboard" ? active : link}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/inventory"
-            className={current === "inventory" ? active : link}
-          >
-            Hardware board
-          </Link>
-          <Link href="/assets" className={current === "assets" ? active : link}>
-            All assets
-          </Link>
-          <Link
-            href="/reports"
-            className={current === "reports" ? active : link}
-          >
-            Reports
-          </Link>
-          <Link
-            href="/settings"
-            className={current === "settings" ? active : link}
-          >
-            Settings
-          </Link>
+          {NAV_ITEMS.map((item) =>
+            visible(item.key) ? (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={current === item.key ? active : link}
+              >
+                {item.label}
+              </Link>
+            ) : null
+          )}
         </nav>
         <AuthNav />
         </div>

@@ -126,14 +126,14 @@ export function CatalogReportDocument({
   title,
   subtitle,
   generatedAt,
-  logoDataUri,
+  logoSource,
   summaryRows,
   rows,
 }: {
   title: string;
   subtitle: string;
   generatedAt: string;
-  logoDataUri: string | null;
+  logoSource: Buffer | string | null;
   summaryRows: { label: string; value: string }[];
   rows: PdfCatalogRow[];
 }) {
@@ -148,7 +148,7 @@ export function CatalogReportDocument({
     >
       <Page size="A4" style={styles.page}>
         <View style={styles.headerBar} fixed />
-        <PdfBrandBlock logoDataUri={logoDataUri} />
+        <PdfBrandBlock logoSource={logoSource} />
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
         <Text style={styles.meta}>

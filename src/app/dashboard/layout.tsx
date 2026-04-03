@@ -3,12 +3,11 @@ import { redirect } from "next/navigation";
 import { getSessionRole } from "@/lib/auth/get-session-role";
 
 export const metadata: Metadata = {
-  title: "Settings · Handicaps Network Africa",
-  description:
-    "Zoho Assist API, device templates, and audit log for the inventory system",
+  title: "Dashboard · Handicaps Network Africa",
+  description: "Stock, repairs, refurbishment, and Xero health at a glance",
 };
 
-export default async function SettingsLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -3,12 +3,17 @@ import { View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 const brandGreen = "#139d4b";
 
 const styles = StyleSheet.create({
-  /* Stacked full logo (icon + text); wider box so vertical art isn’t cropped */
+  logoWrap: {
+    width: 200,
+    height: 78,
+    marginBottom: 12,
+    alignSelf: "flex-start",
+    justifyContent: "flex-start",
+  },
+  /* Prefer Buffer in Image src — data URIs can fail to render in some PDF builds */
   logo: {
     width: 200,
-    height: 76,
-    objectFit: "contain",
-    marginBottom: 12,
+    height: 78,
     alignSelf: "flex-start",
   },
   wordmarkWrap: {
@@ -34,19 +39,29 @@ const styles = StyleSheet.create({
   },
 });
 
-/**
- * Logo from `public/brand/hna-logo.png` when present; otherwise a typed wordmark
- * so PDFs always show organisation branding.
- */
-export function PdfBrandBlock({ logoDataUri }: { logoDataUri: string | null }) {
-  if (logoDataUri) {
+type Props = {
+  /** PNG bytes (preferred) or data URL string — see @react-pdf/types image Source */
+  logoSource: Buffer | string | null;
+};
+
+export function PdfBrandBlock({ logoSource }: Props) {
+  if (Buffer.isBuffer(logoSource) && logoSource.length > 0) {
     return (
-      <>
+      <View style={styles.logoWrap}>
         {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image */}
-        <Image src={logoDataUri} style={styles.logo} />
-      </>
+        <Image src={logoSource} style={styles.logo} />
+      </View>
     );
   }
+  if (typeof logoSource === "string" && logoSource.length > 0) {
+    return (
+      <View style={styles.logoWrap}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image */}
+        <Image src={logoSource} style={styles.logo} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wordmarkWrap}>
       <Text style={styles.wordmark}>Handicaps Network Africa</Text>

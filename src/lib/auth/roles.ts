@@ -1,14 +1,66 @@
-// Role-based access control - matches spec
-export type Role = "accounts" | "operations" | "management";
+/**
+ * Application roles. Enforced on API routes and UI in later rollout steps.
+ *
+ * - super_admin: env email allowlist only (cannot be escalated via metadata alone).
+ * - admin: full access (default for users without a UserRole row).
+ * - reports_only: `/api/reports/*` only (see `api-route-access.ts`).
+ * - accountant: all APIs except `/api/settings/zoho/*` and `/api/audit-logs`.
+ */
 
-export const ROLE_HIERARCHY: Record<Role, number> = {
-  management: 3, // highest - full access
-  accounts: 2,
-  operations: 1,
+export type AppRole =
+  | "super_admin"
+  | "admin"
+  | "reports_only"
+  | "accountant";
+
+/** @deprecated Use AppRole */
+export type Role = AppRole;
+
+const APP_ROLES_NO_SUPER: readonly AppRole[] = [
+  "admin",
+  "reports_only",
+  "accountant",
+];
+
+const LEGACY_TO_APP: Record<string, AppRole> = {
+  management: "admin",
+  accounts: "accountant",
+  operations: "admin",
 };
 
-export function hasPermission(userRole: Role | null, requiredRole: Role): boolean {
-  if (!userRole) return false;
-  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
+/**
+ * Normalize a DB or Supabase metadata string to an AppRole.
+ * Does not return super_admin — that comes only from `isSuperAdminEmail` in `resolveAppRole`.
+ */
+export function parseStoredRole(raw: unknown): AppRole | null {
+  if (typeof raw !== "string") return null;
+  const key = raw.trim().toLowerCase();
+  if (key === "super_admin") return null;
+  const legacy = LEGACY_TO_APP[key];
+  if (legacy) return legacy;
+  if ((APP_ROLES_NO_SUPER as readonly string[]).includes(key)) {
+    return key as AppRole;
+  }
+  return null;
 }
 
+/**
+ * Comma-separated emails (case-insensitive). Grants super_admin in `resolveAppRole`.
+ */
+export function isSuperAdminEmail(email: string | null | undefined): boolean {
+  if (!email?.trim()) return false;
+  const normalized = email.trim().toLowerCase();
+  const raw = process.env.SUPER_ADMIN_EMAILS?.trim();
+  if (!raw) return false;
+  return raw
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(normalized);
+}
+
+/** Role string safe to persist on UserRole (never super_admin). */
+export function toStoredRole(role: AppRole): string {
+  if (role === "super_admin") return "admin";
+  return role;
+}

@@ -51,7 +51,12 @@ function formatTransitionSummary(row: AuditRow): string {
   return row.notes ?? row.actionType;
 }
 
-export function AssetLifecycleSection() {
+type Props = {
+  /** When false, audit timeline is hidden and not fetched (e.g. accountant). */
+  auditAccess?: boolean;
+};
+
+export function AssetLifecycleSection({ auditAccess = true }: Props) {
   const [assets, setAssets] = useState<AssetOption[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(true);
   const [assetId, setAssetId] = useState("");
@@ -90,6 +95,12 @@ export function AssetLifecycleSection() {
       setTimeline([]);
       return;
     }
+    if (!auditAccess) {
+      setTimeline([]);
+      setLoadingLog(false);
+      setError(null);
+      return;
+    }
     setLoadingLog(true);
     setError(null);
     try {
@@ -112,7 +123,7 @@ export function AssetLifecycleSection() {
     } finally {
       setLoadingLog(false);
     }
-  }, []);
+  }, [auditAccess]);
 
   useEffect(() => {
     loadTimeline(assetId).catch(console.error);
@@ -134,11 +145,22 @@ export function AssetLifecycleSection() {
       <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
       <p className="mt-4 text-sm leading-relaxed text-black/70">
         Track how a unit moved through your stages (for example new stock → in
-        stock with clubs → repair → refurbished → written off). Movement is built
-        from the <strong>audit log</strong> when someone changes status on the
-        hardware board or updates the asset. The{" "}
-        <strong>Dashboard</strong> shows totals across all assets; this view is{" "}
-        <strong>one asset at a time</strong>.
+        stock with clubs → repair → refurbished → written off).
+        {auditAccess ? (
+          <>
+            {" "}
+            Movement is built from the <strong>audit log</strong> when someone
+            changes status on the hardware board or updates the asset. The{" "}
+            <strong>Dashboard</strong> shows totals across all assets; this view
+            is <strong>one asset at a time</strong>.
+          </>
+        ) : (
+          <>
+            {" "}
+            Audit history is not available for your role; you can still see each
+            asset&apos;s current stage below.
+          </>
+        )}
       </p>
 
       <div className="mt-6 max-w-xl">
@@ -181,7 +203,7 @@ export function AssetLifecycleSection() {
         </p>
       ) : null}
 
-      {assetId ? (
+      {assetId && auditAccess ? (
         <div className="mt-6">
           {loadingLog ? (
             <p className="text-sm text-black/55">Loading history…</p>

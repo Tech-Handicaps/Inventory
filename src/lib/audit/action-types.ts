@@ -11,6 +11,7 @@ export const AUDIT_ACTION_TYPES = [
   "device_template.deleted",
   "repair.created",
   "integration.zoho.settings_updated",
+  "integration.zoho_desk.settings_updated",
   "integration.zoho.oauth_connected",
   "integration.xero.sync_triggered",
 ] as const;

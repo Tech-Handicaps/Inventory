@@ -1,7 +1,7 @@
 "use client";
 
 import { InventoryHeader } from "@/components/InventoryHeader";
-import { AssetLifecycleSection } from "./asset-lifecycle-section";
+import { ReportsLifecycleSlot } from "./reports-lifecycle-slot";
 
 const REPORTS: {
   id: string;
@@ -77,7 +77,7 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <AssetLifecycleSection />
+        <ReportsLifecycleSlot />
 
         <ul className="space-y-4">
           {REPORTS.map((r) => (

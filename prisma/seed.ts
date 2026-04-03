@@ -252,10 +252,10 @@ async function main() {
   if (seedAdminId) {
     await prisma.userRole.upsert({
       where: { userId: seedAdminId },
-      create: { userId: seedAdminId, role: "management" },
-      update: { role: "management" },
+      create: { userId: seedAdminId, role: "admin" },
+      update: { role: "admin" },
     });
-    console.log("UserRole: management assigned to SEED_ADMIN_USER_ID.");
+    console.log("UserRole: admin assigned to SEED_ADMIN_USER_ID.");
   }
 }
 

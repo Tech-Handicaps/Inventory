@@ -1,11 +1,10 @@
-import { readFileSync, existsSync } from "fs";
-import path from "path";
 import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 import type { PdfAssetRow } from "@/lib/pdf/inventory-report-document";
 import type { PdfCatalogRow } from "@/lib/pdf/catalog-report-document";
+import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderInventoryReportPdf } from "@/lib/pdf/render-inventory-report";
 import { renderCatalogReportPdf } from "@/lib/pdf/render-catalog-report";
 
@@ -48,22 +47,6 @@ function toRows(assets: AssetWithStatus[]): PdfAssetRow[] {
   }));
 }
 
-function loadLogoDataUri(): string | null {
-  const logoPath = path.join(
-    process.cwd(),
-    "public",
-    "brand",
-    "hna-logo.png"
-  );
-  if (!existsSync(logoPath)) return null;
-  try {
-    const buf = readFileSync(logoPath);
-    return `data:image/png;base64,${buf.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
@@ -71,7 +54,7 @@ export async function GET(request: NextRequest) {
   try {
     const raw = request.nextUrl.searchParams.get("type");
     const generatedAt = new Date().toLocaleString("en-ZA");
-    const logoDataUri = loadLogoDataUri();
+    const logoSource = await loadLogoForPdf();
 
     if (raw === "catalog") {
       const templates = await prisma.deviceTemplate.findMany({
@@ -95,7 +78,7 @@ export async function GET(request: NextRequest) {
         subtitle:
           "Approved presets from Settings (make / model / category) — for audit of catalog only; excludes physical assets on the board",
         generatedAt,
-        logoDataUri,
+        logoSource,
         summaryRows,
         rows,
       });
@@ -142,7 +125,7 @@ export async function GET(request: NextRequest) {
         title,
         subtitle,
         generatedAt,
-        logoDataUri,
+        logoSource,
         summaryRows,
         rows: toRows(assets),
       });
@@ -169,7 +152,7 @@ export async function GET(request: NextRequest) {
         title,
         subtitle,
         generatedAt,
-        logoDataUri,
+        logoSource,
         summaryRows,
         rows: toRows(assets),
       });
@@ -194,7 +177,7 @@ export async function GET(request: NextRequest) {
         title,
         subtitle,
         generatedAt,
-        logoDataUri,
+        logoSource,
         summaryRows,
         rows: toRows(assets),
       });
@@ -227,7 +210,7 @@ export async function GET(request: NextRequest) {
       title,
       subtitle,
       generatedAt,
-      logoDataUri,
+      logoSource,
       summaryRows,
       rows: toRows(assets),
     });

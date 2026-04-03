@@ -56,8 +56,12 @@ model Repair {
   id             String   @id @default(cuid())
   assetId        String
   asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// Human-readable case id for PDFs, audit, and cross-reference to Zoho Desk (e.g. HNA-REP-2026-A1B2C3D4)
+  referenceNumber String  @unique
   repairStatus   String   // pending, in_progress, completed, cancelled
   technicianNotes String?
+  zohoDeskTicketId     String? // Desk API ticket id
+  zohoDeskTicketNumber   String? // Display ticket number from Desk (e.g. #12345)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -83,11 +87,13 @@ model AuditLog {
   metadata   Json?    // flexible extra data
 }
 
-// Optional stored role (reporting / future use; API access is not limited by this)
+// App access role (see src/lib/auth/roles.ts). Stored values: admin | reports_only | accountant
+// (legacy: management | accounts | operations — normalized when resolved).
+// super_admin is granted only via SUPER_ADMIN_EMAILS env, not persisted as a special row value.
 model UserRole {
   id       String   @id @default(cuid())
   userId   String   @unique // Supabase auth user id
-  role     String   // accounts | operations | management
+  role     String
   createdAt DateTime @default(now())
 }
 
@@ -99,4 +105,16 @@ model ZohoAssistSettings {
   refreshToken String?
   dataCenter   String   @default("us") // us | eu | in | au | ca | jp | sa
   updatedAt    DateTime @updatedAt
+}
+
+// Zoho Desk OAuth — separate from Assist; used to create/link support tickets for repairs.
+model ZohoDeskSettings {
+  id               String   @id @default("singleton")
+  orgId            String? // Zoho Desk organization id (required for API calls)
+  departmentId     String? // Default department for tickets created from inventory
+  clientId         String?
+  clientSecret     String?
+  refreshToken     String?
+  dataCenter       String   @default("us")
+  updatedAt        DateTime @updatedAt
 }
