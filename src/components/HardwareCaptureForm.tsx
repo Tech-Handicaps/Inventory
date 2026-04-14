@@ -65,8 +65,12 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     };
   }, [statusesProp.length]);
 
-  const defaultStatus =
-    statuses.find((s) => s.code === "new_stock") ?? statuses[0];
+  /** Default column for new assets — computed synchronously so the stage <select> always matches an <option> on first paint. */
+  const defaultStatusId = useMemo(() => {
+    if (statuses.length === 0) return "";
+    const s = statuses.find((x) => x.code === "new_stock") ?? statuses[0];
+    return s?.id ?? "";
+  }, [statuses]);
 
   const [templates, setTemplates] = useState<DeviceTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -77,9 +81,21 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
-  const [statusId, setStatusId] = useState("");
+  /** null = use defaultStatusId; otherwise user’s explicit choice (must still exist in statuses). */
+  const [statusId, setStatusId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (statusId && !statuses.some((s) => s.id === statusId)) {
+      setStatusId(null);
+    }
+  }, [statuses, statusId]);
+
+  const effectiveStatusId =
+    statusId && statuses.some((s) => s.id === statusId)
+      ? statusId
+      : defaultStatusId;
 
   const filteredTemplates = useMemo(() => {
     const q = templateFilter.trim().toLowerCase();
@@ -94,10 +110,6 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     () => templates.find((t) => t.id === templateId),
     [templates, templateId]
   );
-
-  useEffect(() => {
-    if (defaultStatus && !statusId) setStatusId(defaultStatus.id);
-  }, [defaultStatus, statusId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,7 +150,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     setFormError(null);
     const nameOk = assetName.trim() || Boolean(templateId);
     const catOk = category.trim() || Boolean(templateId);
-    if (!nameOk || !catOk || !statusId) {
+    if (!nameOk || !catOk || !effectiveStatusId) {
       setFormError(
         "Provide a display name and category, or choose a device template."
       );
@@ -149,7 +161,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       const payload: Record<string, unknown> = {
         assetName: assetName.trim(),
         category: category.trim(),
-        statusId,
+        statusId: effectiveStatusId,
         serialNumber: serialNumber.trim() || undefined,
         manufacturer: manufacturer.trim() || undefined,
         model: model.trim() || undefined,
@@ -179,13 +191,13 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     }
   }
 
-  const canSubmit = statuses.length > 0 && Boolean(statusId);
+  const canSubmit = statuses.length > 0 && Boolean(effectiveStatusId);
   const noStatusesYet = !statusesLoading && statuses.length === 0;
 
   return (
     <section
       id="register-hardware"
-      className="overflow-hidden rounded-xl border-2 border-brand/40 bg-white shadow-md ring-1 ring-black/5"
+      className="rounded-xl border-2 border-brand/40 bg-white shadow-md ring-1 ring-black/5"
     >
       <div className="border-b border-black/10 bg-brand-muted/40 px-6 py-4">
         <p className="font-heading text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
@@ -427,7 +439,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                 </label>
                 <select
                   id="hw-stage"
-                  value={statusId}
+                  value={effectiveStatusId}
                   onChange={(e) => setStatusId(e.target.value)}
                   disabled={statuses.length === 0}
                   className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
