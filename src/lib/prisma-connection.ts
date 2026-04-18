@@ -1,26 +1,9 @@
 /**
- * Supabase + Prisma on serverless (Vercel): the **Transaction pooler** URI (port 6543)
- * must include `pgbouncer=true` (and usually `sslmode=require`, `connection_limit=1`).
+ * Supabase + Prisma on serverless (Vercel): use the **Transaction pooler** (port **6543**)
+ * with `pgbouncer=true`, `sslmode=require`, `connection_limit=1`.
+ * Session pooler (port **5432**) caps connections (~15) → `EMAXCONNSESSION` under load.
  * See `.env.example` and https://www.prisma.io/docs/guides/database/supabase
  */
-export function warnIfLikelyMisconfiguredDatabaseUrl(): void {
-  const raw = process.env.DATABASE_URL?.trim();
-  if (!raw) return;
-
-  const lower = raw.toLowerCase();
-  const looksPooler =
-    lower.includes(":6543/") ||
-    lower.includes("pooler.supabase.com") ||
-    lower.includes("pooler");
-
-  if (looksPooler && !lower.includes("pgbouncer=true")) {
-    console.warn(
-      "[prisma] DATABASE_URL looks like a Supabase pooler URL but is missing `pgbouncer=true`. " +
-        "Prisma often fails with PrismaClientInitializationError until you add it (and use `sslmode=require`). " +
-        "Copy the Transaction pooler string from Supabase Dashboard → Connect, or see .env.example."
-    );
-  }
-}
 
 /** Strip credentials from accidental URL echoes in error strings. */
 export function sanitizeDatabaseError(error: unknown): string {
@@ -41,6 +24,8 @@ export function getDatabaseUrlHints():
       pgbouncerTrue: boolean;
       sslmodeRequire: boolean;
       usesPort6543: boolean;
+      /** Supabase session pooler — only ~15 concurrent clients; wrong for Vercel. */
+      isSupabaseSessionPooler: boolean;
       parseOk: true;
     }
   | { parseOk: false; parseError: string } {
@@ -55,13 +40,19 @@ export function getDatabaseUrlHints():
     const u = new URL(normalized);
     const port = u.port || "5432";
     const sp = u.searchParams;
+    const hostname = u.hostname;
+    const isSupabasePoolerHost = hostname.includes("pooler.supabase.com");
+    const isSupabaseSessionPooler =
+      isSupabasePoolerHost && port === "5432";
+
     return {
       parseOk: true,
-      hostname: u.hostname,
+      hostname,
       port,
       pgbouncerTrue: sp.get("pgbouncer") === "true",
       sslmodeRequire: sp.get("sslmode") === "require",
       usesPort6543: port === "6543",
+      isSupabaseSessionPooler,
     };
   } catch (e) {
     return {
@@ -79,18 +70,49 @@ export function connectionHintFromUrlHints(
     return "DATABASE_URL could not be parsed — use a single line in Vercel, wrap in quotes if needed, URL-encode @ in the password as %40.";
   }
   const parts: string[] = [];
+
+  if (hints.isSupabaseSessionPooler) {
+    parts.push(
+      "You are using Supabase Session pooler (port 5432). It allows only ~15 concurrent clients — Vercel serverless will throw EMAXCONNSESSION / max clients reached. Replace DATABASE_URL with the Transaction pooler URI: port 6543 and query params sslmode=require&pgbouncer=true&connection_limit=1 (Supabase Dashboard → Connect → Transaction pooler)."
+    );
+  }
+
   if (hints.usesPort6543 && !hints.pgbouncerTrue) {
     parts.push(
-      "Port 6543 (pooler) requires pgbouncer=true in the query string for Prisma."
+      "Port 6543 (transaction pooler) requires pgbouncer=true in the query string for Prisma."
     );
   }
   if (!hints.sslmodeRequire && hints.hostname.includes("supabase")) {
     parts.push("Add sslmode=require for Supabase.");
   }
-  if (!hints.usesPort6543 && hints.hostname.includes("pooler.supabase.com")) {
+  if (
+    !hints.isSupabaseSessionPooler &&
+    !hints.usesPort6543 &&
+    hints.hostname.includes("pooler.supabase.com")
+  ) {
     parts.push(
-      "Supabase pooler hostnames usually use port 6543 (transaction mode) for serverless."
+      "Supabase pooler host should use port 6543 (transaction mode) for serverless, not session mode on 5432."
     );
   }
   return parts.length ? parts.join(" ") : null;
+}
+
+export function warnIfLikelyMisconfiguredDatabaseUrl(): void {
+  const hints = getDatabaseUrlHints();
+  if (!hints.parseOk) return;
+
+  if (hints.isSupabaseSessionPooler) {
+    console.warn(
+      "[prisma] DATABASE_URL uses Supabase Session pooler (port 5432). " +
+        "Vercel will exceed the ~15 connection cap (EMAXCONNSESSION). " +
+        "Use Transaction pooler: port 6543 + ?sslmode=require&pgbouncer=true&connection_limit=1. See .env.example."
+    );
+  }
+
+  if (hints.usesPort6543 && !hints.pgbouncerTrue) {
+    console.warn(
+      "[prisma] DATABASE_URL uses port 6543 but is missing `pgbouncer=true`. " +
+        "Add it (and sslmode=require). See .env.example."
+    );
+  }
 }
