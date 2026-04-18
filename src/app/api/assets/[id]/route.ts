@@ -265,3 +265,40 @@ export async function PUT(
     );
   }
 }
+
+// DELETE /api/assets/:id — remove asset (repairs cascade)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireApiAuth(request);
+  if (auth instanceof NextResponse) return auth;
+  const { user } = auth;
+  try {
+    const { id } = await params;
+    const asset = await prisma.asset.findUnique({
+      where: { id },
+      select: { id: true, assetName: true },
+    });
+    if (!asset) {
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+    }
+
+    await prisma.asset.delete({ where: { id } });
+
+    await createAuditLog({
+      userId: user.id,
+      actionType: "asset.deleted",
+      notes: asset.assetName,
+      metadata: { assetId: id },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("DELETE /api/assets/[id]", error);
+    return NextResponse.json(
+      { error: "Failed to delete asset" },
+      { status: 500 }
+    );
+  }
+}

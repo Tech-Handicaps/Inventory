@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const stock = byStatus.map((s) => ({
       statusId: s.statusId,
       status: statusMap[s.statusId]?.label ?? "Unknown",
+      code: statusMap[s.statusId]?.code ?? "unknown",
       count: s._count.id,
     }));
 

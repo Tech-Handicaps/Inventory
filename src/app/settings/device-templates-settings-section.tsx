@@ -341,8 +341,7 @@ export function DeviceTemplatesSettingsSection() {
           </table>
           {templates.length === 0 && (
             <p className="py-8 text-center text-sm text-black/45">
-              No templates yet. Add one above, or run{" "}
-              <code className="rounded bg-black/5 px-1">npm run db:seed</code>.
+              No templates yet. Add one using the form above.
             </p>
           )}
         </div>

@@ -40,7 +40,7 @@ SUPABASE_SERVICE_ROLE_KEY="[SERVICE-ROLE-KEY]"
 
 ```bash
 npm run db:push    # Push schema to Supabase
-npm run db:seed    # Seed asset statuses (new, repair, refurbished, written_off)
+npm run db:seed    # Seed lifecycle statuses only (no sample assets or templates)
 ```
 
 ### 4. Authentication (login)

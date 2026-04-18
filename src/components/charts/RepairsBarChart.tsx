@@ -36,6 +36,7 @@ export function RepairsBarChart({ data }: { data: PipelineItem[] }) {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
     },

@@ -15,6 +15,9 @@ const ACCOUNTS_BASE: Record<ZohoDataCenter, string> = {
 
 export const ZOHO_ASSIST_API_BASE = "https://assist.zoho.com/api/v2";
 
+/** Assist GET /api/v2/devices — `count` must be 1–50 per Zoho docs (default 25). */
+export const ZOHO_ASSIST_DEVICES_MAX_COUNT = 50;
+
 /** Scopes for Assist user info + unattended devices (future sync). */
 export const ZOHO_ASSIST_OAUTH_SCOPES =
   "ZohoAssist.userapi.READ,ZohoAssist.unattended.computer.READ";
@@ -228,6 +231,68 @@ export async function fetchAssistDeviceDetails(
     json = JSON.parse(text) as unknown;
   } catch {
     throw new Error(`Assist device details not JSON (${res.status}): ${text.slice(0, 300)}`);
+  }
+
+  if (!res.ok) {
+    const j = json as Record<string, unknown>;
+    const msg =
+      typeof j.message === "string"
+        ? j.message
+        : typeof j.error === "string"
+          ? j.error
+          : text.slice(0, 200);
+    throw new Error(`Assist API ${res.status}: ${msg}`);
+  }
+
+  return json;
+}
+
+/**
+ * GET https://assist.zoho.com/api/v2/devices — unattended computer list.
+ * @see https://www.zoho.com/assist/api/getunattendedcomputer.html
+ */
+export async function fetchAssistDevicesList(
+  accessToken: string,
+  options: {
+    departmentId: string;
+    orgId?: string | null;
+    index?: number;
+    count?: number;
+    displayName?: string;
+    deviceName?: string;
+  }
+): Promise<unknown> {
+  const params = new URLSearchParams();
+  params.set("index", String(options.index ?? 1));
+  const c = Math.min(
+    Math.max(options.count ?? 25, 1),
+    ZOHO_ASSIST_DEVICES_MAX_COUNT
+  );
+  params.set("count", String(c));
+  if (options.displayName?.trim()) {
+    params.set("display_name", options.displayName.trim());
+  }
+  if (options.deviceName?.trim()) {
+    params.set("device_name", options.deviceName.trim());
+  }
+
+  const headers: Record<string, string> = {
+    Authorization: `Zoho-oauthtoken ${accessToken}`,
+    "x-com-zoho-assist-department-id": options.departmentId,
+  };
+  if (options.orgId) {
+    headers["x-com-zoho-assist-orgid"] = options.orgId;
+  }
+
+  const url = `${ZOHO_ASSIST_API_BASE}/devices?${params.toString()}`;
+  const res = await fetch(url, { headers, cache: "no-store" });
+
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(`Assist devices list not JSON (${res.status}): ${text.slice(0, 300)}`);
   }
 
   if (!res.ok) {

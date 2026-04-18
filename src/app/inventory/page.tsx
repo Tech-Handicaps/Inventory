@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
 import { LogRepairModal } from "@/components/LogRepairModal";
@@ -36,6 +37,7 @@ type Asset = {
 const PRIMARY_ORDER = [
   "new_stock",
   "in_stock",
+  "deployed",
   "repair",
   "refurbished",
 ] as const;
@@ -44,6 +46,7 @@ const PRIMARY_ORDER = [
 const columnAccent: Record<string, string> = {
   new_stock: "border-t-black bg-white",
   in_stock: "border-t-brand bg-brand-muted",
+  deployed: "border-t-sky-500 bg-sky-50/90",
   repair: "border-t-orange-500 bg-orange-50/90",
   refurbished: "border-t-[#0b5d2e] bg-emerald-50/80",
   written_off: "border-t-neutral-400 bg-neutral-100",
@@ -55,6 +58,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [repairAsset, setRepairAsset] = useState<Asset | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [aRes, sRes] = await Promise.all([
@@ -118,6 +122,22 @@ export default function InventoryPage() {
     }
   }
 
+  const removeAsset = useCallback(
+    async (id: string, name: string) => {
+      if (!confirm(`Delete “${name}”? This cannot be undone.`)) return;
+      const res = await fetch(`/api/assets/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        window.alert(
+          typeof j.error === "string" ? j.error : "Delete failed"
+        );
+        return;
+      }
+      await load();
+    },
+    [load]
+  );
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface">
@@ -152,7 +172,7 @@ export default function InventoryPage() {
           <h2 className="font-heading mb-4 text-sm font-bold uppercase tracking-[0.15em] text-black">
             Stock & workflow
           </h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {orderedPrimary.map((st) => (
               <div
                 key={st.id}
@@ -182,6 +202,8 @@ export default function InventoryPage() {
                         disabled={savingId === asset.id}
                         onStatusChange={updateAssetStatus}
                         onLogRepair={() => setRepairAsset(asset)}
+                        onEdit={() => setEditingId(asset.id)}
+                        onDelete={() => void removeAsset(asset.id, asset.assetName)}
                       />
                     </li>
                   ))}
@@ -215,6 +237,9 @@ export default function InventoryPage() {
                       <th className="px-4 py-3 font-medium">Serial</th>
                       <th className="px-4 py-3 font-medium">Reason</th>
                       <th className="px-4 py-3 font-medium">Stage</th>
+                      <th className="px-4 py-3 text-right font-medium">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -251,6 +276,27 @@ export default function InventoryPage() {
                             ))}
                           </select>
                         </td>
+                        <td className="px-4 py-2 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(asset.id)}
+                            className="text-xs font-semibold text-brand hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <span className="mx-1.5 text-black/25" aria-hidden>
+                            ·
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void removeAsset(asset.id, asset.assetName)
+                            }
+                            className="text-xs font-semibold text-red-700 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -269,6 +315,22 @@ export default function InventoryPage() {
           onClose={() => setRepairAsset(null)}
           onSuccess={() => load()}
         />
+
+        {editingId ? (
+          <EditAssetModal
+            assetId={editingId}
+            statuses={statuses.map((s) => ({
+              id: s.id,
+              code: s.code,
+              label: s.label,
+            }))}
+            onClose={() => setEditingId(null)}
+            onSaved={() => {
+              setEditingId(null);
+              void load();
+            }}
+          />
+        ) : null}
       </main>
     </div>
   );
@@ -280,12 +342,16 @@ function HardwareCard({
   disabled,
   onStatusChange,
   onLogRepair,
+  onEdit,
+  onDelete,
 }: {
   asset: Asset;
   statuses: Status[];
   disabled: boolean;
   onStatusChange: (id: string, statusId: string) => void;
   onLogRepair: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   return (
     <article className="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
@@ -355,6 +421,29 @@ function HardwareCard({
               {asset.reason}
             </p>
           ) : null}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onEdit}
+              className="font-semibold text-brand hover:underline disabled:opacity-50"
+            >
+              Edit
+            </button>
+            <span className="text-black/25" aria-hidden>
+              ·
+            </span>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onDelete}
+              className="font-semibold text-red-700 hover:underline disabled:opacity-50"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
       <div className="mt-3 flex flex-col gap-2">
