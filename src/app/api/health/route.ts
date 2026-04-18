@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  connectionHintFromUrlHints,
+  getDatabaseUrlHints,
+  sanitizeDatabaseError,
+} from "@/lib/prisma-connection";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -19,17 +24,43 @@ export async function GET() {
   const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
 
   let databaseConnected = false;
+  let databaseError: string | null = null;
   if (hasDatabaseUrl) {
     try {
       await prisma.$queryRaw`SELECT 1`;
       databaseConnected = true;
-    } catch {
+    } catch (e) {
       databaseConnected = false;
+      databaseError = sanitizeDatabaseError(e);
     }
   }
 
   const ok =
     hasSupabaseUrl && hasSupabaseKey && hasDatabaseUrl && databaseConnected;
+
+  const urlHints = hasDatabaseUrl ? getDatabaseUrlHints() : null;
+  const urlStructureHint =
+    !databaseConnected && hasDatabaseUrl && urlHints
+      ? connectionHintFromUrlHints(urlHints)
+      : null;
+
+  const hint = ok
+    ? null
+    : [
+        !hasSupabaseUrl || !hasSupabaseKey
+          ? "Set NEXT_PUBLIC_SUPABASE_* in Vercel (Production)."
+          : null,
+        !hasDatabaseUrl ? "Set DATABASE_URL in Vercel (Production)." : null,
+        hasDatabaseUrl && !databaseConnected
+          ? "Database URL is set but Prisma cannot connect. Read databaseError and databaseUrlHints below."
+          : null,
+        urlStructureHint,
+        hasDatabaseUrl && !databaseConnected
+          ? "Typical fix (Supabase + Vercel): Dashboard → Connect → Transaction pooler → copy URI; append or verify ?sslmode=require&pgbouncer=true&connection_limit=1; redeploy."
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
 
   return NextResponse.json(
     {
@@ -40,9 +71,9 @@ export async function GET() {
         databaseUrlSet: hasDatabaseUrl,
         databaseConnected,
       },
-      hint: ok
-        ? null
-        : "Fix failing checks in Vercel env, use pooled DATABASE_URL on serverless, run prisma migrate deploy against production DB, then redeploy.",
+      databaseError,
+      databaseUrlHints: urlHints,
+      hint: hint || null,
     },
     { status: ok ? 200 : 503 }
   );
