@@ -24,6 +24,8 @@ type Asset = {
   reason: string | null;
   dateAdded: string;
   dateUpdated: string;
+  purchaseDate: string | null;
+  warrantyEndDate: string | null;
 };
 type Status = { id: string; code: string; label: string };
 
@@ -147,7 +149,7 @@ export default function AssetsPage() {
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           {assets.length ? (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px] text-sm">
+              <table className="w-full min-w-[1320px] text-sm">
                 <thead>
                   <tr className="border-b border-black/10">
                     <th className="py-2 text-left font-medium">Name</th>
@@ -165,6 +167,12 @@ export default function AssetsPage() {
                       CPU / RAM / GPU
                     </th>
                     <th className="py-2 text-left font-medium">Template</th>
+                    <th className="py-2 text-left font-medium whitespace-nowrap">
+                      Purchase
+                    </th>
+                    <th className="py-2 text-left font-medium whitespace-nowrap">
+                      Warranty end
+                    </th>
                     <th className="py-2 text-left font-medium">Status</th>
                     <th className="py-2 text-left font-medium">Reason</th>
                     <th className="py-2 text-left font-medium">Updated</th>
@@ -202,6 +210,16 @@ export default function AssetsPage() {
                       </td>
                       <td className="py-2 text-xs text-black/70">
                         {a.deviceTemplate?.label ?? "—"}
+                      </td>
+                      <td className="whitespace-nowrap py-2 text-xs text-black/70">
+                        {a.purchaseDate
+                          ? new Date(a.purchaseDate).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="whitespace-nowrap py-2 text-xs text-black/70">
+                        {a.warrantyEndDate
+                          ? new Date(a.warrantyEndDate).toLocaleDateString()
+                          : "—"}
                       </td>
                       <td className="py-2">
                         <select

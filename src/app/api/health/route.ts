@@ -41,7 +41,7 @@ export async function GET() {
   const urlHints = hasDatabaseUrl ? getDatabaseUrlHints() : null;
   const urlStructureHint =
     !databaseConnected && hasDatabaseUrl && urlHints
-      ? connectionHintFromUrlHints(urlHints)
+      ? connectionHintFromUrlHints(urlHints, databaseError)
       : null;
 
   const hint = ok

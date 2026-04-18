@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/assets - List assets with filters
@@ -73,6 +74,8 @@ export async function POST(request: NextRequest) {
       systemRam,
       systemGpu,
       lastSyncedFromAssistAt,
+      purchaseDate,
+      warrantyEndDate,
     } = body;
 
     let resolvedName =
@@ -126,6 +129,9 @@ export async function POST(request: NextRequest) {
         ? zohoAssistDeviceId.trim()
         : undefined;
 
+    const purchaseD = optionalIsoDateFromBody(purchaseDate);
+    const warrantyD = optionalIsoDateFromBody(warrantyEndDate);
+
     const asset = await prisma.asset.create({
       data: {
         assetName: resolvedName,
@@ -169,6 +175,8 @@ export async function POST(request: NextRequest) {
           typeof lastSyncedFromAssistAt === "string" && lastSyncedFromAssistAt.trim()
             ? new Date(lastSyncedFromAssistAt.trim())
             : undefined,
+        ...(purchaseD !== undefined ? { purchaseDate: purchaseD } : {}),
+        ...(warrantyD !== undefined ? { warrantyEndDate: warrantyD } : {}),
       },
       include: { status: true, deviceTemplate: true },
     });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toDateInputValue } from "@/lib/dates/optional-iso-date";
 
 type StatusOpt = { id: string; code: string; label: string };
 type TemplateOpt = {
@@ -41,6 +42,8 @@ export function EditAssetModal({
   const [statusId, setStatusId] = useState("");
   const [reason, setReason] = useState("");
   const [deviceTemplateId, setDeviceTemplateId] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [warrantyEndDate, setWarrantyEndDate] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +80,12 @@ export function EditAssetModal({
       setDeviceTemplateId(
         typeof tplId === "string" && tplId ? tplId : ""
       );
+      setPurchaseDate(
+        toDateInputValue(aJson.purchaseDate as string | undefined)
+      );
+      setWarrantyEndDate(
+        toDateInputValue(aJson.warrantyEndDate as string | undefined)
+      );
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Load failed");
     } finally {
@@ -109,6 +118,8 @@ export function EditAssetModal({
           statusId,
           reason: reason.trim() || null,
           deviceTemplateId: deviceTemplateId || null,
+          purchaseDate: purchaseDate.trim() || null,
+          warrantyEndDate: warrantyEndDate.trim() || null,
         }),
       });
       const j = (await res.json()) as { error?: string };
@@ -312,6 +323,39 @@ export function EditAssetModal({
                     onChange={(e) => setSystemGpu(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
                   />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-black/10 bg-black/[0.02] px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+                  Acquisition & warranty
+                </p>
+                <p className="mt-1 text-[11px] text-black/50">
+                  Optional — improves procurement and age analytics on the dashboard.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-black/70">
+                      Purchase date
+                    </label>
+                    <input
+                      type="date"
+                      value={purchaseDate}
+                      onChange={(e) => setPurchaseDate(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-black/70">
+                      Warranty end
+                    </label>
+                    <input
+                      type="date"
+                      value={warrantyEndDate}
+                      onChange={(e) => setWarrantyEndDate(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 

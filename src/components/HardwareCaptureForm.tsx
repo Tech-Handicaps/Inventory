@@ -88,6 +88,8 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   const [processorName, setProcessorName] = useState("");
   const [systemRam, setSystemRam] = useState("");
   const [systemGpu, setSystemGpu] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [warrantyEndDate, setWarrantyEndDate] = useState("");
   /** null = use defaultStatusId; otherwise user’s explicit choice (must still exist in statuses). */
   const [statusId, setStatusId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -181,6 +183,8 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
         systemGpu: systemGpu.trim() || undefined,
       };
       if (templateId) payload.deviceTemplateId = templateId;
+      if (purchaseDate.trim()) payload.purchaseDate = purchaseDate.trim();
+      if (warrantyEndDate.trim()) payload.warrantyEndDate = warrantyEndDate.trim();
 
       const res = await fetch("/api/assets", {
         method: "POST",
@@ -201,6 +205,8 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       setProcessorName("");
       setSystemRam("");
       setSystemGpu("");
+      setPurchaseDate("");
+      setWarrantyEndDate("");
       onCreated();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not add hardware");
@@ -560,6 +566,47 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="rounded-lg border border-black/10 bg-black/[0.02] px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+                  Acquisition (optional)
+                </p>
+                <p className="mt-1 text-[11px] text-black/50">
+                  Capture as you receive hardware — powers age and warranty analytics on the dashboard.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="hw-purchase"
+                      className="text-xs font-medium text-black/70"
+                    >
+                      Purchase date
+                    </label>
+                    <input
+                      id="hw-purchase"
+                      type="date"
+                      value={purchaseDate}
+                      onChange={(e) => setPurchaseDate(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="hw-warranty"
+                      className="text-xs font-medium text-black/70"
+                    >
+                      Warranty end
+                    </label>
+                    <input
+                      id="hw-warranty"
+                      type="date"
+                      value={warrantyEndDate}
+                      onChange={(e) => setWarrantyEndDate(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
               </div>
             </fieldset>
           </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/assets/:id
@@ -66,6 +67,8 @@ export async function PUT(
       systemRam,
       systemGpu,
       lastSyncedFromAssistAt,
+      purchaseDate,
+      warrantyEndDate,
     } = body;
 
     const updateData: Record<string, unknown> = {};
@@ -143,6 +146,14 @@ export async function PUT(
       } else if (typeof lastSyncedFromAssistAt === "string" && lastSyncedFromAssistAt.trim()) {
         updateData.lastSyncedFromAssistAt = new Date(lastSyncedFromAssistAt.trim());
       }
+    }
+    if (purchaseDate !== undefined) {
+      const d = optionalIsoDateFromBody(purchaseDate);
+      if (d !== undefined) updateData.purchaseDate = d;
+    }
+    if (warrantyEndDate !== undefined) {
+      const d = optionalIsoDateFromBody(warrantyEndDate);
+      if (d !== undefined) updateData.warrantyEndDate = d;
     }
     if (deviceTemplateId !== undefined) {
       if (deviceTemplateId === null) {
@@ -238,6 +249,18 @@ export async function PUT(
     }
     if (before.systemGpu !== asset.systemGpu) {
       changes.systemGpu = { from: before.systemGpu, to: asset.systemGpu };
+    }
+    if (before.purchaseDate?.getTime() !== asset.purchaseDate?.getTime()) {
+      changes.purchaseDate = {
+        from: before.purchaseDate?.toISOString() ?? null,
+        to: asset.purchaseDate?.toISOString() ?? null,
+      };
+    }
+    if (before.warrantyEndDate?.getTime() !== asset.warrantyEndDate?.getTime()) {
+      changes.warrantyEndDate = {
+        from: before.warrantyEndDate?.toISOString() ?? null,
+        to: asset.warrantyEndDate?.toISOString() ?? null,
+      };
     }
 
     const transitionToWrittenOff =

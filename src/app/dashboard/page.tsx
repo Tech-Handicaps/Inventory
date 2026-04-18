@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { CategoryBarChart } from "@/components/charts/CategoryBarChart";
 import { DataSourceDonutChart } from "@/components/charts/DataSourceDonutChart";
+import {
+  capSlicesForDonut,
+  LabelCountDonutChart,
+} from "@/components/charts/LabelCountDonutChart";
+import { RegistrationYearChart } from "@/components/charts/RegistrationYearChart";
 import { RefurbishedLineChart } from "@/components/charts/RefurbishedLineChart";
 import { RepairsBarChart } from "@/components/charts/RepairsBarChart";
 import { StockPieChart } from "@/components/charts/StockPieChart";
@@ -44,6 +49,37 @@ type XeroHealth = {
     createdAt: string;
     asset: { assetName: string };
   }[];
+};
+
+type FleetProcurement = {
+  totalOperational: number;
+  totalWrittenOff: number;
+  totalRegistered: number;
+  distinctManufacturers: number;
+  distinctModels: number;
+  topManufacturerShare: number;
+  topThreeModelsShare: number;
+  herfindahlManufacturers: number;
+  registeredLast24MonthsPct: number;
+  withPurchaseDate: number;
+  withWarrantyEnd: number;
+  purchaseDateCoveragePct: number;
+  warrantyEndCoveragePct: number;
+  averageFleetAgeYears: number | null;
+  warrantyExpiring90Days: number;
+  warrantyExpired: number;
+  warrantyActiveKnown: number;
+  byPurchaseYear: { year: number; count: number; percent: number }[];
+  usePurchaseYearForAge: boolean;
+  byManufacturer: { name: string; count: number; percent: number }[];
+  byModel: {
+    label: string;
+    count: number;
+    percent: number;
+    manufacturer: string | null;
+  }[];
+  byRegistrationYear: { year: number; count: number; percent: number }[];
+  insights: string[];
 };
 
 function countsByCode(stock: StockRow[]): Record<string, number> {
@@ -94,6 +130,7 @@ export default function DashboardPage() {
   const [writeoffs, setWriteoffs] = useState<WriteoffsData | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [xeroHealth, setXeroHealth] = useState<XeroHealth | null>(null);
+  const [fleet, setFleet] = useState<FleetProcurement | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -107,14 +144,19 @@ export default function DashboardPage() {
         return r.ok ? j : null;
       }),
       fetch("/api/xero/health").then((r) => r.json()),
+      fetch("/api/reports/hardware-procurement").then(async (r) => {
+        const j = await r.json();
+        return r.ok ? j : null;
+      }),
     ])
-      .then(([s, r, ref, w, sum, x]) => {
+      .then(([s, r, ref, w, sum, x, fl]) => {
         setStock(s);
         setRepairs(r);
         setRefurbished(ref);
         setWriteoffs(w);
         setSummary(sum);
         setXeroHealth(x);
+        setFleet(fl as FleetProcurement | null);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -132,6 +174,22 @@ export default function DashboardPage() {
       writtenOff: c.written_off ?? 0,
     };
   }, [stock]);
+
+  const manufacturerDonutData = useMemo(() => {
+    if (!fleet?.byManufacturer?.length) return [];
+    return capSlicesForDonut(
+      fleet.byManufacturer.map((m) => ({ name: m.name, count: m.count })),
+      9
+    );
+  }, [fleet]);
+
+  const topModelsForChart = useMemo(() => {
+    if (!fleet?.byModel?.length) return [];
+    return fleet.byModel.slice(0, 14).map((m) => ({
+      category: m.label.length > 48 ? `${m.label.slice(0, 46)}…` : m.label,
+      count: m.count,
+    }));
+  }, [fleet]);
 
   if (loading) {
     return (
@@ -214,6 +272,267 @@ export default function DashboardPage() {
               accent="rose"
             />
           </div>
+        </section>
+
+        {/* Fleet composition & procurement (operational units only) */}
+        <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+          <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+            Fleet composition & procurement insight
+          </h2>
+          <p className="mt-2 max-w-4xl text-sm leading-relaxed text-black/70">
+            <strong>Scope:</strong> operational units only (written-off assets are
+            excluded) so percentages reflect what you still manage day to day.{" "}
+            <strong>SKU / model</strong> uses the device template label when set;
+            otherwise “manufacturer — model” from the asset row.{" "}
+            <strong>Purchase date</strong> and <strong>warranty end</strong> (when
+            captured on each asset) drive age averages, acquisition cohorts, and
+            renewal alerts below. <strong>Registration year</strong> is from{" "}
+            <em>date added to this register</em> — useful when purchase dates are
+            still missing.
+          </p>
+          <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
+
+          {fleet && fleet.totalOperational > 0 ? (
+            <>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <KpiCard
+                  label="Operational units"
+                  value={fleet.totalOperational}
+                  hint="Excludes written-off"
+                  accent="brand"
+                />
+                <KpiCard
+                  label="Distinct OEMs"
+                  value={fleet.distinctManufacturers}
+                  hint="Manufacturers in fleet"
+                />
+                <KpiCard
+                  label="Distinct SKUs"
+                  value={fleet.distinctModels}
+                  hint="Template or make/model groups"
+                />
+                <KpiCard
+                  label="Top OEM share"
+                  value={`${Math.round(fleet.topManufacturerShare * 10) / 10}%`}
+                  hint="Largest manufacturer"
+                  accent="sky"
+                />
+                <KpiCard
+                  label="Top 3 SKUs share"
+                  value={`${Math.round(fleet.topThreeModelsShare * 10) / 10}%`}
+                  hint="Concentration metric"
+                  accent="amber"
+                />
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <KpiCard
+                  label="Purchase date on file"
+                  value={`${Math.round(fleet.purchaseDateCoveragePct * 10) / 10}%`}
+                  hint={`${fleet.withPurchaseDate} of ${fleet.totalOperational} units`}
+                  accent="brand"
+                />
+                <KpiCard
+                  label="Warranty end on file"
+                  value={`${Math.round(fleet.warrantyEndCoveragePct * 10) / 10}%`}
+                  hint={`${fleet.withWarrantyEnd} of ${fleet.totalOperational} units`}
+                  accent="sky"
+                />
+                <KpiCard
+                  label="Avg age (known purchase)"
+                  value={
+                    fleet.averageFleetAgeYears != null
+                      ? `${Math.round(fleet.averageFleetAgeYears * 10) / 10} yrs`
+                      : "—"
+                  }
+                  hint="Where purchase date exists"
+                />
+                <KpiCard
+                  label="Warranty expiring (90d)"
+                  value={fleet.warrantyExpiring90Days}
+                  hint="Operational units expiring soon"
+                  accent="amber"
+                />
+              </div>
+              <p className="mt-3 text-xs text-black/50">
+                Herfindahl (manufacturers):{" "}
+                <span className="font-mono tabular-nums">
+                  {fleet.herfindahlManufacturers.toFixed(2)}
+                </span>{" "}
+                — closer to 1 means one dominant OEM; lower values mean a more even
+                mix. Added to register in last 24 months:{" "}
+                <strong>
+                  {Math.round(fleet.registeredLast24MonthsPct * 10) / 10}%
+                </strong>{" "}
+                of operational fleet.
+              </p>
+
+              <div className="mt-8 grid gap-8 xl:grid-cols-2">
+                <div>
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                    Manufacturer mix
+                  </h3>
+                  <p className="mt-1 text-xs text-black/55">
+                    Share of operational units by OEM (donut collapses smaller
+                    slices into “Other”).
+                  </p>
+                  <div className="mx-auto mt-4 h-72 max-w-md">
+                    {manufacturerDonutData.length ? (
+                      <LabelCountDonutChart
+                        data={manufacturerDonutData}
+                        unitLabel="units"
+                      />
+                    ) : null}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                    Top SKUs by count
+                  </h3>
+                  <p className="mt-1 text-xs text-black/55">
+                    Highest-volume models in the active fleet (see table for exact
+                    %).
+                  </p>
+                  <div className="mt-4 h-80">
+                    {topModelsForChart.length ? (
+                      <CategoryBarChart data={topModelsForChart} />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 grid gap-8 xl:grid-cols-2">
+                <div>
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                    Intake by registration year
+                  </h3>
+                  <p className="mt-1 text-xs text-black/55">
+                    When rows were added to this system — useful for spotting bulk
+                    rollouts.
+                  </p>
+                  <div className="mt-4 h-64">
+                    {fleet.byRegistrationYear.length ? (
+                      <RegistrationYearChart
+                        data={fleet.byRegistrationYear.map((y) => ({
+                          year: y.year,
+                          count: y.count,
+                        }))}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                    Acquisition cohort (purchase year)
+                  </h3>
+                  <p className="mt-1 text-xs text-black/55">
+                    Units with a purchase date — better for TCO and refresh than
+                    register date alone.
+                    {fleet.usePurchaseYearForAge
+                      ? ""
+                      : " Add purchase dates to fill this chart."}
+                  </p>
+                  <div className="mt-4 h-64">
+                    {fleet.byPurchaseYear.length ? (
+                      <RegistrationYearChart
+                        datasetLabel="Units by purchase date"
+                        data={fleet.byPurchaseYear.map((y) => ({
+                          year: y.year,
+                          count: y.count,
+                        }))}
+                      />
+                    ) : (
+                      <p className="flex h-full items-center justify-center rounded-lg border border-dashed border-black/15 px-4 text-center text-sm text-black/45">
+                        No purchase dates on operational assets yet — capture on
+                        register or edit.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 grid gap-8 xl:grid-cols-2">
+                <div className="rounded-xl border border-black/10 bg-brand-muted/20 p-5">
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                    Warranty snapshot
+                  </h3>
+                  <p className="mt-1 text-xs text-black/55">
+                    Based on warranty end dates stored per asset (operational fleet
+                    only).
+                  </p>
+                  <dl className="mt-4 space-y-2 text-sm text-black/85">
+                    <div className="flex justify-between gap-4">
+                      <dt>Active warranty (end date in future)</dt>
+                      <dd className="font-mono font-semibold tabular-nums">
+                        {fleet.warrantyActiveKnown}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>Expiring within 90 days</dt>
+                      <dd className="font-mono font-semibold tabular-nums text-amber-800">
+                        {fleet.warrantyExpiring90Days}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>Past recorded end (support at risk)</dt>
+                      <dd className="font-mono font-semibold tabular-nums text-black/70">
+                        {fleet.warrantyExpired}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+                <div>
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                    Stakeholder notes
+                  </h3>
+                  <p className="mt-1 text-xs text-black/55">
+                    Automated heuristics from mix, dates, and warranty — validate
+                    against failure data and strategy.
+                  </p>
+                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-black/80">
+                    {fleet.insights.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="mt-8 overflow-x-auto rounded-lg border border-black/10">
+                <table className="w-full min-w-[520px] text-sm">
+                  <thead>
+                    <tr className="border-b border-black/10 bg-black/[0.02] text-left">
+                      <th className="px-3 py-2 font-medium">SKU / model</th>
+                      <th className="px-3 py-2 font-medium tabular-nums">
+                        Units
+                      </th>
+                      <th className="px-3 py-2 font-medium tabular-nums">
+                        % of operational
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fleet.byModel.slice(0, 15).map((m, idx) => (
+                      <tr
+                        key={`${idx}-${m.label.slice(0, 24)}`}
+                        className="border-b border-black/5"
+                      >
+                        <td className="max-w-md px-3 py-2">{m.label}</td>
+                        <td className="px-3 py-2 tabular-nums">{m.count}</td>
+                        <td className="px-3 py-2 tabular-nums text-black/70">
+                          {m.percent}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <p className="mt-6 text-sm text-black/55">
+              {fleet
+                ? "No operational assets to analyse — add hardware or check written-off status."
+                : "Could not load fleet procurement data."}
+            </p>
+          )}
         </section>
 
         {/* Primary charts grid */}
