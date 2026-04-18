@@ -18,7 +18,16 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { label, manufacturer, model, category, notes } = body;
+    const {
+      label,
+      manufacturer,
+      model,
+      category,
+      notes,
+      processorName,
+      systemRam,
+      systemGpu,
+    } = body;
 
     const data: Record<string, unknown> = {};
     if (typeof label === "string" && label.trim()) data.label = label.trim();
@@ -30,6 +39,16 @@ export async function PUT(
     if (notes === null || notes === "") data.notes = null;
     else if (typeof notes === "string" && notes.trim())
       data.notes = notes.trim();
+    if (processorName === null || processorName === "")
+      data.processorName = null;
+    else if (typeof processorName === "string" && processorName.trim())
+      data.processorName = processorName.trim();
+    if (systemRam === null || systemRam === "") data.systemRam = null;
+    else if (typeof systemRam === "string" && systemRam.trim())
+      data.systemRam = systemRam.trim();
+    if (systemGpu === null || systemGpu === "") data.systemGpu = null;
+    else if (typeof systemGpu === "string" && systemGpu.trim())
+      data.systemGpu = systemGpu.trim();
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json(before);
@@ -58,6 +77,18 @@ export async function PUT(
     }
     if (before.notes !== updated.notes) {
       changes.notes = { from: before.notes, to: updated.notes };
+    }
+    if (before.processorName !== updated.processorName) {
+      changes.processorName = {
+        from: before.processorName,
+        to: updated.processorName,
+      };
+    }
+    if (before.systemRam !== updated.systemRam) {
+      changes.systemRam = { from: before.systemRam, to: updated.systemRam };
+    }
+    if (before.systemGpu !== updated.systemGpu) {
+      changes.systemGpu = { from: before.systemGpu, to: updated.systemGpu };
     }
 
     await createAuditLog({

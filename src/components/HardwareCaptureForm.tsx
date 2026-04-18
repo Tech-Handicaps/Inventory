@@ -14,6 +14,9 @@ type DeviceTemplate = {
   manufacturer: string;
   model: string;
   category: string;
+  processorName: string | null;
+  systemRam: string | null;
+  systemGpu: string | null;
 };
 
 type Props = {
@@ -81,6 +84,10 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
+  const [deviceLocation, setDeviceLocation] = useState("");
+  const [processorName, setProcessorName] = useState("");
+  const [systemRam, setSystemRam] = useState("");
+  const [systemGpu, setSystemGpu] = useState("");
   /** null = use defaultStatusId; otherwise user’s explicit choice (must still exist in statuses). */
   const [statusId, setStatusId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -141,6 +148,9 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       setCategory(t.category);
       setManufacturer(t.manufacturer);
       setModel(t.model);
+      setProcessorName(t.processorName ?? "");
+      setSystemRam(t.systemRam ?? "");
+      setSystemGpu(t.systemGpu ?? "");
     },
     [templates]
   );
@@ -165,6 +175,10 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
         serialNumber: serialNumber.trim() || undefined,
         manufacturer: manufacturer.trim() || undefined,
         model: model.trim() || undefined,
+        deviceLocation: deviceLocation.trim() || undefined,
+        processorName: processorName.trim() || undefined,
+        systemRam: systemRam.trim() || undefined,
+        systemGpu: systemGpu.trim() || undefined,
       };
       if (templateId) payload.deviceTemplateId = templateId;
 
@@ -183,6 +197,10 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       setManufacturer("");
       setModel("");
       setSerialNumber("");
+      setDeviceLocation("");
+      setProcessorName("");
+      setSystemRam("");
+      setSystemGpu("");
       onCreated();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not add hardware");
@@ -331,9 +349,98 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                     <dd>{selectedTemplate.manufacturer}</dd>
                     <dt className="text-black/45">Model</dt>
                     <dd>{selectedTemplate.model}</dd>
+                    {selectedTemplate.processorName ? (
+                      <>
+                        <dt className="text-black/45">Typical CPU</dt>
+                        <dd>{selectedTemplate.processorName}</dd>
+                      </>
+                    ) : null}
+                    {selectedTemplate.systemRam ? (
+                      <>
+                        <dt className="text-black/45">Typical RAM</dt>
+                        <dd>{selectedTemplate.systemRam}</dd>
+                      </>
+                    ) : null}
+                    {selectedTemplate.systemGpu ? (
+                      <>
+                        <dt className="text-black/45">Typical GPU</dt>
+                        <dd>{selectedTemplate.systemGpu}</dd>
+                      </>
+                    ) : null}
                   </dl>
                 </div>
               ) : null}
+
+              <div className="rounded-lg border border-black/10 bg-black/[0.02] p-4">
+                <p className="font-heading text-[10px] font-bold uppercase tracking-[0.2em] text-black/45">
+                  Hardware details (optional)
+                </p>
+                <p className="mt-1 text-xs text-black/50">
+                  Per-unit specs; device templates can pre-fill typical CPU / RAM / GPU.
+                </p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label
+                      htmlFor="hw-location"
+                      className="text-xs font-medium text-black/70"
+                    >
+                      Device location
+                    </label>
+                    <input
+                      id="hw-location"
+                      value={deviceLocation}
+                      onChange={(e) => setDeviceLocation(e.target.value)}
+                      placeholder="Site, depot, or Assist department label"
+                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label
+                      htmlFor="hw-proc"
+                      className="text-xs font-medium text-black/70"
+                    >
+                      Processor
+                    </label>
+                    <input
+                      id="hw-proc"
+                      value={processorName}
+                      onChange={(e) => setProcessorName(e.target.value)}
+                      placeholder="e.g. Intel Core i7-1365U"
+                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="hw-ram"
+                      className="text-xs font-medium text-black/70"
+                    >
+                      System RAM
+                    </label>
+                    <input
+                      id="hw-ram"
+                      value={systemRam}
+                      onChange={(e) => setSystemRam(e.target.value)}
+                      placeholder="e.g. 16 GB"
+                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="hw-gpu"
+                      className="text-xs font-medium text-black/70"
+                    >
+                      System GPU
+                    </label>
+                    <input
+                      id="hw-gpu"
+                      value={systemGpu}
+                      onChange={(e) => setSystemGpu(e.target.value)}
+                      placeholder="e.g. Intel Iris Xe"
+                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">

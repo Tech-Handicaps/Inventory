@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   maskZohoSecrets,
   refreshZohoAccessToken,
-  type ZohoCredentials,
+  type ZohoOAuthCredentials,
 } from "@/lib/zoho/client";
 import { type ZohoDataCenter } from "@/lib/zoho/constants";
 
@@ -24,7 +24,7 @@ export function getDeskApiV1Base(dataCenter: string): string {
   return DESK_API_V1[dc] ?? DESK_API_V1.us;
 }
 
-export type ZohoDeskCredentials = ZohoCredentials & {
+export type ZohoDeskCredentials = ZohoOAuthCredentials & {
   orgId: string | null;
   departmentId: string | null;
 };

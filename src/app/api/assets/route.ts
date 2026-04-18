@@ -64,6 +64,15 @@ export async function POST(request: NextRequest) {
       manufacturer,
       model,
       deviceTemplateId,
+      dataSource,
+      zohoAssistDeviceId,
+      zohoAssistOrgId,
+      zohoAssistDepartmentId,
+      deviceLocation,
+      processorName,
+      systemRam,
+      systemGpu,
+      lastSyncedFromAssistAt,
     } = body;
 
     let resolvedName =
@@ -107,6 +116,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const resolvedDataSource =
+      typeof dataSource === "string" && (dataSource === "manual" || dataSource === "zoho_assist")
+        ? dataSource
+        : "manual";
+
+    const resolvedAssistId =
+      typeof zohoAssistDeviceId === "string" && zohoAssistDeviceId.trim()
+        ? zohoAssistDeviceId.trim()
+        : undefined;
+
     const asset = await prisma.asset.create({
       data: {
         assetName: resolvedName,
@@ -120,6 +139,36 @@ export async function POST(request: NextRequest) {
             : undefined,
         manufacturer: resolvedManufacturer,
         model: resolvedModel,
+        dataSource: resolvedDataSource,
+        zohoAssistDeviceId: resolvedAssistId,
+        zohoAssistOrgId:
+          typeof zohoAssistOrgId === "string" && zohoAssistOrgId.trim()
+            ? zohoAssistOrgId.trim()
+            : undefined,
+        zohoAssistDepartmentId:
+          typeof zohoAssistDepartmentId === "string" && zohoAssistDepartmentId.trim()
+            ? zohoAssistDepartmentId.trim()
+            : undefined,
+        deviceLocation:
+          typeof deviceLocation === "string" && deviceLocation.trim()
+            ? deviceLocation.trim()
+            : undefined,
+        processorName:
+          typeof processorName === "string" && processorName.trim()
+            ? processorName.trim()
+            : undefined,
+        systemRam:
+          typeof systemRam === "string" && systemRam.trim()
+            ? systemRam.trim()
+            : undefined,
+        systemGpu:
+          typeof systemGpu === "string" && systemGpu.trim()
+            ? systemGpu.trim()
+            : undefined,
+        lastSyncedFromAssistAt:
+          typeof lastSyncedFromAssistAt === "string" && lastSyncedFromAssistAt.trim()
+            ? new Date(lastSyncedFromAssistAt.trim())
+            : undefined,
       },
       include: { status: true, deviceTemplate: true },
     });
@@ -146,13 +195,17 @@ export async function POST(request: NextRequest) {
       const target =
         Array.isArray(fields) && fields.includes("serialNumber")
           ? "serialNumber"
-          : "unique field";
+          : Array.isArray(fields) && fields.includes("zohoAssistDeviceId")
+            ? "zohoAssistDeviceId"
+            : "unique field";
       return NextResponse.json(
         {
           error:
             target === "serialNumber"
               ? "That serial number is already on the board."
-              : "This record conflicts with an existing entry.",
+              : target === "zohoAssistDeviceId"
+                ? "That Zoho Assist device is already linked to an asset."
+                : "This record conflicts with an existing entry.",
           code: "UNIQUE_VIOLATION",
         },
         { status: 409 }

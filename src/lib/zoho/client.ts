@@ -26,11 +26,18 @@ export function getAccountsBaseUrl(dataCenter: string): string {
   return ACCOUNTS_BASE[dc] ?? ACCOUNTS_BASE.us;
 }
 
-export type ZohoCredentials = {
+/** Shared OAuth fields for Zoho Accounts token refresh (Assist, Desk, …). */
+export type ZohoOAuthCredentials = {
   clientId: string | null;
   clientSecret: string | null;
   refreshToken: string | null;
   dataCenter: string;
+};
+
+/** Assist settings row: OAuth + optional API header defaults. */
+export type ZohoCredentials = ZohoOAuthCredentials & {
+  defaultOrgId: string | null;
+  defaultDepartmentId: string | null;
 };
 
 export async function loadZohoAssistSettings(): Promise<ZohoCredentials> {
@@ -42,6 +49,8 @@ export async function loadZohoAssistSettings(): Promise<ZohoCredentials> {
     clientSecret: row?.clientSecret ?? process.env.ZOHO_CLIENT_SECRET ?? null,
     refreshToken: row?.refreshToken ?? process.env.ZOHO_REFRESH_TOKEN ?? null,
     dataCenter: row?.dataCenter ?? process.env.ZOHO_DATA_CENTER ?? "us",
+    defaultOrgId: row?.defaultOrgId ?? null,
+    defaultDepartmentId: row?.defaultDepartmentId ?? null,
   };
 }
 
@@ -51,7 +60,7 @@ function maskSecret(value: string | null | undefined, visible = 4): string | nul
   return `••••••${value.slice(-visible)}`;
 }
 
-export function maskZohoSecrets(c: ZohoCredentials) {
+export function maskZohoSecrets(c: ZohoOAuthCredentials) {
   return {
     clientId: c.clientId,
     clientSecretMasked: maskSecret(c.clientSecret),
@@ -65,7 +74,7 @@ export function maskZohoSecrets(c: ZohoCredentials) {
   };
 }
 
-export async function refreshZohoAccessToken(c: ZohoCredentials): Promise<{
+export async function refreshZohoAccessToken(c: ZohoOAuthCredentials): Promise<{
   access_token: string;
   expires_in?: number;
 }> {
@@ -175,6 +184,50 @@ export async function fetchAssistUser(accessToken: string): Promise<unknown> {
     json = JSON.parse(text) as unknown;
   } catch {
     throw new Error(`Assist /user not JSON (${res.status}): ${text.slice(0, 300)}`);
+  }
+
+  if (!res.ok) {
+    const j = json as Record<string, unknown>;
+    const msg =
+      typeof j.message === "string"
+        ? j.message
+        : typeof j.error === "string"
+          ? j.error
+          : text.slice(0, 200);
+    throw new Error(`Assist API ${res.status}: ${msg}`);
+  }
+
+  return json;
+}
+
+/**
+ * GET https://assist.zoho.com/api/v2/devices/{resource_id}
+ * Requires ZohoAssist.unattended.computer.READ
+ */
+export async function fetchAssistDeviceDetails(
+  accessToken: string,
+  resourceId: string,
+  options: { departmentId: string; orgId?: string | null }
+): Promise<unknown> {
+  const headers: Record<string, string> = {
+    Authorization: `Zoho-oauthtoken ${accessToken}`,
+    "x-com-zoho-assist-department-id": options.departmentId,
+  };
+  if (options.orgId) {
+    headers["x-com-zoho-assist-orgid"] = options.orgId;
+  }
+
+  const res = await fetch(`${ZOHO_ASSIST_API_BASE}/devices/${encodeURIComponent(resourceId)}`, {
+    headers,
+    cache: "no-store",
+  });
+
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(`Assist device details not JSON (${res.status}): ${text.slice(0, 300)}`);
   }
 
   if (!res.ok) {

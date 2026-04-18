@@ -11,6 +11,12 @@ type Asset = {
   serialNumber: string | null;
   manufacturer: string | null;
   model: string | null;
+  dataSource: string;
+  deviceLocation: string | null;
+  processorName: string | null;
+  systemRam: string | null;
+  systemGpu: string | null;
+  zohoAssistDeviceId: string | null;
   status: { code: string; label: string };
   deviceTemplate?: { id: string; label: string } | null;
   reason: string | null;
@@ -77,7 +83,8 @@ export default function AssetsPage() {
             <strong>device template</strong> (from Settings) so you don’t retype
             the same make/model — you still enter this unit’s{" "}
             <strong>serial</strong> and optional display name so each row is
-            unique.
+            unique. Rows synced from Zoho Assist show <strong>Source: Assist</strong>{" "}
+            and hardware details when populated.
           </p>
         </div>
 
@@ -88,10 +95,13 @@ export default function AssetsPage() {
                 <thead>
                   <tr className="border-b border-black/10">
                     <th className="py-2 text-left font-medium">Name</th>
+                    <th className="py-2 text-left font-medium">Source</th>
                     <th className="py-2 text-left font-medium">Category</th>
                     <th className="py-2 text-left font-medium">Manufacturer</th>
                     <th className="py-2 text-left font-medium">Model</th>
                     <th className="py-2 text-left font-medium">Serial</th>
+                    <th className="py-2 text-left font-medium">Location</th>
+                    <th className="py-2 text-left font-medium">CPU / RAM / GPU</th>
                     <th className="py-2 text-left font-medium">Template</th>
                     <th className="py-2 text-left font-medium">Status</th>
                     <th className="py-2 text-left font-medium">Reason</th>
@@ -102,11 +112,28 @@ export default function AssetsPage() {
                   {assets.map((a) => (
                     <tr key={a.id} className="border-b border-black/5">
                       <td className="py-2">{a.assetName}</td>
+                      <td className="py-2 text-xs">
+                        {a.dataSource === "zoho_assist" ? (
+                          <span className="rounded bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-900">
+                            Assist
+                          </span>
+                        ) : (
+                          "Manual"
+                        )}
+                      </td>
                       <td className="py-2">{a.category}</td>
                       <td className="py-2">{a.manufacturer ?? "—"}</td>
                       <td className="py-2">{a.model ?? "—"}</td>
                       <td className="py-2 font-mono text-xs">
                         {a.serialNumber ?? "—"}
+                      </td>
+                      <td className="max-w-[140px] py-2 text-xs text-black/70">
+                        {a.deviceLocation ?? "—"}
+                      </td>
+                      <td className="max-w-[200px] py-2 text-xs text-black/70">
+                        {[a.processorName, a.systemRam, a.systemGpu]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
                       </td>
                       <td className="py-2 text-xs text-black/70">
                         {a.deviceTemplate?.label ?? "—"}

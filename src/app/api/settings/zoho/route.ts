@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     const masked = maskZohoSecrets(c);
     return NextResponse.json({
       ...masked,
+      defaultOrgId: c.defaultOrgId,
+      defaultDepartmentId: c.defaultDepartmentId,
       readyForOAuth: !!(c.clientId && c.clientSecret),
       canTestApi:
         !!(c.clientId && c.clientSecret && c.refreshToken && c.refreshToken.length > 0),
@@ -78,6 +80,20 @@ export async function PUT(request: NextRequest) {
       dataCenter = body.dataCenter;
     }
 
+    let defaultOrgId = existing?.defaultOrgId ?? null;
+    if (body.defaultOrgId === null || body.defaultOrgId === "") {
+      defaultOrgId = null;
+    } else if (typeof body.defaultOrgId === "string") {
+      defaultOrgId = body.defaultOrgId.trim() || null;
+    }
+
+    let defaultDepartmentId = existing?.defaultDepartmentId ?? null;
+    if (body.defaultDepartmentId === null || body.defaultDepartmentId === "") {
+      defaultDepartmentId = null;
+    } else if (typeof body.defaultDepartmentId === "string") {
+      defaultDepartmentId = body.defaultDepartmentId.trim() || null;
+    }
+
     await prisma.zohoAssistSettings.upsert({
       where: { id: "singleton" },
       create: {
@@ -86,12 +102,16 @@ export async function PUT(request: NextRequest) {
         clientSecret: nextClientSecret,
         refreshToken: nextRefresh,
         dataCenter,
+        defaultOrgId,
+        defaultDepartmentId,
       },
       update: {
         clientId: nextClientId,
         clientSecret: nextClientSecret,
         refreshToken: nextRefresh,
         dataCenter,
+        defaultOrgId,
+        defaultDepartmentId,
       },
     });
 
@@ -114,6 +134,8 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       ...masked,
+      defaultOrgId: c.defaultOrgId,
+      defaultDepartmentId: c.defaultDepartmentId,
       readyForOAuth: !!(c.clientId && c.clientSecret),
       canTestApi:
         !!(c.clientId && c.clientSecret && c.refreshToken && c.refreshToken.length > 0),

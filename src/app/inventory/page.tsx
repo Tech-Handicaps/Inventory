@@ -22,6 +22,13 @@ type Asset = {
   model: string | null;
   reason: string | null;
   dateUpdated: string;
+  dataSource: string;
+  zohoAssistDeviceId: string | null;
+  deviceLocation: string | null;
+  processorName: string | null;
+  systemRam: string | null;
+  systemGpu: string | null;
+  lastSyncedFromAssistAt: string | null;
   status: Status;
   deviceTemplate?: { id: string; label: string } | null;
 };
@@ -284,9 +291,16 @@ function HardwareCard({
     <article className="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-heading font-semibold text-black">
-            {asset.assetName}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-heading font-semibold text-black">
+              {asset.assetName}
+            </p>
+            {asset.dataSource === "zoho_assist" ? (
+              <span className="rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-900">
+                Assist
+              </span>
+            ) : null}
+          </div>
           {asset.deviceTemplate ? (
             <p className="text-[10px] font-medium uppercase tracking-wide text-brand">
               Template: {asset.deviceTemplate.label}
@@ -298,9 +312,42 @@ function HardwareCard({
               ? ` · ${[asset.manufacturer, asset.model].filter(Boolean).join(" ")}`
               : ""}
           </p>
+          {asset.deviceLocation ? (
+            <p className="mt-1 text-xs text-black/60">
+              <span className="font-medium text-black/45">Location:</span>{" "}
+              {asset.deviceLocation}
+            </p>
+          ) : null}
           {asset.serialNumber ? (
             <p className="mt-1 font-mono text-xs text-black/65">
               S/N {asset.serialNumber}
+            </p>
+          ) : null}
+          {asset.processorName || asset.systemRam || asset.systemGpu ? (
+            <dl className="mt-2 space-y-0.5 border-t border-black/5 pt-2 text-[11px] text-black/70">
+              {asset.processorName ? (
+                <div className="flex gap-2">
+                  <dt className="shrink-0 text-black/45">CPU</dt>
+                  <dd className="min-w-0">{asset.processorName}</dd>
+                </div>
+              ) : null}
+              {asset.systemRam ? (
+                <div className="flex gap-2">
+                  <dt className="shrink-0 text-black/45">RAM</dt>
+                  <dd>{asset.systemRam}</dd>
+                </div>
+              ) : null}
+              {asset.systemGpu ? (
+                <div className="flex gap-2">
+                  <dt className="shrink-0 text-black/45">GPU</dt>
+                  <dd className="min-w-0">{asset.systemGpu}</dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
+          {asset.zohoAssistDeviceId ? (
+            <p className="mt-1 font-mono text-[10px] text-black/40">
+              Assist id {asset.zohoAssistDeviceId}
             </p>
           ) : null}
           {asset.reason ? (

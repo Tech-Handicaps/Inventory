@@ -35,10 +35,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { label, manufacturer, model, category, notes } = body as Record<
-      string,
-      unknown
-    >;
+    const {
+      label,
+      manufacturer,
+      model,
+      category,
+      notes,
+      processorName,
+      systemRam,
+      systemGpu,
+    } = body as Record<string, unknown>;
 
     if (
       typeof label !== "string" ||
@@ -64,6 +70,18 @@ export async function POST(request: NextRequest) {
         category: category.trim(),
         notes:
           typeof notes === "string" && notes.trim() ? notes.trim() : undefined,
+        processorName:
+          typeof processorName === "string" && processorName.trim()
+            ? processorName.trim()
+            : undefined,
+        systemRam:
+          typeof systemRam === "string" && systemRam.trim()
+            ? systemRam.trim()
+            : undefined,
+        systemGpu:
+          typeof systemGpu === "string" && systemGpu.trim()
+            ? systemGpu.trim()
+            : undefined,
       },
     });
 

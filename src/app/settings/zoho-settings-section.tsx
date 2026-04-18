@@ -10,6 +10,8 @@ type ZohoGetResponse = {
   refreshTokenMasked: string | null;
   hasRefreshToken: boolean;
   dataCenter: string;
+  defaultOrgId: string | null;
+  defaultDepartmentId: string | null;
   readyForOAuth: boolean;
   canTestApi: boolean;
 };
@@ -29,6 +31,8 @@ export function ZohoAssistSettingsSection() {
   const [dataCenter, setDataCenter] = useState("us");
   const [clearClientSecret, setClearClientSecret] = useState(false);
   const [clearRefreshToken, setClearRefreshToken] = useState(false);
+  const [defaultOrgId, setDefaultOrgId] = useState("");
+  const [defaultDepartmentId, setDefaultDepartmentId] = useState("");
 
   const [meta, setMeta] = useState<Pick<
     ZohoGetResponse,
@@ -42,6 +46,8 @@ export function ZohoAssistSettingsSection() {
 
   const [testResult, setTestResult] = useState<string | null>(null);
   const [appOrigin, setAppOrigin] = useState("");
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [lastApiVerified, setLastApiVerified] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/settings/zoho");
@@ -51,6 +57,8 @@ export function ZohoAssistSettingsSection() {
     const data = (await res.json()) as ZohoGetResponse;
     setClientId(data.clientId ?? "");
     setDataCenter(data.dataCenter || "us");
+    setDefaultOrgId(data.defaultOrgId ?? "");
+    setDefaultDepartmentId(data.defaultDepartmentId ?? "");
     setMeta({
       clientSecretMasked: data.clientSecretMasked,
       hasClientSecret: data.hasClientSecret,
@@ -70,6 +78,22 @@ export function ZohoAssistSettingsSection() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const v = window.localStorage.getItem("zoho_assist_last_api_ok");
+      if (v) setLastApiVerified(v);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!saveNotice) return;
+    const t = window.setTimeout(() => setSaveNotice(null), 10000);
+    return () => window.clearTimeout(t);
+  }, [saveNotice]);
 
   useEffect(() => {
     setAppOrigin(window.location.origin);
@@ -99,6 +123,7 @@ export function ZohoAssistSettingsSection() {
     e.preventDefault();
     setSaving(true);
     setTestResult(null);
+    setSaveNotice(null);
     try {
       const res = await fetch("/api/settings/zoho", {
         method: "PUT",
@@ -110,6 +135,8 @@ export function ZohoAssistSettingsSection() {
           dataCenter,
           clearClientSecret,
           clearRefreshToken,
+          defaultOrgId: defaultOrgId.trim() || null,
+          defaultDepartmentId: defaultDepartmentId.trim() || null,
         }),
       });
       const j = await res.json().catch(() => ({}));
@@ -118,6 +145,15 @@ export function ZohoAssistSettingsSection() {
       }
       if (typeof j.clientId === "string") setClientId(j.clientId);
       if (typeof j.dataCenter === "string") setDataCenter(j.dataCenter);
+      if ("defaultOrgId" in j && (j.defaultOrgId === null || typeof j.defaultOrgId === "string")) {
+        setDefaultOrgId(j.defaultOrgId ?? "");
+      }
+      if (
+        "defaultDepartmentId" in j &&
+        (j.defaultDepartmentId === null || typeof j.defaultDepartmentId === "string")
+      ) {
+        setDefaultDepartmentId(j.defaultDepartmentId ?? "");
+      }
       setMeta({
         clientSecretMasked: j.clientSecretMasked,
         hasClientSecret: j.hasClientSecret,
@@ -130,6 +166,11 @@ export function ZohoAssistSettingsSection() {
       setRefreshToken("");
       setClearClientSecret(false);
       setClearRefreshToken(false);
+      const t = new Date().toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      setSaveNotice(`Credentials saved (${t}).`);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -166,6 +207,15 @@ export function ZohoAssistSettingsSection() {
         throw new Error(typeof j.error === "string" ? j.error : "Test failed");
       }
       setTestResult(JSON.stringify(j, null, 2));
+      if (j && typeof j === "object" && (j as { ok?: boolean }).ok === true) {
+        const stamp = new Date().toISOString();
+        setLastApiVerified(stamp);
+        try {
+          window.localStorage.setItem("zoho_assist_last_api_ok", stamp);
+        } catch {
+          /* ignore */
+        }
+      }
     } catch (err) {
       setTestResult(
         JSON.stringify(
@@ -187,12 +237,126 @@ export function ZohoAssistSettingsSection() {
     );
   }
 
+  const hasClientIdSaved = Boolean(clientId?.trim());
+  const secretOnServer = meta?.hasClientSecret === true && !clearClientSecret;
+  const refreshOnServer = meta?.hasRefreshToken === true && !clearRefreshToken;
+  const pendingSecretInForm = Boolean(clientSecret.trim());
+  const pendingRefreshInForm = Boolean(refreshToken.trim());
+  const oauthAppReady =
+    hasClientIdSaved && (secretOnServer || pendingSecretInForm);
+  const canCallAssistApi =
+    oauthAppReady && (refreshOnServer || pendingRefreshInForm);
+
+  let statusHeadline = "Setup required";
+  let statusBody =
+    "Save your Zoho API Console Client ID and Client Secret first.";
+  let statusClass =
+    "border-neutral-200 bg-neutral-50 text-neutral-900";
+
+  if (oauthAppReady && !canCallAssistApi) {
+    statusHeadline = "Credentials saved — token needed";
+    statusBody =
+      "OAuth app credentials are stored. Connect Zoho or paste a refresh token, then save, to call the Assist API.";
+    statusClass = "border-amber-200 bg-amber-50 text-amber-950";
+  } else if (canCallAssistApi) {
+    statusHeadline = "Assist API ready";
+    statusBody =
+      "Saved credentials can obtain an access token. Use Test API to confirm Zoho returns your user profile.";
+    statusClass = "border-emerald-200 bg-emerald-50 text-emerald-950";
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
         Zoho Assist API
       </h2>
       <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
+
+      <div
+        className={`rounded-xl border-2 px-4 py-4 sm:px-5 ${statusClass}`}
+        role="status"
+        aria-live="polite"
+      >
+        <p className="font-heading text-[10px] font-bold uppercase tracking-[0.2em] opacity-80">
+          Connection status
+        </p>
+        <p className="mt-2 text-base font-bold">{statusHeadline}</p>
+        <p className="mt-1 text-sm leading-relaxed opacity-90">{statusBody}</p>
+        <ul className="mt-4 space-y-2 border-t border-black/10 pt-3 text-sm">
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 font-mono text-base" aria-hidden>
+              {hasClientIdSaved ? "✓" : "○"}
+            </span>
+            <span>
+              <span className="font-medium">Client ID</span>{" "}
+              {hasClientIdSaved ? (
+                <span className="text-black/70">saved in app settings</span>
+              ) : (
+                <span className="text-black/70">not saved yet</span>
+              )}
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 font-mono text-base" aria-hidden>
+              {secretOnServer || pendingSecretInForm ? "✓" : "○"}
+            </span>
+            <span>
+              <span className="font-medium">Client secret</span>{" "}
+              {secretOnServer ? (
+                <span className="text-black/70">stored (masked below)</span>
+              ) : pendingSecretInForm ? (
+                <span className="text-amber-900/90">
+                  entered in form — click Save to store
+                </span>
+              ) : (
+                <span className="text-black/70">not saved yet</span>
+              )}
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 font-mono text-base" aria-hidden>
+              {refreshOnServer || pendingRefreshInForm ? "✓" : "○"}
+            </span>
+            <span>
+              <span className="font-medium">Refresh token</span>{" "}
+              {refreshOnServer ? (
+                <span className="text-black/70">stored — API calls enabled</span>
+              ) : pendingRefreshInForm ? (
+                <span className="text-amber-900/90">
+                  entered in form — click Save to store
+                </span>
+              ) : (
+                <span className="text-black/70">
+                  not saved — use Connect or paste token
+                </span>
+              )}
+            </span>
+          </li>
+        </ul>
+        {lastApiVerified ? (
+          <p className="mt-3 border-t border-black/10 pt-3 text-xs text-black/65">
+            Last successful <strong>Test API</strong>:{" "}
+            {new Date(lastApiVerified).toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+          </p>
+        ) : (
+          <p className="mt-3 border-t border-black/10 pt-3 text-xs text-black/55">
+            Run <strong>Test API</strong> after saving to confirm Assist responds.
+          </p>
+        )}
+      </div>
+
+      {saveNotice ? (
+        <div
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"
+          role="status"
+        >
+          {saveNotice}
+        </div>
+      ) : null}
+
       <p className="mt-4 text-sm leading-relaxed text-black/70">
         Register a client in the{" "}
         <a
@@ -212,6 +376,10 @@ export function ZohoAssistSettingsSection() {
         then use <strong>Connect Zoho Account</strong> or paste a refresh token from
         the console (Self Client), and run <strong>Test API</strong> to verify{" "}
         <code className="rounded bg-black/5 px-1 text-xs">GET /api/v2/user</code>.
+        For unattended device APIs, set default <strong>org</strong> and{" "}
+        <strong>department</strong> IDs (from Assist /{" "}
+        <code className="rounded bg-black/5 px-1 text-xs">GET /api/v2/user</code>{" "}
+        → departments) or pass them per request when fetching device details.
       </p>
 
       {banner ? (
@@ -240,6 +408,32 @@ export function ZohoAssistSettingsSection() {
               </option>
             ))}
           </select>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium text-black/70">
+              Default org id (Assist)
+            </label>
+            <input
+              value={defaultOrgId}
+              onChange={(e) => setDefaultOrgId(e.target.value)}
+              autoComplete="off"
+              placeholder="x-com-zoho-assist-orgid — optional"
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-black/70">
+              Default department id (Assist)
+            </label>
+            <input
+              value={defaultDepartmentId}
+              onChange={(e) => setDefaultDepartmentId(e.target.value)}
+              autoComplete="off"
+              placeholder="Required for GET /api/v2/devices/…"
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+            />
+          </div>
         </div>
         <div>
           <label className="text-xs font-medium text-black/70">Client ID</label>

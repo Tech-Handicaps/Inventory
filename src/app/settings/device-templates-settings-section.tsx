@@ -9,6 +9,9 @@ type DeviceTemplate = {
   model: string;
   category: string;
   notes: string | null;
+  processorName: string | null;
+  systemRam: string | null;
+  systemGpu: string | null;
 };
 
 /** Reads failed response body (JSON or plain text) so alerts are not generic "Create failed". */
@@ -39,6 +42,9 @@ export function DeviceTemplatesSettingsSection() {
   const [model, setModel] = useState("");
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
+  const [processorName, setProcessorName] = useState("");
+  const [systemRam, setSystemRam] = useState("");
+  const [systemGpu, setSystemGpu] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/device-templates");
@@ -57,6 +63,9 @@ export function DeviceTemplatesSettingsSection() {
     setModel("");
     setCategory("");
     setNotes("");
+    setProcessorName("");
+    setSystemRam("");
+    setSystemGpu("");
   }
 
   function startEdit(t: DeviceTemplate) {
@@ -66,6 +75,9 @@ export function DeviceTemplatesSettingsSection() {
     setModel(t.model);
     setCategory(t.category);
     setNotes(t.notes ?? "");
+    setProcessorName(t.processorName ?? "");
+    setSystemRam(t.systemRam ?? "");
+    setSystemGpu(t.systemGpu ?? "");
   }
 
   async function submit(e: React.FormEvent) {
@@ -84,6 +96,9 @@ export function DeviceTemplatesSettingsSection() {
             model: model.trim(),
             category: category.trim(),
             notes: notes.trim() || null,
+            processorName: processorName.trim() || null,
+            systemRam: systemRam.trim() || null,
+            systemGpu: systemGpu.trim() || null,
           }),
         });
         if (!res.ok) {
@@ -99,6 +114,9 @@ export function DeviceTemplatesSettingsSection() {
             model: model.trim(),
             category: category.trim(),
             notes: notes.trim() || undefined,
+            processorName: processorName.trim() || undefined,
+            systemRam: systemRam.trim() || undefined,
+            systemGpu: systemGpu.trim() || undefined,
           }),
         });
         if (!res.ok) {
@@ -147,10 +165,10 @@ export function DeviceTemplatesSettingsSection() {
         </h2>
         <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
         <p className="mt-4 text-sm leading-relaxed text-black/70">
-          Define reusable device types (make, model, default category). On the{" "}
-          <strong>Hardware board</strong>, choose a template when adding an asset to
-          pre-fill fields; you can still edit before saving. Custom entries without a
-          template still work.
+          Define reusable device types (make, model, default category, optional typical
+          CPU/RAM/GPU for that SKU). On the <strong>Hardware board</strong>, choose a
+          template when adding an asset to pre-fill fields; you can still edit before
+          saving. Custom entries without a template still work.
         </p>
       </div>
 
@@ -217,6 +235,39 @@ export function DeviceTemplatesSettingsSection() {
               className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
             />
           </div>
+          <div>
+            <label className="text-xs font-medium text-black/70">
+              Typical processor (optional)
+            </label>
+            <input
+              value={processorName}
+              onChange={(e) => setProcessorName(e.target.value)}
+              placeholder="Pre-fills new assets"
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-black/70">
+              Typical RAM (optional)
+            </label>
+            <input
+              value={systemRam}
+              onChange={(e) => setSystemRam(e.target.value)}
+              placeholder="e.g. 16 GB"
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-black/70">
+              Typical GPU (optional)
+            </label>
+            <input
+              value={systemGpu}
+              onChange={(e) => setSystemGpu(e.target.value)}
+              placeholder="Pre-fills new assets"
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            />
+          </div>
           <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-3">
             <button
               type="submit"
@@ -250,6 +301,7 @@ export function DeviceTemplatesSettingsSection() {
                 <th className="py-2 pr-4 font-medium">Manufacturer</th>
                 <th className="py-2 pr-4 font-medium">Model</th>
                 <th className="py-2 pr-4 font-medium">Category</th>
+                <th className="py-2 pr-4 font-medium">CPU / RAM / GPU</th>
                 <th className="py-2 pr-4 font-medium">Notes</th>
                 <th className="py-2 font-medium" />
               </tr>
@@ -261,6 +313,11 @@ export function DeviceTemplatesSettingsSection() {
                   <td className="py-2 pr-4">{t.manufacturer}</td>
                   <td className="py-2 pr-4">{t.model}</td>
                   <td className="py-2 pr-4">{t.category}</td>
+                  <td className="py-2 pr-4 text-xs text-black/65">
+                    {[t.processorName, t.systemRam, t.systemGpu]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </td>
                   <td className="py-2 pr-4 text-black/60">{t.notes ?? "—"}</td>
                   <td className="py-2 pr-0 text-right">
                     <button

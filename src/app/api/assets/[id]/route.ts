@@ -57,6 +57,15 @@ export async function PUT(
       manufacturer,
       model,
       deviceTemplateId,
+      dataSource,
+      zohoAssistDeviceId,
+      zohoAssistOrgId,
+      zohoAssistDepartmentId,
+      deviceLocation,
+      processorName,
+      systemRam,
+      systemGpu,
+      lastSyncedFromAssistAt,
     } = body;
 
     const updateData: Record<string, unknown> = {};
@@ -67,6 +76,74 @@ export async function PUT(
     if (serialNumber !== undefined) updateData.serialNumber = serialNumber;
     if (manufacturer !== undefined) updateData.manufacturer = manufacturer;
     if (model !== undefined) updateData.model = model;
+    if (dataSource !== undefined) {
+      if (dataSource === "manual" || dataSource === "zoho_assist") {
+        updateData.dataSource = dataSource;
+      }
+    }
+    if (zohoAssistDeviceId !== undefined) {
+      updateData.zohoAssistDeviceId =
+        zohoAssistDeviceId === null || zohoAssistDeviceId === ""
+          ? null
+          : typeof zohoAssistDeviceId === "string"
+            ? zohoAssistDeviceId.trim() || null
+            : undefined;
+    }
+    if (zohoAssistOrgId !== undefined) {
+      updateData.zohoAssistOrgId =
+        zohoAssistOrgId === null || zohoAssistOrgId === ""
+          ? null
+          : typeof zohoAssistOrgId === "string"
+            ? zohoAssistOrgId.trim() || null
+            : undefined;
+    }
+    if (zohoAssistDepartmentId !== undefined) {
+      updateData.zohoAssistDepartmentId =
+        zohoAssistDepartmentId === null || zohoAssistDepartmentId === ""
+          ? null
+          : typeof zohoAssistDepartmentId === "string"
+            ? zohoAssistDepartmentId.trim() || null
+            : undefined;
+    }
+    if (deviceLocation !== undefined) {
+      updateData.deviceLocation =
+        deviceLocation === null || deviceLocation === ""
+          ? null
+          : typeof deviceLocation === "string"
+            ? deviceLocation.trim() || null
+            : undefined;
+    }
+    if (processorName !== undefined) {
+      updateData.processorName =
+        processorName === null || processorName === ""
+          ? null
+          : typeof processorName === "string"
+            ? processorName.trim() || null
+            : undefined;
+    }
+    if (systemRam !== undefined) {
+      updateData.systemRam =
+        systemRam === null || systemRam === ""
+          ? null
+          : typeof systemRam === "string"
+            ? systemRam.trim() || null
+            : undefined;
+    }
+    if (systemGpu !== undefined) {
+      updateData.systemGpu =
+        systemGpu === null || systemGpu === ""
+          ? null
+          : typeof systemGpu === "string"
+            ? systemGpu.trim() || null
+            : undefined;
+    }
+    if (lastSyncedFromAssistAt !== undefined) {
+      if (lastSyncedFromAssistAt === null) {
+        updateData.lastSyncedFromAssistAt = null;
+      } else if (typeof lastSyncedFromAssistAt === "string" && lastSyncedFromAssistAt.trim()) {
+        updateData.lastSyncedFromAssistAt = new Date(lastSyncedFromAssistAt.trim());
+      }
+    }
     if (deviceTemplateId !== undefined) {
       if (deviceTemplateId === null) {
         updateData.deviceTemplateId = null;
@@ -134,6 +211,33 @@ export async function PUT(
         from: before.deviceTemplateId,
         to: asset.deviceTemplateId,
       };
+    }
+    if (before.dataSource !== asset.dataSource) {
+      changes.dataSource = { from: before.dataSource, to: asset.dataSource };
+    }
+    if (before.zohoAssistDeviceId !== asset.zohoAssistDeviceId) {
+      changes.zohoAssistDeviceId = {
+        from: before.zohoAssistDeviceId,
+        to: asset.zohoAssistDeviceId,
+      };
+    }
+    if (before.deviceLocation !== asset.deviceLocation) {
+      changes.deviceLocation = {
+        from: before.deviceLocation,
+        to: asset.deviceLocation,
+      };
+    }
+    if (before.processorName !== asset.processorName) {
+      changes.processorName = {
+        from: before.processorName,
+        to: asset.processorName,
+      };
+    }
+    if (before.systemRam !== asset.systemRam) {
+      changes.systemRam = { from: before.systemRam, to: asset.systemRam };
+    }
+    if (before.systemGpu !== asset.systemGpu) {
+      changes.systemGpu = { from: before.systemGpu, to: asset.systemGpu };
     }
 
     const transitionToWrittenOff =

@@ -18,6 +18,12 @@ model DeviceTemplate {
   model          String
   category       String
   notes          String?
+  /// Typical CPU for this SKU — pre-fills new assets when template is chosen
+  processorName  String?
+  /// Typical RAM (e.g. "16 GB") — pre-fills new assets
+  systemRam      String?
+  /// Typical GPU — pre-fills new assets
+  systemGpu      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   assets         Asset[]
@@ -46,6 +52,21 @@ model Asset {
   statusId          String
   status            AssetStatus      @relation(fields: [statusId], references: [id])
   reason            String?          // e.g. write-off reason
+  /// manual | zoho_assist — where the row was created / primary sync source
+  dataSource        String           @default("manual")
+  /// Zoho Assist unattended device resource id (GET /api/v2/devices/{id})
+  zohoAssistDeviceId   String?       @unique
+  /// Assist org header (x-com-zoho-assist-orgid) when known — aids API calls
+  zohoAssistOrgId      String?
+  /// Assist department scope for this device (x-com-zoho-assist-department-id)
+  zohoAssistDepartmentId String?
+  /// Site / deployment location (from Assist or entered manually)
+  deviceLocation    String?
+  processorName     String?
+  /// Human-readable RAM (e.g. "32 GB") — matches Assist where available
+  systemRam         String?
+  systemGpu         String?
+  lastSyncedFromAssistAt DateTime?
   dateAdded         DateTime         @default(now())
   dateUpdated       DateTime         @updatedAt
   repairs           Repair[]
@@ -104,6 +125,10 @@ model ZohoAssistSettings {
   clientSecret String?
   refreshToken String?
   dataCenter   String   @default("us") // us | eu | in | au | ca | jp | sa
+  /// Default x-com-zoho-assist-orgid for Assist device APIs (optional)
+  defaultOrgId String?
+  /// Default x-com-zoho-assist-department-id for listing / device details
+  defaultDepartmentId String?
   updatedAt    DateTime @updatedAt
 }
 
