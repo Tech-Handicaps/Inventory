@@ -2,9 +2,12 @@
 // Extensible asset lifecycle states; Xero sync for fixed assets + inventory
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Windows/mac dev + Vercel (Linux) — avoids “Query engine not found” on deploy
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
+/// Use a pooled URL on serverless (e.g. Supabase: port 6543, add ?pgbouncer=true).
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")

@@ -1,16 +1,31 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+function requirePublicEnv(name: string, value: string | undefined): string {
+  if (value == null || String(value).trim() === "") {
+    throw new Error(
+      `${name} is not set. Add it in Vercel → Project → Settings → Environment Variables (Production & Preview).`
+    );
+  }
+  return value;
+}
+
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
-  const key =
+  const url = requirePublicEnv(
+    "NEXT_PUBLIC_SUPABASE_URL",
+    process.env.NEXT_PUBLIC_SUPABASE_URL
+  );
+  const key = requirePublicEnv(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY (or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_* )",
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  );
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    key!,
+    url,
+    key,
     {
       cookies: {
         getAll() {
