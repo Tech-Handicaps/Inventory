@@ -8,6 +8,7 @@ generator client {
 }
 
 /// Use a pooled URL on serverless (e.g. Supabase: port 6543, add ?pgbouncer=true).
+/// For `prisma db push`, if port 6543 stalls, run once with Session pooler (5432) — see .env.example.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")

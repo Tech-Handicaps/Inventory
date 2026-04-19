@@ -29,24 +29,66 @@ type Asset = {
 };
 type Status = { id: string; code: string; label: string };
 
+function deriveStatusesFromAssets(assets: Asset[]): Status[] {
+  const map = new Map<string, Status>();
+  for (const a of assets) {
+    if (a.status && !map.has(a.status.id)) {
+      map.set(a.status.id, a.status);
+    }
+  }
+  return [...map.values()];
+}
+
 export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [assistImportOpen, setAssistImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setFetchError(null);
     const [aRes, sRes] = await Promise.all([
       fetch("/api/assets"),
       fetch("/api/statuses"),
     ]);
-    const a = await aRes.json();
+
+    if (!aRes.ok) {
+      const j = (await aRes.json().catch(() => ({}))) as { error?: string };
+      setAssets([]);
+      setStatuses([]);
+      setFetchError(
+        aRes.status === 403
+          ? "You don’t have permission to load assets. Ask an admin to grant an operations or admin role."
+          : typeof j.error === "string"
+            ? j.error
+            : `Could not load assets (${aRes.status}).`
+      );
+      return;
+    }
+
+    const a = (await aRes.json()) as { assets?: Asset[] };
+    setAssets(Array.isArray(a.assets) ? a.assets : []);
+
+    if (!sRes.ok) {
+      const j = (await sRes.json().catch(() => ({}))) as { error?: string };
+      setStatuses([]);
+      setFetchError(
+        typeof j.error === "string"
+          ? `Statuses: ${j.error} (filters may be limited).`
+          : `Could not load statuses (${sRes.status}).`
+      );
+      return;
+    }
+
     const s = await sRes.json();
-    setAssets(a.assets ?? []);
-    setStatuses(Array.isArray(s) ? s : []);
+    setStatuses(Array.isArray(s) ? (s as Status[]) : []);
   }, []);
+
+  const effectiveStatuses =
+    statuses.length > 0 ? statuses : deriveStatusesFromAssets(assets);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,7 +157,19 @@ export default function AssetsPage() {
       <InventoryHeader current="assets" />
 
       <main className="mx-auto max-w-6xl space-y-8 p-6">
-        <HardwareCaptureForm statuses={statuses} onCreated={() => load()} />
+        <HardwareCaptureForm
+          statuses={effectiveStatuses}
+          onCreated={() => void load()}
+        />
+
+        {fetchError ? (
+          <div
+            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="status"
+          >
+            {fetchError}
+          </div>
+        ) : null}
 
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -231,7 +285,7 @@ export default function AssetsPage() {
                           className="max-w-[10rem] rounded border border-black/15 bg-white px-1.5 py-1 text-xs text-black"
                           aria-label={`Status for ${a.assetName}`}
                         >
-                          {statuses.map((s) => (
+                          {effectiveStatuses.map((s) => (
                             <option key={s.id} value={s.id}>
                               {s.label}
                             </option>
@@ -282,7 +336,7 @@ export default function AssetsPage() {
         {editingId ? (
           <EditAssetModal
             assetId={editingId}
-            statuses={statuses}
+            statuses={effectiveStatuses}
             onClose={() => setEditingId(null)}
             onSaved={() => {
               setEditingId(null);
@@ -299,7 +353,7 @@ export default function AssetsPage() {
             Add rows to AssetStatus table to load additional states.
           </p>
           <ul className="mt-2 flex flex-wrap gap-2">
-            {statuses.map((s) => (
+            {effectiveStatuses.map((s) => (
               <li
                 key={s.id}
                 className="rounded border border-black/10 bg-brand-muted px-2 py-1 text-xs font-medium text-black/80"

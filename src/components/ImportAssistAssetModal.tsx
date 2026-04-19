@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type AssistRow = {
@@ -43,12 +44,14 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
   const [rows, setRows] = useState<AssistRow[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [duplicateAssetId, setDuplicateAssetId] = useState<string | null>(null);
 
   const [noTpl, setNoTpl] = useState<NoTemplatePayload | null>(null);
   const [tplCategory, setTplCategory] = useState("Hardware");
 
   const reset = useCallback(() => {
     setFormError(null);
+    setDuplicateAssetId(null);
     setListError(null);
     setNoTpl(null);
     setTplCategory("Hardware");
@@ -115,6 +118,9 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
             : "This Assist device is already on the board.";
         setFormError(
           typeof data.assetId === "string" ? `${msg} (asset id: ${data.assetId})` : msg
+        );
+        setDuplicateAssetId(
+          typeof data.assetId === "string" ? data.assetId : null
         );
         return;
       }
@@ -223,7 +229,27 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
               className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
               role="alert"
             >
-              {formError}
+              <p>{formError}</p>
+              {duplicateAssetId ? (
+                <p className="mt-3 border-t border-red-200/80 pt-3 text-red-950/95">
+                  It is already saved in this app’s database (not re-fetched from Assist).{" "}
+                  <Link
+                    href="/assets"
+                    className="font-semibold text-brand underline hover:no-underline"
+                  >
+                    Open All assets
+                  </Link>{" "}
+                  or{" "}
+                  <Link
+                    href="/inventory"
+                    className="font-semibold text-brand underline hover:no-underline"
+                  >
+                    Hardware board
+                  </Link>{" "}
+                  and search by name or serial. If those lists look empty, refresh the page or ask an
+                  admin — your account may not have permission to load assets.
+                </p>
+              ) : null}
             </div>
           ) : null}
 

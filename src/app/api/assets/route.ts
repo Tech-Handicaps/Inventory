@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
+import { nextResponseIfPrismaSchemaDrift } from "@/lib/prisma-error-response";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/assets - List assets with filters
@@ -42,6 +43,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ assets, total });
   } catch (error) {
     console.error("GET /api/assets", error);
+    const drift = nextResponseIfPrismaSchemaDrift(error);
+    if (drift) return drift;
     return NextResponse.json(
       { error: "Failed to fetch assets" },
       { status: 500 }
@@ -195,6 +198,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(asset);
   } catch (error) {
+    const drift = nextResponseIfPrismaSchemaDrift(error);
+    if (drift) return drift;
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"

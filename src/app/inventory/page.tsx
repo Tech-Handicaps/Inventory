@@ -42,6 +42,17 @@ const PRIMARY_ORDER = [
   "refurbished",
 ] as const;
 
+/** When GET /api/statuses fails, columns still render using status embedded on each asset. */
+function deriveStatusesFromAssets(assets: Asset[]): Status[] {
+  const map = new Map<string, Status>();
+  for (const a of assets) {
+    if (a.status && !map.has(a.status.id)) {
+      map.set(a.status.id, a.status);
+    }
+  }
+  return [...map.values()].sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 /** Brand-aligned columns: green reserved for “In stock”; distinct hues elsewhere */
 const columnAccent: Record<string, string> = {
   new_stock: "border-t-black bg-white",
@@ -55,47 +66,86 @@ const columnAccent: Record<string, string> = {
 export default function InventoryPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [statusesFallback, setStatusesFallback] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [repairAsset, setRepairAsset] = useState<Asset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setFetchError(null);
+    setStatusesFallback(false);
     const [aRes, sRes] = await Promise.all([
       fetch("/api/assets?limit=500"),
       fetch("/api/statuses"),
     ]);
-    const aJson = await aRes.json();
+
+    if (!aRes.ok) {
+      const j = (await aRes.json().catch(() => ({}))) as { error?: string };
+      setAssets([]);
+      setStatuses([]);
+      setFetchError(
+        aRes.status === 403
+          ? "You don’t have permission to load assets (hardware board needs an admin or operations role). Use Dashboard / Reports if you only have reports access."
+          : typeof j.error === "string"
+            ? j.error
+            : `Could not load assets (${aRes.status}).`
+      );
+      return;
+    }
+
+    const aJson = (await aRes.json()) as { assets?: Asset[] };
+    setAssets(Array.isArray(aJson.assets) ? aJson.assets : []);
+
+    if (!sRes.ok) {
+      const j = (await sRes.json().catch(() => ({}))) as { error?: string };
+      setStatuses([]);
+      setStatusesFallback(true);
+      setFetchError(
+        sRes.status === 403
+          ? "Lifecycle statuses were blocked (403). Columns below are derived from your assets so cards still appear."
+          : typeof j.error === "string"
+            ? `Lifecycle statuses: ${j.error}. Columns are derived from loaded assets.`
+            : `Could not load statuses (${sRes.status}); columns derived from assets.`
+      );
+      return;
+    }
+
     const sJson = await sRes.json();
-    setAssets(aJson.assets ?? []);
-    setStatuses(Array.isArray(sJson) ? sJson : []);
+    setStatuses(Array.isArray(sJson) ? (sJson as Status[]) : []);
   }, []);
 
   useEffect(() => {
     load().catch(console.error).finally(() => setLoading(false));
   }, [load]);
 
+  const effectiveStatuses = useMemo((): Status[] => {
+    if (statuses.length > 0) return statuses;
+    return deriveStatusesFromAssets(assets);
+  }, [statuses, assets]);
+
   const byStatus = useMemo(() => {
     const m = new Map<string, Asset[]>();
-    for (const s of statuses) m.set(s.id, []);
+    for (const s of effectiveStatuses) m.set(s.id, []);
     for (const asset of assets) {
       const list = m.get(asset.status.id);
       if (list) list.push(asset);
       else m.set(asset.status.id, [asset]);
     }
     return m;
-  }, [assets, statuses]);
+  }, [assets, effectiveStatuses]);
 
   const orderedPrimary = useMemo(() => {
-    const map = new Map(statuses.map((s) => [s.code, s]));
+    const map = new Map(effectiveStatuses.map((s) => [s.code, s]));
     return PRIMARY_ORDER.map((code) => map.get(code)).filter(
       (s): s is Status => Boolean(s)
     );
-  }, [statuses]);
+  }, [effectiveStatuses]);
 
   const writtenOff = useMemo(
-    () => statuses.find((s) => s.code === "written_off"),
-    [statuses]
+    () => effectiveStatuses.find((s) => s.code === "written_off"),
+    [effectiveStatuses]
   );
 
   async function updateAssetStatus(assetId: string, statusId: string) {
@@ -111,7 +161,11 @@ export default function InventoryPage() {
       setAssets((prev) =>
         prev.map((x) =>
           x.id === assetId
-            ? { ...x, ...updated, status: updated.status }
+            ? {
+                ...x,
+                ...updated,
+                status: updated.status as Status,
+              }
             : x
         )
       );
@@ -151,7 +205,24 @@ export default function InventoryPage() {
       <InventoryHeader current="inventory" />
 
       <main className="mx-auto max-w-7xl space-y-8 p-6">
-        <HardwareCaptureForm statuses={statuses} onCreated={() => load()} />
+        <HardwareCaptureForm
+          statuses={effectiveStatuses}
+          onCreated={() => void load()}
+        />
+
+        {fetchError ? (
+          <div
+            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="status"
+          >
+            <p className="font-medium">{fetchError}</p>
+            {statusesFallback && assets.length > 0 ? (
+              <p className="mt-2 text-amber-900/90">
+                Your devices are still listed below using stage data stored on each asset.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
@@ -172,6 +243,13 @@ export default function InventoryPage() {
           <h2 className="font-heading mb-4 text-sm font-bold uppercase tracking-[0.15em] text-black">
             Stock & workflow
           </h2>
+          {!fetchError && assets.length > 0 && orderedPrimary.length === 0 ? (
+            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              No matching lifecycle columns for these assets. Check Settings or re-run{" "}
+              <code className="rounded bg-black/5 px-1">npm run db:seed</code> so status codes
+              (new_stock, deployed, …) exist.
+            </p>
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {orderedPrimary.map((st) => (
               <div
@@ -198,7 +276,7 @@ export default function InventoryPage() {
                     <li key={asset.id}>
                       <HardwareCard
                         asset={asset}
-                        statuses={statuses}
+                        statuses={effectiveStatuses}
                         disabled={savingId === asset.id}
                         onStatusChange={updateAssetStatus}
                         onLogRepair={() => setRepairAsset(asset)}
@@ -269,7 +347,7 @@ export default function InventoryPage() {
                               updateAssetStatus(asset.id, e.target.value)
                             }
                           >
-                            {statuses.map((s) => (
+                            {effectiveStatuses.map((s) => (
                               <option key={s.id} value={s.id}>
                                 {s.label}
                               </option>
@@ -319,7 +397,7 @@ export default function InventoryPage() {
         {editingId ? (
           <EditAssetModal
             assetId={editingId}
-            statuses={statuses.map((s) => ({
+            statuses={effectiveStatuses.map((s) => ({
               id: s.id,
               code: s.code,
               label: s.label,
