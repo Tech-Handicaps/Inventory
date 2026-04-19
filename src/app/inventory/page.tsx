@@ -5,6 +5,7 @@ import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
 import { LogRepairModal } from "@/components/LogRepairModal";
+import { formatGeoLabel } from "@/lib/geo/region-display";
 
 type Status = {
   id: string;
@@ -30,6 +31,11 @@ type Asset = {
   systemRam: string | null;
   systemGpu: string | null;
   lastSyncedFromAssistAt: string | null;
+  publicIp: string | null;
+  geoCountryCode: string | null;
+  geoRegionCode: string | null;
+  geoRegionName: string | null;
+  geoCity: string | null;
   status: Status;
   deviceTemplate?: { id: string; label: string } | null;
 };
@@ -431,6 +437,13 @@ function HardwareCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const geoLabel = formatGeoLabel(
+    asset.geoCountryCode,
+    asset.geoRegionCode,
+    asset.geoCity,
+    asset.geoRegionName
+  );
+
   return (
     <article className="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -460,6 +473,19 @@ function HardwareCard({
             <p className="mt-1 text-xs text-black/60">
               <span className="font-medium text-black/45">Location:</span>{" "}
               {asset.deviceLocation}
+            </p>
+          ) : null}
+          {asset.publicIp || asset.geoCountryCode ? (
+            <p className="mt-1 text-xs text-black/60">
+              <span className="font-medium text-black/45">Public IP:</span>{" "}
+              <span className="font-mono text-[11px]">
+                {asset.publicIp ?? "—"}
+              </span>
+              {geoLabel !== "—" ? (
+                <span className="mt-0.5 block text-[10px] text-black/50">
+                  {geoLabel}
+                </span>
+              ) : null}
             </p>
           ) : null}
           {asset.serialNumber ? (

@@ -5,6 +5,7 @@ import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
 import { InventoryHeader } from "@/components/InventoryHeader";
+import { formatGeoLabel } from "@/lib/geo/region-display";
 
 type Asset = {
   id: string;
@@ -26,6 +27,12 @@ type Asset = {
   dateUpdated: string;
   purchaseDate: string | null;
   warrantyEndDate: string | null;
+  publicIp: string | null;
+  geoCountryCode: string | null;
+  geoRegionCode: string | null;
+  geoRegionName: string | null;
+  geoCity: string | null;
+  publicIpAssistSyncedAt: string | null;
 };
 type Status = { id: string; code: string; label: string };
 
@@ -203,7 +210,7 @@ export default function AssetsPage() {
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           {assets.length ? (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1320px] text-sm">
+              <table className="w-full min-w-[1480px] text-sm">
                 <thead>
                   <tr className="border-b border-black/10">
                     <th className="py-2 text-left font-medium">Name</th>
@@ -220,6 +227,10 @@ export default function AssetsPage() {
                     <th className="py-2 text-left font-medium">
                       CPU / RAM / GPU
                     </th>
+                    <th className="py-2 text-left font-medium whitespace-nowrap">
+                      Public IP
+                    </th>
+                    <th className="py-2 text-left font-medium">Region (GeoIP)</th>
                     <th className="py-2 text-left font-medium">Template</th>
                     <th className="py-2 text-left font-medium whitespace-nowrap">
                       Purchase
@@ -261,6 +272,17 @@ export default function AssetsPage() {
                         {[a.processorName, a.systemRam, a.systemGpu]
                           .filter(Boolean)
                           .join(" · ") || "—"}
+                      </td>
+                      <td className="py-2 font-mono text-xs text-black/85">
+                        {a.publicIp ?? "—"}
+                      </td>
+                      <td className="max-w-[160px] py-2 text-xs text-black/70">
+                        {formatGeoLabel(
+                          a.geoCountryCode,
+                          a.geoRegionCode,
+                          a.geoCity,
+                          a.geoRegionName
+                        )}
                       </td>
                       <td className="py-2 text-xs text-black/70">
                         {a.deviceTemplate?.label ?? "—"}

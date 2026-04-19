@@ -45,6 +45,8 @@ export function ZohoAssistSettingsSection() {
   > | null>(null);
 
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [ipSyncBusy, setIpSyncBusy] = useState(false);
+  const [ipSyncResult, setIpSyncResult] = useState<string | null>(null);
   const [appOrigin, setAppOrigin] = useState("");
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [lastApiVerified, setLastApiVerified] = useState<string | null>(null);
@@ -194,6 +196,28 @@ export function ZohoAssistSettingsSection() {
       alert(err instanceof Error ? err.message : "Could not start OAuth");
     } finally {
       setConnecting(false);
+    }
+  }
+
+  async function runSyncPublicIps() {
+    setIpSyncBusy(true);
+    setIpSyncResult(null);
+    try {
+      const res = await fetch("/api/cron/sync-assist-public-ip", {
+        method: "POST",
+      });
+      const j = await res.json().catch(() => ({}));
+      setIpSyncResult(JSON.stringify(j, null, 2));
+    } catch (e) {
+      setIpSyncResult(
+        JSON.stringify(
+          { error: e instanceof Error ? e.message : "Sync failed" },
+          null,
+          2
+        )
+      );
+    } finally {
+      setIpSyncBusy(false);
     }
   }
 
@@ -524,6 +548,14 @@ export function ZohoAssistSettingsSection() {
           >
             {testing ? "Testing…" : "Test API"}
           </button>
+          <button
+            type="button"
+            disabled={ipSyncBusy || !meta?.canTestApi}
+            onClick={() => void runSyncPublicIps()}
+            className="font-heading rounded-lg border-2 border-violet-600 bg-violet-50 px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-violet-950 disabled:opacity-50"
+          >
+            {ipSyncBusy ? "Syncing IPs…" : "Sync public IPs (all Assist assets)"}
+          </button>
         </div>
         {!meta?.readyForOAuth ? (
           <p className="text-xs text-amber-800">
@@ -535,6 +567,23 @@ export function ZohoAssistSettingsSection() {
           </p>
         ) : null}
       </form>
+
+      <p className="mt-4 text-xs text-black/55">
+        <strong>Public IP sync:</strong> Weekly job (Vercel Cron, Sundays 05:00 UTC) refreshes
+        public IP and approximate region for every Assist-linked asset. Use the button above for
+        an on-demand run.
+      </p>
+
+      {ipSyncResult ? (
+        <div className="mt-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-black/70">
+            Public IP sync result
+          </h3>
+          <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-black/10 bg-black/[0.03] p-4 font-mono text-xs text-black/90">
+            {ipSyncResult}
+          </pre>
+        </div>
+      ) : null}
 
       {testResult ? (
         <div className="mt-6">

@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { prismaGeoFieldsFromPublicIp } from "@/lib/geo/lookup-ip";
 import {
   extractAssistListRows,
   findAssistComputerRowBySearch,
@@ -248,6 +249,9 @@ export async function POST(request: NextRequest) {
       dnIn?.trim() ||
       assistId;
 
+    const ip = mapped.publicIp?.trim() || null;
+    const geo = await prismaGeoFieldsFromPublicIp(ip);
+
     // Assist-sourced fields only — purchaseDate / warrantyEndDate are never set here (Postgres-only; edit asset after import).
     const asset = await prisma.asset.create({
       data: {
@@ -267,6 +271,9 @@ export async function POST(request: NextRequest) {
         systemRam: mapped.systemRam ?? template?.systemRam ?? undefined,
         systemGpu: mapped.systemGpu ?? template?.systemGpu ?? undefined,
         lastSyncedFromAssistAt: new Date(),
+        publicIp: ip ?? undefined,
+        publicIpAssistSyncedAt: ip ? new Date() : undefined,
+        ...geo,
       },
       include: { status: true, deviceTemplate: true },
     });

@@ -71,6 +71,20 @@ model Asset {
   systemRam         String?
   systemGpu         String?
   lastSyncedFromAssistAt DateTime?
+  /// From Zoho Assist network details; refreshed on import and weekly sync.
+  publicIp             String?
+  /// When `publicIp` was last read from Assist APIs.
+  publicIpAssistSyncedAt DateTime?
+  /// ISO country code from GeoIP (e.g. ZA).
+  geoCountryCode       String?
+  /// Subdivision / region code from GeoIP (e.g. WC).
+  geoRegionCode        String?
+  /// Human-readable region/state from GeoIP API (e.g. Western Cape) when provided.
+  geoRegionName        String?
+  /// City from GeoIP when available.
+  geoCity              String?
+  /// When GeoIP was last resolved for `publicIp`.
+  geoSyncedAt          DateTime?
   /// **App / Postgres only** — never read or written by Zoho Assist import or device APIs. Set via Register hardware / Edit asset; improves age & procurement analytics.
   purchaseDate      DateTime?
   /// **App / Postgres only** — never read or written by Zoho Assist. Set manually for renewal planning.

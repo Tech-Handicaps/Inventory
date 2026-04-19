@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toDateInputValue } from "@/lib/dates/optional-iso-date";
+import { formatGeoLabel } from "@/lib/geo/region-display";
 
 type StatusOpt = { id: string; code: string; label: string };
 type TemplateOpt = {
@@ -44,6 +45,10 @@ export function EditAssetModal({
   const [deviceTemplateId, setDeviceTemplateId] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [warrantyEndDate, setWarrantyEndDate] = useState("");
+  const [publicIpDisplay, setPublicIpDisplay] = useState("");
+  const [geoLine, setGeoLine] = useState("");
+  const [assistLinked, setAssistLinked] = useState(false);
+  const [ipRefreshing, setIpRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +91,22 @@ export function EditAssetModal({
       setWarrantyEndDate(
         toDateInputValue(aJson.warrantyEndDate as string | undefined)
       );
+      setPublicIpDisplay(
+        typeof aJson.publicIp === "string" ? aJson.publicIp : ""
+      );
+      setGeoLine(
+        formatGeoLabel(
+          aJson.geoCountryCode as string | undefined,
+          aJson.geoRegionCode as string | undefined,
+          aJson.geoCity as string | undefined,
+          aJson.geoRegionName as string | undefined
+        )
+      );
+      setAssistLinked(
+        aJson.dataSource === "zoho_assist" &&
+          typeof aJson.zohoAssistDeviceId === "string" &&
+          Boolean(aJson.zohoAssistDeviceId)
+      );
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Load failed");
     } finally {
@@ -96,6 +117,26 @@ export function EditAssetModal({
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function refreshPublicIpFromAssist() {
+    setIpRefreshing(true);
+    try {
+      const res = await fetch(`/api/assets/${assetId}/sync-assist`, {
+        method: "POST",
+      });
+      const j = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        throw new Error(typeof j.error === "string" ? j.error : "Refresh failed");
+      }
+      await load();
+    } catch (e) {
+      setSaveError(
+        e instanceof Error ? e.message : "Could not refresh public IP"
+      );
+    } finally {
+      setIpRefreshing(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -325,6 +366,34 @@ export function EditAssetModal({
                   />
                 </div>
               </div>
+
+              {assistLinked ? (
+                <div className="rounded-lg border border-violet-200 bg-violet-50/50 px-3 py-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+                        Public IP &amp; location (Assist + GeoIP)
+                      </p>
+                      <p className="mt-1 font-mono text-sm text-black/90">
+                        {publicIpDisplay || "—"}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-black/55">{geoLine}</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={ipRefreshing}
+                      onClick={() => void refreshPublicIpFromAssist()}
+                      className="shrink-0 rounded-lg border border-violet-600 bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-violet-950 disabled:opacity-50"
+                    >
+                      {ipRefreshing ? "Refreshing…" : "Refresh from Assist"}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] text-black/45">
+                    Updated on import and by weekly sync. VPNs may change apparent
+                    region.
+                  </p>
+                </div>
+              ) : null}
 
               <div className="rounded-lg border border-black/10 bg-black/[0.02] px-3 py-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">

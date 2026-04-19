@@ -51,6 +51,17 @@ type XeroHealth = {
   }[];
 };
 
+type AssetGeoReport = {
+  totalOperational: number;
+  withPublicIp: number;
+  withGeo: number;
+  publicIpCoveragePct: number;
+  geoCoveragePct: number;
+  byCountry: { countryCode: string; count: number; percent: number }[];
+  byRegion: { label: string; count: number; percent: number }[];
+  note: string;
+};
+
 type FleetProcurement = {
   totalOperational: number;
   totalWrittenOff: number;
@@ -131,6 +142,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [xeroHealth, setXeroHealth] = useState<XeroHealth | null>(null);
   const [fleet, setFleet] = useState<FleetProcurement | null>(null);
+  const [assetGeo, setAssetGeo] = useState<AssetGeoReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -148,8 +160,12 @@ export default function DashboardPage() {
         const j = await r.json();
         return r.ok ? j : null;
       }),
+      fetch("/api/reports/asset-geo").then(async (r) => {
+        const j = await r.json();
+        return r.ok ? j : null;
+      }),
     ])
-      .then(([s, r, ref, w, sum, x, fl]) => {
+      .then(([s, r, ref, w, sum, x, fl, geo]) => {
         setStock(s);
         setRepairs(r);
         setRefurbished(ref);
@@ -157,6 +173,7 @@ export default function DashboardPage() {
         setSummary(sum);
         setXeroHealth(x);
         setFleet(fl as FleetProcurement | null);
+        setAssetGeo(geo as AssetGeoReport | null);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -190,6 +207,23 @@ export default function DashboardPage() {
       count: m.count,
     }));
   }, [fleet]);
+
+  const geoRegionBarData = useMemo(() => {
+    if (!assetGeo?.byRegion?.length) return [];
+    return assetGeo.byRegion.slice(0, 16).map((row) => ({
+      category:
+        row.label.length > 56 ? `${row.label.slice(0, 54)}…` : row.label,
+      count: row.count,
+    }));
+  }, [assetGeo]);
+
+  const geoCountryBarData = useMemo(() => {
+    if (!assetGeo?.byCountry?.length) return [];
+    return assetGeo.byCountry.slice(0, 12).map((row) => ({
+      category: row.countryCode,
+      count: row.count,
+    }));
+  }, [assetGeo]);
 
   if (loading) {
     return (
@@ -531,6 +565,93 @@ export default function DashboardPage() {
               {fleet
                 ? "No operational assets to analyse — add hardware or check written-off status."
                 : "Could not load fleet procurement data."}
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+          <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+            Geographic distribution (GeoIP)
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-black/70">
+            Approximate location from each asset&apos;s <strong>public IP</strong>{" "}
+            (offline GeoIP database). Refreshed on Assist import and by the weekly
+            sync (Settings → Zoho Assist). VPNs and mobile networks may skew results.
+          </p>
+          <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
+
+          {assetGeo && assetGeo.totalOperational > 0 ? (
+            <>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <KpiCard
+                  label="With public IP"
+                  value={`${Math.round(assetGeo.publicIpCoveragePct * 10) / 10}%`}
+                  hint={`${assetGeo.withPublicIp} of ${assetGeo.totalOperational} operational`}
+                  accent="brand"
+                />
+                <KpiCard
+                  label="With geo region"
+                  value={`${Math.round(assetGeo.geoCoveragePct * 10) / 10}%`}
+                  hint={`${assetGeo.withGeo} of ${assetGeo.totalOperational} operational`}
+                  accent="sky"
+                />
+                <KpiCard
+                  label="Countries (distinct)"
+                  value={assetGeo.byCountry.length}
+                  hint="From resolved IPs"
+                />
+                <KpiCard
+                  label="Regions (distinct)"
+                  value={assetGeo.byRegion.length}
+                  hint="Subdivision / province bucket"
+                  accent="amber"
+                />
+              </div>
+              <p className="mt-3 text-xs text-black/50">{assetGeo.note}</p>
+
+              <div className="mt-8 grid gap-8 xl:grid-cols-2">
+                <div>
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                    By region / province (top)
+                  </h3>
+                  <p className="mt-1 text-xs text-black/55">
+                    Grouped where GeoIP returns a subdivision code (e.g. ZA provinces).
+                  </p>
+                  <div className="mt-4 h-72">
+                    {geoRegionBarData.length ? (
+                      <CategoryBarChart data={geoRegionBarData} />
+                    ) : (
+                      <p className="flex h-full items-center justify-center rounded-lg border border-dashed border-black/15 px-4 text-center text-sm text-black/45">
+                        No regional data yet — sync public IPs from Assist or import
+                        devices.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                    By country
+                  </h3>
+                  <p className="mt-1 text-xs text-black/55">
+                    ISO country code from GeoIP.
+                  </p>
+                  <div className="mt-4 h-72">
+                    {geoCountryBarData.length ? (
+                      <CategoryBarChart data={geoCountryBarData} />
+                    ) : (
+                      <p className="flex h-full items-center justify-center rounded-lg border border-dashed border-black/15 px-4 text-center text-sm text-black/45">
+                        No country data yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="mt-6 text-sm text-black/55">
+              {assetGeo
+                ? "No operational assets — add hardware or check written-off status."
+                : "Could not load geographic report."}
             </p>
           )}
         </section>

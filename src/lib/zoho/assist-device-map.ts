@@ -45,6 +45,8 @@ export type AssistHardwareFields = {
   systemGpu?: string;
   serialNumber?: string;
   zohoAssistDepartmentId?: string;
+  /** Public IPv4 from Assist network details when present */
+  publicIp?: string;
 };
 
 /**
@@ -53,7 +55,15 @@ export type AssistHardwareFields = {
 export function mapAssistDeviceJsonToHardwareFields(json: unknown): AssistHardwareFields {
   const root = asRecord(json);
   const rep = root ? asRecord(root.representation) : null;
-  if (!rep) return {};
+  if (!rep) {
+    const early: AssistHardwareFields = {};
+    if (root) {
+      const pip =
+        extractPublicIpFromRepresentation(root) ?? extractPublicIpDeep(root);
+      if (pip) early.publicIp = pip;
+    }
+    return early;
+  }
 
   const out: AssistHardwareFields = {};
 
@@ -209,7 +219,75 @@ export function mapAssistDeviceJsonToHardwareFields(json: unknown): AssistHardwa
 
   fillHardwareGapsFromDeepScan(rep, out);
 
+  let pip =
+    extractPublicIpFromRepresentation(rep) ??
+    extractPublicIpDeep(rep);
+  if (!pip && root) {
+    pip =
+      extractPublicIpFromRepresentation(root) ?? extractPublicIpDeep(root);
+  }
+  if (pip) out.publicIp = pip;
+
   return out;
+}
+
+const IPV4_RE = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+
+function isLikelyPublicIpv4(s: string): boolean {
+  const t = s.trim();
+  if (!IPV4_RE.test(t)) return false;
+  if (t.startsWith("10.")) return false;
+  if (t.startsWith("127.")) return false;
+  if (t.startsWith("169.254.")) return false;
+  const parts = t.split(".").map(Number);
+  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
+  if (parts[0] === 192 && parts[1] === 168) return false;
+  return true;
+}
+
+function extractPublicIpFromRepresentation(rep: Record<string, unknown>): string | undefined {
+  const blocks: (Record<string, unknown> | null)[] = [
+    asRecord(rep.network_details),
+    asRecord(rep.network),
+    asRecord(rep.network_info),
+    asRecord(rep.connection_info),
+    asRecord(rep.wan),
+  ];
+  for (const nd of blocks) {
+    if (!nd) continue;
+    const raw =
+      str(nd.public_ip_address) ??
+      str(nd.public_ip) ??
+      str(nd.public_ipv4) ??
+      str(nd.publicIP) ??
+      str(nd.wan_ip) ??
+      str(nd.external_ip);
+    if (raw && isLikelyPublicIpv4(raw)) return raw.trim();
+  }
+  return undefined;
+}
+
+function extractPublicIpDeep(obj: unknown, depth = 0): string | undefined {
+  if (depth > 8) return undefined;
+  const r = asRecord(obj);
+  if (!r) return undefined;
+  for (const [k, v] of Object.entries(r)) {
+    const kl = k.toLowerCase();
+    if (
+      typeof v === "string" &&
+      (kl === "public_ip_address" ||
+        kl === "public_ip" ||
+        kl === "public_ipv4" ||
+        (kl.includes("public") && kl.includes("ip")))
+    ) {
+      const t = v.trim();
+      if (isLikelyPublicIpv4(t)) return t;
+    } else if (v && typeof v === "object") {
+      const nested = extractPublicIpDeep(v, depth + 1);
+      if (nested) return nested;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -300,10 +378,25 @@ export function mergeAssistListComputerIntoMapped(
     str(rowMd?.product_name) ??
     str(rowMd?.model);
 
+  const rowNet =
+    asRecord(row.network_details) ??
+    asRecord(row.network) ??
+    asRecord(row.network_info);
+  const listIp =
+    rowNet
+      ? str(rowNet.public_ip_address) ??
+        str(rowNet.public_ip) ??
+        str(rowNet.public_ipv4)
+      : undefined;
+  const publicIp =
+    mapped.publicIp ??
+    (listIp && isLikelyPublicIpv4(listIp) ? listIp.trim() : undefined);
+
   return {
     ...mapped,
     manufacturer: mapped.manufacturer ?? mfg,
     model: mapped.model ?? mdl,
+    publicIp,
     serialNumber:
       mapped.serialNumber ??
       str(rowDi?.serial_number) ??
