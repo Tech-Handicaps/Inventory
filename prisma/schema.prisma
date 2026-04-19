@@ -70,9 +70,9 @@ model Asset {
   systemRam         String?
   systemGpu         String?
   lastSyncedFromAssistAt DateTime?
-  /// Invoice / PO / acquisition date — improves fleet age & procurement analytics
+  /// **App / Postgres only** — never read or written by Zoho Assist import or device APIs. Set via Register hardware / Edit asset; improves age & procurement analytics.
   purchaseDate      DateTime?
-  /// OEM or reseller warranty end — renewal planning (capture as you receive assets)
+  /// **App / Postgres only** — never read or written by Zoho Assist. Set manually for renewal planning.
   warrantyEndDate   DateTime?
   dateAdded         DateTime         @default(now())
   dateUpdated       DateTime         @updatedAt

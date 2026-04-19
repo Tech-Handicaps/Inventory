@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
@@ -71,7 +72,9 @@ export async function PUT(
       warrantyEndDate,
     } = body;
 
-    const updateData: Record<string, unknown> = {};
+    // Scalar FK fields (statusId, deviceTemplateId, …) — use unchecked input; Prisma’s default
+    // AssetUpdateInput only exposes nested `status` / `deviceTemplate`, not direct FK columns.
+    const updateData: Prisma.AssetUncheckedUpdateInput = {};
     if (assetName != null) updateData.assetName = assetName;
     if (category != null) updateData.category = category;
     if (statusId != null) updateData.statusId = statusId;

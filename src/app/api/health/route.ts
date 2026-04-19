@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   connectionHintFromUrlHints,
   getDatabaseUrlHints,
+  normalizeDatabaseUrlForPrisma,
   sanitizeDatabaseError,
 } from "@/lib/prisma-connection";
 import { prisma } from "@/lib/prisma";
@@ -38,7 +39,11 @@ export async function GET() {
   const ok =
     hasSupabaseUrl && hasSupabaseKey && hasDatabaseUrl && databaseConnected;
 
-  const urlHints = hasDatabaseUrl ? getDatabaseUrlHints() : null;
+  const urlHints = hasDatabaseUrl
+    ? getDatabaseUrlHints(
+        normalizeDatabaseUrlForPrisma(process.env.DATABASE_URL)
+      )
+    : null;
   const urlStructureHint =
     !databaseConnected && hasDatabaseUrl && urlHints
       ? connectionHintFromUrlHints(urlHints, databaseError)

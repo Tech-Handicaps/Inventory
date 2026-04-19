@@ -132,8 +132,10 @@ export async function POST(request: NextRequest) {
     mapped = mergeAssistListComputerIntoMapped(listComputer, mapped);
 
     const assistId = mapped.zohoAssistDeviceId ?? resourceId;
+    // Only check existence by id — do not pull Assist-only merge fields here. Purchase/warranty stay null until set in the app (never from Assist).
     const existing = await prisma.asset.findFirst({
       where: { zohoAssistDeviceId: assistId },
+      select: { id: true },
     });
     if (existing) {
       return NextResponse.json(
@@ -246,6 +248,7 @@ export async function POST(request: NextRequest) {
       dnIn?.trim() ||
       assistId;
 
+    // Assist-sourced fields only — purchaseDate / warrantyEndDate are never set here (Postgres-only; edit asset after import).
     const asset = await prisma.asset.create({
       data: {
         assetName,

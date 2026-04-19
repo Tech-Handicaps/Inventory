@@ -17,7 +17,10 @@ export function sanitizeDatabaseError(error: unknown): string {
 /**
  * Non-secret facts about DATABASE_URL for /api/health when debugging connection failures.
  */
-export function getDatabaseUrlHints():
+export function getDatabaseUrlHints(
+  /** Defaults to `process.env.DATABASE_URL` — pass normalized URL after `normalizeDatabaseUrlForPrisma`. */
+  urlOverride?: string
+):
   | {
       hostname: string;
       port: string;
@@ -29,7 +32,7 @@ export function getDatabaseUrlHints():
       parseOk: true;
     }
   | { parseOk: false; parseError: string } {
-  const raw = process.env.DATABASE_URL?.trim();
+  const raw = (urlOverride ?? process.env.DATABASE_URL)?.trim();
   if (!raw) {
     return { parseOk: false, parseError: "DATABASE_URL is empty" };
   }
@@ -75,7 +78,9 @@ export function connectionHintFromUrlHints(
   const err = databaseError ?? "";
   const looksLikePreparedStatementConflict =
     /\b42P05\b/i.test(err) ||
-    /prepared statement.*already exists/i.test(err);
+    /\b26000\b/i.test(err) ||
+    /prepared statement.*already exists/i.test(err) ||
+    /prepared statement.*does not exist/i.test(err);
 
   if (hints.isSupabaseSessionPooler) {
     parts.push(
@@ -86,8 +91,8 @@ export function connectionHintFromUrlHints(
   if (hints.usesPort6543 && !hints.pgbouncerTrue) {
     parts.push(
       looksLikePreparedStatementConflict
-        ? "SQLSTATE 42P05 / “prepared statement already exists” = Prisma is talking to PgBouncer without pgbouncer=true. Add pgbouncer=true (and sslmode=require) so Prisma disables incompatible prepared statements."
-        : "Port 6543 (transaction pooler) requires pgbouncer=true in the query string for Prisma (otherwise you may see SQLSTATE 42P05). Also add sslmode=require."
+        ? "SQLSTATE 42P05 / 26000 / “prepared statement …” errors = Prisma + PgBouncer without pgbouncer=true. Add pgbouncer=true (and sslmode=require) so Prisma disables incompatible prepared statements."
+        : "Port 6543 (transaction pooler) requires pgbouncer=true in the query string for Prisma (otherwise you may see SQLSTATE 42P05 or 26000). Also add sslmode=require."
     );
   }
   if (!hints.sslmodeRequire && hints.hostname.includes("supabase")) {
@@ -105,8 +110,52 @@ export function connectionHintFromUrlHints(
   return parts.length ? parts.join(" ") : null;
 }
 
-export function warnIfLikelyMisconfiguredDatabaseUrl(): void {
-  const hints = getDatabaseUrlHints();
+let loggedAutoPgbouncerAppend = false;
+
+/**
+ * Supabase **transaction** pooler (port 6543) requires `pgbouncer=true` for Prisma.
+ * Without it, Postgres may return SQLSTATE **26000** (“prepared statement … does not exist”)
+ * or **42P05** (“prepared statement already exists”) as connections rotate.
+ */
+export function normalizeDatabaseUrlForPrisma(
+  raw: string | undefined
+): string | undefined {
+  if (!raw?.trim()) return raw;
+  try {
+    const normalized = raw.startsWith("postgres://")
+      ? `postgresql://${raw.slice("postgres://".length)}`
+      : raw;
+    const u = new URL(normalized);
+    const port = u.port || "5432";
+    const isSupabaseTxnPooler =
+      u.hostname.includes("pooler.supabase.com") && port === "6543";
+    if (!isSupabaseTxnPooler) return raw.trim();
+
+    if (u.searchParams.get("pgbouncer") === "true") return raw.trim();
+
+    u.searchParams.set("pgbouncer", "true");
+    if (!u.searchParams.get("sslmode")) u.searchParams.set("sslmode", "require");
+    if (!u.searchParams.get("connection_limit"))
+      u.searchParams.set("connection_limit", "1");
+
+    const out = u.toString();
+    if (!loggedAutoPgbouncerAppend) {
+      loggedAutoPgbouncerAppend = true;
+      console.warn(
+        "[prisma] DATABASE_URL was missing pgbouncer=true for Supabase transaction pooler (6543). " +
+          "It was appended automatically — prefer setting it explicitly in .env (see .env.example)."
+      );
+    }
+    return out;
+  } catch {
+    return raw;
+  }
+}
+
+export function warnIfLikelyMisconfiguredDatabaseUrl(
+  effectiveDatabaseUrl?: string
+): void {
+  const hints = getDatabaseUrlHints(effectiveDatabaseUrl);
   if (!hints.parseOk) return;
 
   if (hints.isSupabaseSessionPooler) {
@@ -120,7 +169,7 @@ export function warnIfLikelyMisconfiguredDatabaseUrl(): void {
   if (hints.usesPort6543 && !hints.pgbouncerTrue) {
     console.warn(
       "[prisma] DATABASE_URL uses port 6543 but is missing `pgbouncer=true`. " +
-        "Without it, PgBouncer can return SQLSTATE 42P05 (prepared statement already exists). " +
+        "Without it, PgBouncer can return SQLSTATE 42P05 / 26000 (prepared statement errors). " +
         "Add ?sslmode=require&pgbouncer=true&connection_limit=1 — see .env.example."
     );
   }
