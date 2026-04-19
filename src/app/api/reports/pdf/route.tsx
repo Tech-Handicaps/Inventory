@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 const REPORT_TYPES = [
   "overall",
   "in_stock",
+  "deployed",
   "refurbished",
   "terminals_in_stock",
 ] as const;
@@ -157,6 +158,53 @@ export async function GET(request: NextRequest) {
         rows: toRows(assets),
       });
       return pdfResponse(buffer, "hna-inventory-in-stock");
+    }
+
+    if (type === "deployed") {
+      const title = "Deployed hardware — field report";
+      const subtitle =
+        "Assets in active deployment — total in the field and counts by category (asset type)";
+      const sid = byCode.deployed;
+      const assets = sid
+        ? await prisma.asset.findMany({
+            where: { statusId: sid },
+            include,
+            orderBy: [{ category: "asc" }, { assetName: "asc" }],
+          })
+        : [];
+      const byCategory = sid
+        ? await prisma.asset.groupBy({
+            by: ["category"],
+            where: { statusId: sid },
+            _count: { id: true },
+          })
+        : [];
+      const categorySummary = [...byCategory]
+        .sort((a, b) => b._count.id - a._count.id)
+        .map((g) => ({
+          label: g.category?.trim() ? g.category : "Uncategorized",
+          value: String(g._count.id),
+        }));
+      const summaryRows = [
+        {
+          label: "Total deployed (in the field)",
+          value: String(assets.length),
+        },
+        {
+          label: "Distinct categories (types)",
+          value: String(categorySummary.length),
+        },
+        ...categorySummary,
+      ];
+      const buffer = await renderInventoryReportPdf({
+        title,
+        subtitle,
+        generatedAt,
+        logoSource,
+        summaryRows,
+        rows: toRows(assets),
+      });
+      return pdfResponse(buffer, "hna-inventory-deployed");
     }
 
     if (type === "refurbished") {

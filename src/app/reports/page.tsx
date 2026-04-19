@@ -31,6 +31,13 @@ const REPORTS: {
       "All items currently in the In stock stage — typically what is available for deployment or issue.",
   },
   {
+    id: "deployed",
+    type: "deployed",
+    title: "Deployed hardware — field",
+    description:
+      "Assets in the Deployed stage: total count in the field and a breakdown by category (type of hardware), plus a full row listing.",
+  },
+  {
     id: "refurbished",
     type: "refurbished",
     title: "Refurbished hardware",
