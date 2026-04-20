@@ -1,8 +1,9 @@
 import {
   financeRecipientEmails,
   getEmailNotificationSettings,
+  isSenderConfiguredForTransport,
 } from "@/lib/email/email-settings";
-import { sendHtmlEmailViaResend } from "@/lib/email/resend-send";
+import { sendHtmlEmailUnified } from "@/lib/email/send-html-email";
 import {
   buildInRepairEmail,
   buildWrittenOffEmail,
@@ -61,10 +62,19 @@ export async function createRepairAcknowledgementAndNotify(params: {
     return;
   }
 
+  const sender = isSenderConfiguredForTransport(settings);
+  if (!sender.ok) {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailSkippedReason: sender.reason },
+    });
+    return;
+  }
+
   if (!settings.fromAddress.includes("@")) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailSkippedReason: "RESEND_FROM_EMAIL_not_set" },
+      data: { emailSkippedReason: "from_email_not_configured" },
     });
     return;
   }
@@ -79,7 +89,7 @@ export async function createRepairAcknowledgementAndNotify(params: {
     appUrl: appBaseUrl(),
   });
 
-  const result = await sendHtmlEmailViaResend({
+  const result = await sendHtmlEmailUnified(settings, {
     to: recipients,
     subject,
     html,
@@ -147,10 +157,19 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     return;
   }
 
+  const sender = isSenderConfiguredForTransport(settings);
+  if (!sender.ok) {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailSkippedReason: sender.reason },
+    });
+    return;
+  }
+
   if (!settings.fromAddress.includes("@")) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailSkippedReason: "RESEND_FROM_EMAIL_not_set" },
+      data: { emailSkippedReason: "from_email_not_configured" },
     });
     return;
   }
@@ -165,7 +184,7 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     appUrl: appBaseUrl(),
   });
 
-  const result = await sendHtmlEmailViaResend({
+  const result = await sendHtmlEmailUnified(settings, {
     to: recipients,
     subject,
     html,

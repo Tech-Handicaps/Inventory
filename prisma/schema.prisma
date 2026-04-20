@@ -171,6 +171,8 @@ model ZohoDeskSettings {
 /// Business toggles for finance notifications (secrets like RESEND_API_KEY stay in env).
 model EmailNotificationSettings {
   id                   String   @id @default("singleton")
+  /// resend_rest | smtp — SMTP uses env SMTP_* ; Resend REST uses RESEND_API_KEY.
+  emailTransport       String   @default("resend_rest")
   /// Master switch — when false, emails are skipped (acknowledgement rows still created).
   sendEnabled          Boolean  @default(false)
   notifyOnRepair       Boolean  @default(true)
