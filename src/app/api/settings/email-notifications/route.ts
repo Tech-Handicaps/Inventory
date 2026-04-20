@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireEmailSettingsAdmin } from "@/lib/auth/require-email-settings-admin";
 import { requireFinanceAckUser } from "@/lib/auth/require-finance-user";
+import { describeSenderBlockedReason } from "@/lib/email/email-notification-copy";
 import {
   getEmailNotificationSettings,
   financeRecipientEmails,
@@ -147,18 +148,10 @@ export async function POST(request: NextRequest) {
 
     const sender = isSenderConfiguredForTransport(settings);
     if (!sender.ok) {
-      const hints: Record<string, string> = {
-        from_email_not_configured:
-          "Set SMTP_FROM, EMAIL_FROM, or RESEND_FROM_EMAIL to a valid from address.",
-        smtp_env_incomplete:
-          "For SMTP, set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD in environment.",
-        resend_api_key_missing:
-          "For Resend REST API, set RESEND_API_KEY (SMTP mode does not use it).",
-      };
-      return NextResponse.json(
-        { error: hints[sender.reason] ?? `Sender not ready: ${sender.reason}` },
-        { status: 400 }
-      );
+      const msg =
+        describeSenderBlockedReason(sender.reason) ??
+        `Sender not ready: ${sender.reason}`;
+      return NextResponse.json({ error: msg }, { status: 400 });
     }
 
     if (!settings.fromAddress.includes("@")) {

@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { EmailTransportId } from "@/lib/email/email-notification-copy";
+import {
+  describeSenderBlockedReason,
+  EMAIL_DELIVERY_OPTIONS,
+  EMAIL_TRANSPORT_LABEL,
+  parseEmailTransport,
+} from "@/lib/email/email-notification-copy";
 
-type Row = {
-  emailTransport: "resend_rest" | "smtp";
+type EmailSettingsRow = {
+  emailTransport: EmailTransportId;
   sendEnabled: boolean;
   notifyOnRepair: boolean;
   notifyOnWrittenOff: boolean;
@@ -19,8 +26,30 @@ type Row = {
   resolvedFromPreview: string;
 };
 
+const fieldClass =
+  "mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm";
+
+function mapApiToRow(j: EmailSettingsRow & { error?: string }): EmailSettingsRow {
+  return {
+    emailTransport: parseEmailTransport(j.emailTransport),
+    sendEnabled: j.sendEnabled,
+    notifyOnRepair: j.notifyOnRepair,
+    notifyOnWrittenOff: j.notifyOnWrittenOff,
+    financeEmails: j.financeEmails,
+    financeGreetingName: j.financeGreetingName,
+    fromName: j.fromName,
+    replyTo: j.replyTo,
+    resendFromEmailConfigured: j.resendFromEmailConfigured,
+    resendApiKeyConfigured: j.resendApiKeyConfigured,
+    smtpEnvConfigured: j.smtpEnvConfigured ?? false,
+    senderConfigured: j.senderConfigured ?? false,
+    senderBlockedReason: j.senderBlockedReason ?? null,
+    resolvedFromPreview: j.resolvedFromPreview,
+  };
+}
+
 export function EmailNotificationsSettingsSection() {
-  const [data, setData] = useState<Row | null>(null);
+  const [data, setData] = useState<EmailSettingsRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -32,25 +61,9 @@ export function EmailNotificationsSettingsSection() {
     const res = await fetch("/api/settings/email-notifications", {
       cache: "no-store",
     });
-    const j = (await res.json()) as Row & { error?: string };
+    const j = (await res.json()) as EmailSettingsRow & { error?: string };
     if (!res.ok) throw new Error(j.error ?? "Load failed");
-    setData({
-      emailTransport:
-        j.emailTransport === "smtp" ? "smtp" : "resend_rest",
-      sendEnabled: j.sendEnabled,
-      notifyOnRepair: j.notifyOnRepair,
-      notifyOnWrittenOff: j.notifyOnWrittenOff,
-      financeEmails: j.financeEmails,
-      financeGreetingName: j.financeGreetingName,
-      fromName: j.fromName,
-      replyTo: j.replyTo,
-      resendFromEmailConfigured: j.resendFromEmailConfigured,
-      resendApiKeyConfigured: j.resendApiKeyConfigured,
-      smtpEnvConfigured: j.smtpEnvConfigured ?? false,
-      senderConfigured: j.senderConfigured ?? false,
-      senderBlockedReason: j.senderBlockedReason ?? null,
-      resolvedFromPreview: j.resolvedFromPreview,
-    });
+    setData(mapApiToRow(j));
   }, []);
 
   useEffect(() => {
@@ -121,6 +134,8 @@ export function EmailNotificationsSettingsSection() {
     return <p className="text-sm text-black/55">Loading email settings…</p>;
   }
 
+  const blockedHint = describeSenderBlockedReason(data.senderBlockedReason);
+
   return (
     <div className="space-y-8">
       <div>
@@ -130,90 +145,81 @@ export function EmailNotificationsSettingsSection() {
         <p className="mt-2 max-w-2xl text-sm text-black/65">
           Choose <strong>Resend HTTP API</strong> or <strong>SMTP</strong> (e.g.
           Resend’s SMTP relay or Microsoft 365). When SMTP is selected, the app
-          does not call the Resend REST API. Secrets stay in environment variables
-          only.
+          does not call the Resend REST API. Secrets stay in environment
+          variables only.
         </p>
-        <ul className="mt-3 list-inside list-disc text-xs text-black/55">
-          <li>
-            Transport: <strong>{data.emailTransport === "smtp" ? "SMTP" : "Resend REST API"}</strong>
-          </li>
-          <li>
-            From address (one of{" "}
-            <code className="text-[11px]">SMTP_FROM</code>,{" "}
-            <code className="text-[11px]">EMAIL_FROM</code>,{" "}
-            <code className="text-[11px]">RESEND_FROM_EMAIL</code>):{" "}
-            <strong>
-              {data.resendFromEmailConfigured ? "Set" : "Not set"}
-            </strong>
-          </li>
-          <li>
-            Resend API key (REST only):{" "}
-            <strong>{data.resendApiKeyConfigured ? "Yes" : "No"}</strong>
-          </li>
-          <li>
-            SMTP env (host + user + password):{" "}
-            <strong>{data.smtpEnvConfigured ? "Yes" : "No"}</strong>
-          </li>
-          <li>
-            Ready to send:{" "}
-            <strong>{data.senderConfigured ? "Yes" : "No"}</strong>
-            {data.senderBlockedReason ? (
-              <span className="ml-1 text-black/45">
-                ({data.senderBlockedReason})
+        <div className="mt-4 rounded-xl border border-black/10 bg-black/[0.03] p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-black/55">
+            Environment status
+          </p>
+          <ul className="mt-2 space-y-1.5 text-xs text-black/55">
+            <li>
+              Transport:{" "}
+              <strong className="text-black/80">
+                {EMAIL_TRANSPORT_LABEL[data.emailTransport]}
+              </strong>
+            </li>
+            <li>
+              From address (one of{" "}
+              <code className="text-[11px]">SMTP_FROM</code>,{" "}
+              <code className="text-[11px]">EMAIL_FROM</code>,{" "}
+              <code className="text-[11px]">RESEND_FROM_EMAIL</code>):{" "}
+              <strong className="text-black/80">
+                {data.resendFromEmailConfigured ? "Set" : "Not set"}
+              </strong>
+            </li>
+            <li>
+              Resend API key (REST only):{" "}
+              <strong className="text-black/80">
+                {data.resendApiKeyConfigured ? "Yes" : "No"}
+              </strong>
+            </li>
+            <li>
+              SMTP env (host + user + password):{" "}
+              <strong className="text-black/80">
+                {data.smtpEnvConfigured ? "Yes" : "No"}
+              </strong>
+            </li>
+            <li>
+              Ready to send:{" "}
+              <strong className="text-black/80">
+                {data.senderConfigured ? "Yes" : "No"}
+              </strong>
+              {blockedHint ? (
+                <span className="ml-1 text-black/45">({blockedHint})</span>
+              ) : null}
+            </li>
+            <li>
+              Resolved From header:{" "}
+              <span className="font-mono text-[11px] text-black/70">
+                {data.resolvedFromPreview || "—"}
               </span>
-            ) : null}
-          </li>
-          <li>
-            Resolved From header:{" "}
-            <span className="font-mono text-[11px]">
-              {data.resolvedFromPreview || "—"}
-            </span>
-          </li>
-        </ul>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <form onSubmit={save} className="max-w-xl space-y-4">
-        <fieldset className="space-y-2 rounded-lg border border-black/10 p-4">
+        <fieldset className="space-y-3 rounded-lg border border-black/10 p-4">
           <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-black/70">
             Delivery transport
           </legend>
-          <label className="flex items-start gap-2">
-            <input
-              type="radio"
-              name="emailTransport"
-              checked={data.emailTransport === "resend_rest"}
-              onChange={() =>
-                setData((d) =>
-                  d ? { ...d, emailTransport: "resend_rest" } : d
-                )
-              }
-              className="mt-1"
-            />
-            <span className="text-sm text-black/80">
-              <strong>Resend REST API</strong> — uses{" "}
-              <code className="text-xs">RESEND_API_KEY</code> and HTTPS (no SMTP).
-            </span>
-          </label>
-          <label className="flex items-start gap-2">
-            <input
-              type="radio"
-              name="emailTransport"
-              checked={data.emailTransport === "smtp"}
-              onChange={() =>
-                setData((d) => (d ? { ...d, emailTransport: "smtp" } : d))
-              }
-              className="mt-1"
-            />
-            <span className="text-sm text-black/80">
-              <strong>SMTP</strong> — uses{" "}
-              <code className="text-xs">SMTP_HOST</code>,{" "}
-              <code className="text-xs">SMTP_PORT</code>,{" "}
-              <code className="text-xs">SMTP_USER</code>,{" "}
-              <code className="text-xs">SMTP_PASSWORD</code> (optional{" "}
-              <code className="text-xs">SMTP_SECURE=true</code> for port 465).
-              Rest API is not used.
-            </span>
-          </label>
+          {EMAIL_DELIVERY_OPTIONS.map((opt) => (
+            <label key={opt.id} className="flex items-start gap-2">
+              <input
+                type="radio"
+                name="emailTransport"
+                checked={data.emailTransport === opt.id}
+                onChange={() =>
+                  setData((d) => (d ? { ...d, emailTransport: opt.id } : d))
+                }
+                className="mt-1"
+              />
+              <span className="text-sm text-black/80">
+                <strong>{opt.title}</strong> — {opt.detail}
+              </span>
+            </label>
+          ))}
         </fieldset>
 
         <label className="flex items-start gap-2">
@@ -277,7 +283,7 @@ export function EmailNotificationsSettingsSection() {
                 d ? { ...d, financeEmails: e.target.value } : d
               )
             }
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className={fieldClass}
             placeholder="finance@handicaps.co.za, lerisha@handicaps.co.za"
           />
           <span className="mt-1 block text-xs text-black/50">
@@ -295,7 +301,7 @@ export function EmailNotificationsSettingsSection() {
             type="email"
             value={testToEmail}
             onChange={(e) => setTestToEmail(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className={fieldClass}
             placeholder="your@email.com — overrides finance list for test only"
           />
           <span className="mt-1 block text-xs text-black/50">
@@ -316,7 +322,7 @@ export function EmailNotificationsSettingsSection() {
                 d ? { ...d, financeGreetingName: e.target.value } : d
               )
             }
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className={fieldClass}
             placeholder="Lerisha"
           />
         </label>
@@ -331,7 +337,7 @@ export function EmailNotificationsSettingsSection() {
             onChange={(e) =>
               setData((d) => (d ? { ...d, fromName: e.target.value } : d))
             }
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className={fieldClass}
           />
         </label>
 
@@ -345,7 +351,7 @@ export function EmailNotificationsSettingsSection() {
             onChange={(e) =>
               setData((d) => (d ? { ...d, replyTo: e.target.value } : d))
             }
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className={fieldClass}
             placeholder="inventory@handicaps.co.za"
           />
         </label>

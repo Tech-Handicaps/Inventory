@@ -1,6 +1,10 @@
+import {
+  parseEmailTransport,
+  type EmailTransportId,
+} from "@/lib/email/email-notification-copy";
 import { prisma } from "@/lib/prisma";
 
-export type EmailTransport = "resend_rest" | "smtp";
+export type EmailTransport = EmailTransportId;
 
 export type EmailNotificationSettingsResolved = {
   emailTransport: EmailTransport;
@@ -20,10 +24,6 @@ function parseEmailList(raw: string): string[] {
     .split(/[,;\n]/)
     .map((s) => s.trim().toLowerCase())
     .filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
-}
-
-function parseTransport(raw: string | null | undefined): EmailTransport {
-  return raw === "smtp" ? "smtp" : "resend_rest";
 }
 
 /**
@@ -70,7 +70,7 @@ export async function getEmailNotificationSettings(): Promise<EmailNotificationS
     where: { id: "singleton" },
   });
 
-  const transport = parseTransport(row?.emailTransport);
+  const transport = parseEmailTransport(row?.emailTransport);
   const fromEmail = resolveFromEmailPart();
 
   return {

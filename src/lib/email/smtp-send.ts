@@ -38,7 +38,7 @@ export async function sendHtmlEmailViaSmtp(
     };
   }
 
-  const port = parseInt(process.env.SMTP_PORT || "587", 10);
+  const port = Number.parseInt(process.env.SMTP_PORT || "587", 10);
   const secure = process.env.SMTP_SECURE === "true" || port === 465;
 
   try {
