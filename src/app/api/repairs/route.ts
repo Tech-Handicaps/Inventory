@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { createDeskTicketForRepair } from "@/lib/zoho/desk";
+import { createRepairAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
 import { prisma } from "@/lib/prisma";
 
 function newRepairReference(): string {
@@ -172,6 +173,16 @@ export async function POST(request: NextRequest) {
         zohoDeskTicketNumber: repair.zohoDeskTicketNumber,
       },
     });
+
+    try {
+      await createRepairAcknowledgementAndNotify({
+        assetId,
+        repairId: repair.id,
+        referenceNumber: repair.referenceNumber,
+      });
+    } catch (e) {
+      console.error("createRepairAcknowledgementAndNotify", e);
+    }
 
     return NextResponse.json(repair);
   } catch (error) {

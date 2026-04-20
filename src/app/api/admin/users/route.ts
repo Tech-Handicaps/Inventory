@@ -4,8 +4,8 @@ import {
   type AssignableRole,
 } from "@/lib/auth/assignable-roles";
 import { appRoleForAuthUser } from "@/lib/auth/app-role-for-user";
-import { isSuperAdminEmail, toStoredRole } from "@/lib/auth/roles";
-import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { isProtectedAdminEmail, isSuperAdminEmail, toStoredRole } from "@/lib/auth/roles";
+import { requireUserAdmin } from "@/lib/auth/require-user-admin";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -19,7 +19,7 @@ function loginRedirectUrl(): string {
  * GET — list auth users with resolved app roles (super admin only).
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireSuperAdmin(request);
+  const auth = await requireUserAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -64,7 +64,8 @@ export async function GET(request: NextRequest) {
         role,
         createdAt: u.created_at,
         lastSignInAt: u.last_sign_in_at ?? null,
-        readOnly: isSuperAdminEmail(u.email ?? null),
+        readOnly: isSuperAdminEmail(u.email ?? null) || isProtectedAdminEmail(u.email ?? null),
+        disabled: Boolean((u as { banned_until?: string | null }).banned_until),
       };
     });
 
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
  * Body: `{ "email": string, "role": "admin" | "reports_only" | "accountant" }`
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireSuperAdmin(request);
+  const auth = await requireUserAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   let body: unknown;
@@ -134,6 +135,12 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  if (isProtectedAdminEmail(email)) {
+    return NextResponse.json(
+      { error: "This admin account is protected and cannot be invited/changed via the UI." },
+      { status: 400 }
+    );
+  }
 
   try {
     const admin = createSupabaseAdmin();
@@ -155,6 +162,37 @@ export async function POST(request: NextRequest) {
     );
 
     if (existing) {
+      if (isProtectedAdminEmail(existing.email ?? null)) {
+        return NextResponse.json(
+          { error: "This admin account is protected and cannot be changed." },
+          { status: 400 }
+        );
+      }
+
+      // Safeguard: do not allow demoting the last remaining admin.
+      const currentStored = await prisma.userRole.findUnique({
+        where: { userId: existing.id },
+      });
+      const currentRole = appRoleForAuthUser(existing, currentStored?.role);
+      if (currentRole === "admin" && assignRole !== "admin") {
+        const ids = listData.users.map((u) => u.id);
+        const rows = await prisma.userRole.findMany({
+          where: { userId: { in: ids } },
+        });
+        const roleById = new Map(rows.map((r) => [r.userId, r.role]));
+        const adminCount = listData.users.reduce((count, u) => {
+          const stored = roleById.get(u.id);
+          const r = appRoleForAuthUser(u, stored);
+          return r === "admin" ? count + 1 : count;
+        }, 0);
+        if (adminCount <= 1) {
+          return NextResponse.json(
+            { error: "Cannot demote the last admin user." },
+            { status: 400 }
+          );
+        }
+      }
+
       await syncUserRole(admin, existing.id, assignRole);
       return NextResponse.json({
         ok: true,

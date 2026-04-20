@@ -15,6 +15,7 @@ type Row = {
   createdAt: string;
   lastSignInAt: string | null;
   readOnly: boolean;
+  disabled?: boolean;
 };
 
 async function readError(res: Response): Promise<string> {
@@ -47,6 +48,15 @@ export function UserManagementSettingsSection() {
   }, []);
 
   useEffect(() => {
+    load()
+      .catch((e) => setError(e instanceof Error ? e.message : "Load failed"))
+      .finally(() => setLoading(false));
+  }, [load]);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setMessage(null);
     load()
       .catch((e) => setError(e instanceof Error ? e.message : "Load failed"))
       .finally(() => setLoading(false));
@@ -99,6 +109,28 @@ export function UserManagementSettingsSection() {
         throw new Error(await readError(res));
       }
       setMessage("Role updated.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function setDisabled(userId: string, disabled: boolean) {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disabled }),
+      });
+      if (!res.ok) {
+        throw new Error(await readError(res));
+      }
+      setMessage(disabled ? "User disabled." : "User enabled.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
@@ -173,9 +205,19 @@ export function UserManagementSettingsSection() {
       </div>
 
       {error ? (
-        <p className="text-sm text-red-700" role="alert">
-          {error}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <p className="text-sm text-red-700" role="alert">
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={() => reload()}
+            disabled={saving || loading}
+            className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+          >
+            Retry
+          </button>
+        </div>
       ) : null}
       {message ? (
         <p className="text-sm text-brand" role="status">
@@ -195,6 +237,7 @@ export function UserManagementSettingsSection() {
                 <th className="px-4 py-3 font-medium">Role</th>
                 <th className="px-4 py-3 font-medium">Last sign-in</th>
                 <th className="px-4 py-3 font-medium">Change role</th>
+                <th className="px-4 py-3 font-medium">Access</th>
               </tr>
             </thead>
             <tbody>
@@ -234,6 +277,26 @@ export function UserManagementSettingsSection() {
                           </option>
                         ))}
                       </select>
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {row.readOnly ? (
+                      <span className="text-xs text-black/45">Protected</span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() =>
+                          void setDisabled(row.id, !(row.disabled ?? false))
+                        }
+                        className={`rounded px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                          row.disabled
+                            ? "border border-black/15 bg-white text-black/70 hover:bg-black/[0.04]"
+                            : "bg-black text-white hover:bg-black/85"
+                        }`}
+                      >
+                        {row.disabled ? "Enable" : "Disable"}
+                      </button>
                     )}
                   </td>
                 </tr>

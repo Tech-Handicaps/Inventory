@@ -3,6 +3,7 @@ import type { AppRole } from "@/lib/auth/roles";
 /** Roles that can be assigned in the UI (never `super_admin`). */
 export const ASSIGNABLE_ROLES = [
   "admin",
+  "operations",
   "reports_only",
   "accountant",
 ] as const;
@@ -25,10 +26,12 @@ export function roleLabel(role: AppRole): string {
       return "Super admin";
     case "admin":
       return "Admin";
+    case "operations":
+      return "Technician / operations";
     case "reports_only":
       return "Reports only";
     case "accountant":
-      return "Accountant / auditor";
+      return "Finance / accountant";
     default:
       return role;
   }

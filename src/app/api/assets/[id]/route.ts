@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
+import { createWrittenOffAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/assets/:id
@@ -281,6 +282,17 @@ export async function PUT(
         ...(transitionToWrittenOff ? { writeOffReason: asset.reason } : {}),
       },
     });
+
+    if (transitionToWrittenOff) {
+      try {
+        await createWrittenOffAcknowledgementAndNotify({
+          assetId: id,
+          reason: asset.reason,
+        });
+      } catch (e) {
+        console.error("createWrittenOffAcknowledgementAndNotify", e);
+      }
+    }
 
     return NextResponse.json(asset);
   } catch (error) {

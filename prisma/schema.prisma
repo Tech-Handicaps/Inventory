@@ -93,6 +93,7 @@ model Asset {
   dateUpdated       DateTime         @updatedAt
   repairs           Repair[]
   xeroSyncs         XeroSync[]
+  financeAcknowledgements FinanceAcknowledgement[]
 }
 
 model Repair {
@@ -107,6 +108,7 @@ model Repair {
   zohoDeskTicketNumber   String? // Display ticket number from Desk (e.g. #12345)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  financeAcknowledgement FinanceAcknowledgement?
 }
 
 model XeroSync {
@@ -164,4 +166,44 @@ model ZohoDeskSettings {
   refreshToken     String?
   dataCenter       String   @default("us")
   updatedAt        DateTime @updatedAt
+}
+
+/// Business toggles for finance notifications (secrets like RESEND_API_KEY stay in env).
+model EmailNotificationSettings {
+  id                   String   @id @default("singleton")
+  /// Master switch — when false, emails are skipped (acknowledgement rows still created).
+  sendEnabled          Boolean  @default(false)
+  notifyOnRepair       Boolean  @default(true)
+  notifyOnWrittenOff   Boolean  @default(true)
+  /// Comma-separated recipient emails for finance notifications.
+  financeEmails        String   @default("")
+  /// Optional greeting name, e.g. "Lerisha" → "Hi Lerisha," in emails.
+  financeGreetingName  String?
+  /// Display name for the From header (domain must be verified in Resend).
+  fromName             String   @default("Handicaps Network Africa Inventory")
+  replyTo              String?
+  updatedAt            DateTime @updatedAt
+}
+
+/// Finance must acknowledge operational events (in-app checkbox; email is supplementary).
+model FinanceAcknowledgement {
+  id                     String    @id @default(cuid())
+  assetId                String
+  asset                  Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// in_repair | written_off
+  eventType              String
+  /// pending | acknowledged
+  status                 String      @default("pending")
+  /// Human-readable ref: repair voucher (HNA-REP-…) or write-off context.
+  referenceText          String?
+  repairId               String?     @unique
+  repair                 Repair?     @relation(fields: [repairId], references: [id], onDelete: SetNull)
+  createdAt              DateTime    @default(now())
+  acknowledgedAt         DateTime?
+  acknowledgedByUserId   String?
+  acknowledgedNote       String?
+  emailSentAt            DateTime?
+  /// Why email was not sent (e.g. not_configured) — still auditable.
+  emailSkippedReason     String?
+  emailError             String?
 }

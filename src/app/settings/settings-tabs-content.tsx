@@ -6,6 +6,7 @@ import { useAppRole } from "@/components/RoleProvider";
 import type { AppRole } from "@/lib/auth/roles";
 import { AuditLogSettingsSection } from "./audit-log-settings-section";
 import { DeviceTemplatesSettingsSection } from "./device-templates-settings-section";
+import { EmailNotificationsSettingsSection } from "./email-notifications-settings-section";
 import { UserManagementSettingsSection } from "./user-management-settings-section";
 import { ZohoDeskSettingsSection } from "./zoho-desk-settings-section";
 import { ZohoAssistSettingsSection } from "./zoho-settings-section";
@@ -15,6 +16,7 @@ const ALL_TABS = [
   { id: "zoho-desk" as const, label: "Zoho Desk API" },
   { id: "templates" as const, label: "Device templates" },
   { id: "audit" as const, label: "Audit log" },
+  { id: "email" as const, label: "Email & finance" },
   { id: "users" as const, label: "Users" },
 ] as const;
 
@@ -22,15 +24,15 @@ type SettingsTabId = (typeof ALL_TABS)[number]["id"];
 
 function tabsForRole(role: AppRole | null, loading: boolean) {
   if (loading || !role) {
-    return ALL_TABS.filter((t) => t.id !== "users");
+    return ALL_TABS.filter((t) => t.id !== "users" && t.id !== "email");
   }
   if (role === "accountant") {
     return ALL_TABS.filter((t) => t.id === "templates");
   }
-  if (role === "super_admin") {
+  if (role === "super_admin" || role === "admin") {
     return [...ALL_TABS];
   }
-  return ALL_TABS.filter((t) => t.id !== "users");
+  return ALL_TABS.filter((t) => t.id !== "users" && t.id !== "email");
 }
 
 export function SettingsTabsContent() {
@@ -50,11 +52,13 @@ export function SettingsTabsContent() {
       ? "templates"
       : tabParam === "audit"
         ? "audit"
-        : tabParam === "users"
-          ? "users"
-          : tabParam === "zoho-desk"
-            ? "zoho-desk"
-            : "zoho";
+        : tabParam === "email"
+          ? "email"
+          : tabParam === "users"
+            ? "users"
+            : tabParam === "zoho-desk"
+              ? "zoho-desk"
+              : "zoho";
 
   const tab: SettingsTabId = useMemo(() => {
     const allowed = new Set(visibleTabs.map((t) => t.id));
@@ -76,8 +80,8 @@ export function SettingsTabsContent() {
   const subtitle =
     role === "accountant" && !loading
       ? "Device templates for reusable make, model, and category presets."
-      : role === "super_admin" && !loading
-        ? "Zoho Assist, Zoho Desk, device templates, audit log, and user invites (super admin only)."
+      : (role === "super_admin" || role === "admin") && !loading
+        ? "Zoho Assist, Zoho Desk, device templates, audit log, email notifications, and user invites."
         : "Zoho Assist and Desk APIs, device templates, and the audit log live here.";
 
   return (
@@ -155,6 +159,16 @@ export function SettingsTabsContent() {
             hidden={tab !== "audit"}
           >
             <AuditLogSettingsSection />
+          </div>
+        ) : null}
+        {visibleTabs.some((t) => t.id === "email") ? (
+          <div
+            id="settings-panel-email"
+            role="tabpanel"
+            aria-labelledby="settings-tab-email"
+            hidden={tab !== "email"}
+          >
+            <EmailNotificationsSettingsSection />
           </div>
         ) : null}
         {visibleTabs.some((t) => t.id === "users") ? (

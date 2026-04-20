@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 import { getSessionRole } from "@/lib/auth/get-session-role";
 
 export const metadata: Metadata = {
-  title: "Settings · Handicaps Network Africa",
+  title: "Acknowledgements · Handicaps Network Africa",
   description:
-    "Zoho Assist API, device templates, and audit log for the inventory system",
+    "Finance acknowledgement queue for repairs and write-offs",
 };
 
-export default async function SettingsLayout({
+export default async function AcknowledgementsLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -17,5 +17,12 @@ export default async function SettingsLayout({
   if (!session) redirect("/login");
   if (session.role === "reports_only") redirect("/reports");
   if (session.role === "operations") redirect("/inventory");
+  if (
+    session.role !== "admin" &&
+    session.role !== "super_admin" &&
+    session.role !== "accountant"
+  ) {
+    redirect("/inventory");
+  }
   return children;
 }

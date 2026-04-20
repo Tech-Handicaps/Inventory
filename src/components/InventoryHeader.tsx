@@ -17,6 +17,7 @@ type Props = {
     | "inventory"
     | "assets"
     | "reports"
+    | "acknowledgements"
     | "settings";
 };
 
@@ -26,6 +27,11 @@ const NAV_ITEMS: { href: string; key: NavKey; label: string }[] = [
   { href: "/inventory", key: "inventory", label: "Hardware board" },
   { href: "/assets", key: "assets", label: "All assets" },
   { href: "/reports", key: "reports", label: "Reports" },
+  {
+    href: "/acknowledgements",
+    key: "acknowledgements",
+    label: "Acknowledgements",
+  },
   { href: "/settings", key: "settings", label: "Settings" },
 ];
 

@@ -10,6 +10,7 @@
 export type AppRole =
   | "super_admin"
   | "admin"
+  | "operations"
   | "reports_only"
   | "accountant";
 
@@ -18,6 +19,7 @@ export type Role = AppRole;
 
 const APP_ROLES_NO_SUPER: readonly AppRole[] = [
   "admin",
+  "operations",
   "reports_only",
   "accountant",
 ];
@@ -25,7 +27,7 @@ const APP_ROLES_NO_SUPER: readonly AppRole[] = [
 const LEGACY_TO_APP: Record<string, AppRole> = {
   management: "admin",
   accounts: "accountant",
-  operations: "admin",
+  operations: "operations",
 };
 
 /**
@@ -57,6 +59,25 @@ export function isSuperAdminEmail(email: string | null | undefined): boolean {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
     .includes(normalized);
+}
+
+/**
+ * Emails that must always retain full admin access (case-insensitive).
+ * Defaults to Shafiek's account to ensure it cannot be demoted/disabled accidentally.
+ * Override/extend with a comma-separated env var in production.
+ */
+export function isProtectedAdminEmail(email: string | null | undefined): boolean {
+  if (!email?.trim()) return false;
+  const normalized = email.trim().toLowerCase();
+  const raw = process.env.PROTECTED_ADMIN_EMAILS?.trim();
+  const fromEnv = raw
+    ? raw
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+  const defaults = ["shafiek@handicaps.co.za"];
+  return [...defaults, ...fromEnv].includes(normalized);
 }
 
 /** Role string safe to persist on UserRole (never super_admin). */

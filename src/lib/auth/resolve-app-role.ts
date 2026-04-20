@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import {
   type AppRole,
+  isProtectedAdminEmail,
   isSuperAdminEmail,
   parseStoredRole,
   toStoredRole,
@@ -14,6 +15,9 @@ import {
 export async function resolveAppRole(user: User): Promise<AppRole> {
   if (isSuperAdminEmail(user.email ?? null)) {
     return "super_admin";
+  }
+  if (isProtectedAdminEmail(user.email ?? null)) {
+    return "admin";
   }
 
   const row = await prisma.userRole.findUnique({
