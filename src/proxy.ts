@@ -91,6 +91,7 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse;
   }
 
+  /** Marketing home (`/`) and credential page (`/login`) — no session required. */
   const isPublicPage = pathname === "/" || pathname === "/login";
 
   if (pathname.startsWith("/api/")) {

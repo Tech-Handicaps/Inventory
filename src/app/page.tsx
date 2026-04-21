@@ -22,6 +22,7 @@ export default function HomePage() {
       <div className="mt-10 flex justify-center">
         <Link
           href="/login"
+          prefetch={false}
           className="font-heading inline-flex min-w-[12rem] items-center justify-center rounded-lg bg-brand px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-brand-hover"
         >
           Sign in
