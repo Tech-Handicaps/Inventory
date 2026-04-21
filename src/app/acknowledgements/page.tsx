@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { InventoryHeader } from "@/components/InventoryHeader";
 
+function makeModelLine(manufacturer: string | null, model: string | null): string | null {
+  const parts = [manufacturer?.trim(), model?.trim()].filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.join(" · ");
+}
+
 type Row = {
   id: string;
   eventType: string;
@@ -19,6 +25,8 @@ type Row = {
     assetName: string;
     category: string;
     serialNumber: string | null;
+    manufacturer: string | null;
+    model: string | null;
     reason: string | null;
   };
   repair: { referenceNumber: string } | null;
@@ -125,7 +133,7 @@ export default function AcknowledgementsPage() {
         ) : null}
 
         <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[800px] text-left text-sm">
             <thead>
               <tr className="border-b border-black/10 bg-black/[0.03]">
                 <th className="px-4 py-3 font-medium">Event</th>
@@ -149,7 +157,12 @@ export default function AcknowledgementsPage() {
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => (
+                rows.map((r) => {
+                  const makeModel = makeModelLine(
+                    r.asset.manufacturer,
+                    r.asset.model
+                  );
+                  return (
                   <tr key={r.id} className="border-b border-black/5">
                     <td className="px-4 py-3 align-top">
                       <span className="font-medium capitalize">
@@ -163,10 +176,15 @@ export default function AcknowledgementsPage() {
                       <div>{r.asset.assetName}</div>
                       <div className="text-xs text-black/55">
                         {r.asset.category}
-                        {r.asset.serialNumber
-                          ? ` · ${r.asset.serialNumber}`
-                          : ""}
                       </div>
+                      {makeModel ? (
+                        <div className="text-xs text-black/55">{makeModel}</div>
+                      ) : null}
+                      {r.asset.serialNumber ? (
+                        <div className="text-xs text-black/50">
+                          Serial: {r.asset.serialNumber}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 align-top font-mono text-xs">
                       {r.repair?.referenceNumber ?? r.referenceText ?? "—"}
@@ -214,7 +232,8 @@ export default function AcknowledgementsPage() {
                       )}
                     </td>
                   </tr>
-                ))
+                );
+                })
               )}
             </tbody>
           </table>

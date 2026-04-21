@@ -8,6 +8,11 @@ function esc(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function escOptional(s: string | null | undefined): string {
+  const t = typeof s === "string" ? s.trim() : "";
+  return t ? esc(t) : "—";
+}
+
 /** Public URL to the same asset as <BrandLogo /> — required for email clients (absolute `src`). */
 function brandLogoEmailUrl(appBaseUrl: string): string {
   const base = appBaseUrl.replace(/\/$/, "");
@@ -60,6 +65,8 @@ export function buildInRepairEmail(params: {
   assetName: string;
   serial: string | null;
   category: string;
+  manufacturer: string | null;
+  model: string | null;
   repairReference: string;
   appUrl: string;
 }): { subject: string; html: string } {
@@ -71,6 +78,8 @@ export function buildInRepairEmail(params: {
       <tr><td style="padding:6px 0;color:${MUTED};width:140px;">Repair reference</td><td style="padding:6px 0;"><strong>${esc(params.repairReference)}</strong></td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Asset</td><td style="padding:6px 0;">${esc(params.assetName)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Category</td><td style="padding:6px 0;">${esc(params.category)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Manufacturer</td><td style="padding:6px 0;">${escOptional(params.manufacturer)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Model</td><td style="padding:6px 0;">${escOptional(params.model)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Serial</td><td style="padding:6px 0;">${params.serial ? esc(params.serial) : "—"}</td></tr>
     </table>
     <p style="margin:16px 0 0 0;">
@@ -85,6 +94,8 @@ export function buildWrittenOffEmail(params: {
   assetName: string;
   serial: string | null;
   category: string;
+  manufacturer: string | null;
+  model: string | null;
   reason: string | null;
   appUrl: string;
 }): { subject: string; html: string } {
@@ -95,6 +106,8 @@ export function buildWrittenOffEmail(params: {
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <tr><td style="padding:6px 0;color:${MUTED};width:140px;">Asset</td><td style="padding:6px 0;">${esc(params.assetName)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Category</td><td style="padding:6px 0;">${esc(params.category)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Manufacturer</td><td style="padding:6px 0;">${escOptional(params.manufacturer)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Model</td><td style="padding:6px 0;">${escOptional(params.model)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Serial</td><td style="padding:6px 0;">${params.serial ? esc(params.serial) : "—"}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};vertical-align:top;">Reason / notes</td><td style="padding:6px 0;">${params.reason ? esc(params.reason) : "—"}</td></tr>
     </table>

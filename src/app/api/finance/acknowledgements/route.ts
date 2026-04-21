@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
             assetName: true,
             category: true,
             serialNumber: true,
+            manufacturer: true,
+            model: true,
             reason: true,
           },
         },

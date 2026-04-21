@@ -31,6 +31,8 @@ export async function createRepairAcknowledgementAndNotify(params: {
       assetName: true,
       category: true,
       serialNumber: true,
+      manufacturer: true,
+      model: true,
     },
   });
   if (!asset) return;
@@ -85,6 +87,8 @@ export async function createRepairAcknowledgementAndNotify(params: {
     assetName: asset.assetName,
     serial: asset.serialNumber,
     category: asset.category,
+    manufacturer: asset.manufacturer,
+    model: asset.model,
     repairReference: params.referenceNumber,
     appUrl: appBaseUrl(),
   });
@@ -123,6 +127,8 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
       assetName: true,
       category: true,
       serialNumber: true,
+      manufacturer: true,
+      model: true,
     },
   });
   if (!asset) return;
@@ -180,6 +186,8 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     assetName: asset.assetName,
     serial: asset.serialNumber,
     category: asset.category,
+    manufacturer: asset.manufacturer,
+    model: asset.model,
     reason: params.reason?.trim() ?? null,
     appUrl: appBaseUrl(),
   });
