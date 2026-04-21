@@ -8,7 +8,18 @@ function esc(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
-export function wrapHnaEmailHtml(bodyHtml: string): string {
+/** Public URL to the same asset as <BrandLogo /> — required for email clients (absolute `src`). */
+function brandLogoEmailUrl(appBaseUrl: string): string {
+  const base = appBaseUrl.replace(/\/$/, "");
+  return `${base}/brand/hna-logo.png`;
+}
+
+/**
+ * Wraps message body in HNA-branded HTML. `appBaseUrl` must be your deployed site origin
+ * (e.g. NEXT_PUBLIC_APP_URL) so the logo loads in inbox clients.
+ */
+export function wrapHnaEmailHtml(bodyHtml: string, appBaseUrl: string): string {
+  const logoSrc = esc(brandLogoEmailUrl(appBaseUrl));
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -21,9 +32,9 @@ export function wrapHnaEmailHtml(bodyHtml: string): string {
             <td style="height:4px;background:${BRAND};"></td>
           </tr>
           <tr>
-            <td style="padding:20px 24px 8px 24px;">
-              <p style="margin:0;font-size:11px;font-weight:bold;letter-spacing:0.12em;text-transform:uppercase;color:${MUTED};">Handicaps Network Africa</p>
-              <p style="margin:6px 0 0 0;font-size:16px;font-weight:bold;color:#111;">Inventory notification</p>
+            <td style="padding:22px 24px 6px 24px;text-align:left;">
+              <img src="${logoSrc}" alt="Handicaps Network Africa" width="200" height="58" style="display:block;border:0;outline:none;text-decoration:none;max-width:200px;width:200px;height:auto;margin:0;padding:0;line-height:0;font-size:0;" />
+              <p style="margin:14px 0 0 0;font-size:16px;font-weight:bold;color:#111;line-height:1.3;">Inventory notification</p>
             </td>
           </tr>
           <tr>
@@ -66,7 +77,7 @@ export function buildInRepairEmail(params: {
       <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
     </p>
   `;
-  return { subject, html: wrapHnaEmailHtml(body) };
+  return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }
 
 export function buildWrittenOffEmail(params: {
@@ -91,7 +102,7 @@ export function buildWrittenOffEmail(params: {
       <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
     </p>
   `;
-  return { subject, html: wrapHnaEmailHtml(body) };
+  return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }
 
 export function greetingLine(financeGreetingName: string | null): string {
