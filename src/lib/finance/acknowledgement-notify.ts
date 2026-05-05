@@ -33,6 +33,7 @@ export async function createRepairAcknowledgementAndNotify(params: {
       serialNumber: true,
       manufacturer: true,
       model: true,
+      club: { select: { name: true } },
     },
   });
   if (!asset) return;
@@ -85,6 +86,7 @@ export async function createRepairAcknowledgementAndNotify(params: {
   const { subject, html } = buildInRepairEmail({
     greeting,
     assetName: asset.assetName,
+    clubName: asset.club?.name ?? null,
     serial: asset.serialNumber,
     category: asset.category,
     manufacturer: asset.manufacturer,
