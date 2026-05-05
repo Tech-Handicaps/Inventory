@@ -22,6 +22,7 @@ type Asset = {
   zohoAssistDeviceId: string | null;
   status: { id: string; code: string; label: string };
   deviceTemplate?: { id: string; label: string } | null;
+  club?: { id: string; name: string } | null;
   reason: string | null;
   dateAdded: string;
   dateUpdated: string;
@@ -198,10 +199,12 @@ export default function AssetsPage() {
             The table lists every unit. Use <strong>Register hardware</strong>{" "}
             above to add one <strong>physical unit</strong> at a time. Pick a{" "}
             <strong>device template</strong> (from Settings) so you don’t retype
-            the same make/model — you still enter this unit’s{" "}
-            <strong>serial</strong> and optional display name so each row is
-            unique. Rows synced from Zoho Assist show <strong>Source: Assist</strong>{" "}
-            and hardware details when populated. Use{" "}
+            the same make/model; optionally assign a <strong>club</strong>{" "}
+            (Settings → Clubs) for consistent site names in the first column.
+            You still enter this unit’s <strong>serial</strong> and optional display
+            name so each row is unique. Rows synced from Zoho Assist show{" "}
+            <strong>Source: Assist</strong>
+            {" "}and hardware details when populated. Use{" "}
             <strong>Import from Zoho Assist</strong> to pull an unattended device
             by name or from the Assist device list (same department as in Settings).
           </p>
@@ -210,9 +213,10 @@ export default function AssetsPage() {
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           {assets.length ? (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1480px] text-sm">
+              <table className="w-full min-w-[1580px] text-sm">
                 <thead>
                   <tr className="border-b border-black/10">
+                    <th className="py-2 text-left font-medium">Club name</th>
                     <th className="py-2 text-left font-medium">Name</th>
                     <th className="py-2 text-left font-medium whitespace-nowrap">
                       Source
@@ -249,6 +253,7 @@ export default function AssetsPage() {
                 <tbody>
                   {assets.map((a) => (
                     <tr key={a.id} className="border-b border-black/5">
+                      <td className="py-2 text-black/85">{a.club?.name ?? "—"}</td>
                       <td className="py-2">{a.assetName}</td>
                       <td className="py-2 text-xs">
                         {a.dataSource === "zoho_assist" ? (

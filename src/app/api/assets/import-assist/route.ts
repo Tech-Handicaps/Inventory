@@ -24,6 +24,7 @@ type ImportBody = {
   acceptWithoutTemplate?: boolean;
   createTemplate?: boolean;
   templateCategory?: string;
+  clubId?: string;
 };
 
 async function resolveResourceId(
@@ -96,7 +97,19 @@ export async function POST(request: NextRequest) {
       acceptWithoutTemplate,
       createTemplate,
       templateCategory,
+      clubId: clubIdIn,
     } = body;
+
+    const resolvedImportClubId =
+      typeof clubIdIn === "string" && clubIdIn.trim() ? clubIdIn.trim() : undefined;
+    if (resolvedImportClubId) {
+      const clubRow = await prisma.club.findUnique({
+        where: { id: resolvedImportClubId },
+      });
+      if (!clubRow) {
+        return NextResponse.json({ error: "clubId not found" }, { status: 400 });
+      }
+    }
 
     const c = await loadZohoAssistSettings();
     if (!c.clientId || !c.clientSecret || !c.refreshToken) {
@@ -263,6 +276,7 @@ export async function POST(request: NextRequest) {
         zohoAssistOrgId: orgId ?? undefined,
         zohoAssistDepartmentId: departmentId,
         deviceTemplateId: template?.id,
+        clubId: resolvedImportClubId,
         deviceLocation: mapped.deviceLocation ?? undefined,
         serialNumber: mapped.serialNumber ?? undefined,
         manufacturer: mapped.manufacturer ?? template?.manufacturer ?? undefined,
@@ -275,7 +289,7 @@ export async function POST(request: NextRequest) {
         publicIpAssistSyncedAt: ip ? new Date() : undefined,
         ...geo,
       },
-      include: { status: true, deviceTemplate: true },
+      include: { status: true, deviceTemplate: true, club: true },
     });
 
     await createAuditLog({

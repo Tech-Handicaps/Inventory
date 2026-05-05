@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppRole } from "@/components/RoleProvider";
 import type { AppRole } from "@/lib/auth/roles";
 import { AuditLogSettingsSection } from "./audit-log-settings-section";
+import { ClubsSettingsSection } from "./clubs-settings-section";
 import { DeviceTemplatesSettingsSection } from "./device-templates-settings-section";
 import { EmailNotificationsSettingsSection } from "./email-notifications-settings-section";
 import { UserManagementSettingsSection } from "./user-management-settings-section";
@@ -15,6 +16,7 @@ const ALL_TABS = [
   { id: "zoho" as const, label: "Zoho Assist API" },
   { id: "zoho-desk" as const, label: "Zoho Desk API" },
   { id: "templates" as const, label: "Device templates" },
+  { id: "clubs" as const, label: "Clubs" },
   { id: "audit" as const, label: "Audit log" },
   { id: "email" as const, label: "Email & finance" },
   { id: "users" as const, label: "Users" },
@@ -27,7 +29,7 @@ function tabsForRole(role: AppRole | null, loading: boolean) {
     return ALL_TABS.filter((t) => t.id !== "users" && t.id !== "email");
   }
   if (role === "accountant") {
-    return ALL_TABS.filter((t) => t.id === "templates");
+    return ALL_TABS.filter((t) => t.id === "templates" || t.id === "clubs");
   }
   if (role === "super_admin" || role === "admin") {
     return [...ALL_TABS];
@@ -50,7 +52,9 @@ export function SettingsTabsContent() {
   const requested: SettingsTabId =
     tabParam === "templates"
       ? "templates"
-      : tabParam === "audit"
+      : tabParam === "clubs"
+        ? "clubs"
+        : tabParam === "audit"
         ? "audit"
         : tabParam === "email"
           ? "email"
@@ -79,7 +83,7 @@ export function SettingsTabsContent() {
 
   const subtitle =
     role === "accountant" && !loading
-      ? "Device templates for reusable make, model, and category presets."
+      ? "Device templates and clubs — reusable presets for hardware and site names."
       : (role === "super_admin" || role === "admin") && !loading
         ? "Zoho Assist, Zoho Desk, device templates, audit log, email notifications, and user invites."
         : "Zoho Assist and Desk APIs, device templates, and the audit log live here.";
@@ -150,6 +154,14 @@ export function SettingsTabsContent() {
           hidden={tab !== "templates"}
         >
           <DeviceTemplatesSettingsSection />
+        </div>
+        <div
+          id="settings-panel-clubs"
+          role="tabpanel"
+          aria-labelledby="settings-tab-clubs"
+          hidden={tab !== "clubs"}
+        >
+          <ClubsSettingsSection />
         </div>
         {visibleTabs.some((t) => t.id === "audit") ? (
           <div

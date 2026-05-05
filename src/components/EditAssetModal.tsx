@@ -12,6 +12,8 @@ type TemplateOpt = {
   model: string | null;
 };
 
+type ClubOpt = { id: string; name: string };
+
 type Props = {
   assetId: string;
   statuses: StatusOpt[];
@@ -30,6 +32,7 @@ export function EditAssetModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [templates, setTemplates] = useState<TemplateOpt[]>([]);
+  const [clubs, setClubs] = useState<ClubOpt[]>([]);
 
   const [assetName, setAssetName] = useState("");
   const [category, setCategory] = useState("");
@@ -43,6 +46,7 @@ export function EditAssetModal({
   const [statusId, setStatusId] = useState("");
   const [reason, setReason] = useState("");
   const [deviceTemplateId, setDeviceTemplateId] = useState("");
+  const [clubId, setClubId] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [warrantyEndDate, setWarrantyEndDate] = useState("");
   const [publicIpDisplay, setPublicIpDisplay] = useState("");
@@ -54,9 +58,10 @@ export function EditAssetModal({
     setLoading(true);
     setLoadError(null);
     try {
-      const [aRes, tRes] = await Promise.all([
+      const [aRes, tRes, cRes] = await Promise.all([
         fetch(`/api/assets/${assetId}`),
         fetch("/api/device-templates"),
+        fetch("/api/clubs"),
       ]);
       const aJson = (await aRes.json()) as Record<string, unknown> & {
         error?: string;
@@ -68,6 +73,8 @@ export function EditAssetModal({
       }
       const tJson = await tRes.json();
       setTemplates(Array.isArray(tJson) ? (tJson as TemplateOpt[]) : []);
+      const cJson = await cRes.json();
+      setClubs(Array.isArray(cJson) ? (cJson as ClubOpt[]) : []);
 
       setAssetName(String(aJson.assetName ?? ""));
       setCategory(String(aJson.category ?? ""));
@@ -85,6 +92,8 @@ export function EditAssetModal({
       setDeviceTemplateId(
         typeof tplId === "string" && tplId ? tplId : ""
       );
+      const cid = aJson.clubId;
+      setClubId(typeof cid === "string" && cid ? cid : "");
       setPurchaseDate(
         toDateInputValue(aJson.purchaseDate as string | undefined)
       );
@@ -159,6 +168,7 @@ export function EditAssetModal({
           statusId,
           reason: reason.trim() || null,
           deviceTemplateId: deviceTemplateId || null,
+          clubId: clubId.trim() || null,
           purchaseDate: purchaseDate.trim() || null,
           warrantyEndDate: warrantyEndDate.trim() || null,
         }),
@@ -224,6 +234,23 @@ export function EditAssetModal({
                 </div>
               ) : null}
 
+              <div>
+                <label className="text-xs font-medium text-black/70">
+                  Club name
+                </label>
+                <select
+                  value={clubId}
+                  onChange={(e) => setClubId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                >
+                  <option value="">— None —</option>
+                  {clubs.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="text-xs font-medium text-black/70">
                   Name

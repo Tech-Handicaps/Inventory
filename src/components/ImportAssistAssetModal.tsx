@@ -48,6 +48,9 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
 
   const [noTpl, setNoTpl] = useState<NoTemplatePayload | null>(null);
   const [tplCategory, setTplCategory] = useState("Hardware");
+  const [clubs, setClubs] = useState<{ id: string; name: string }[]>([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [clubId, setClubId] = useState("");
 
   const reset = useCallback(() => {
     setFormError(null);
@@ -55,6 +58,7 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
     setListError(null);
     setNoTpl(null);
     setTplCategory("Hardware");
+    setClubId("");
   }, []);
 
   useEffect(() => {
@@ -64,6 +68,26 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
     setDisplayName("");
     setRows([]);
   }, [open, reset]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setClubsLoading(true);
+    fetch("/api/clubs")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setClubs(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setClubs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setClubsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const loadList = useCallback(async () => {
     setListBusy(true);
@@ -93,10 +117,14 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
     setBusy(true);
     setFormError(null);
     try {
+      const payload = {
+        ...body,
+        ...(clubId.trim() ? { clubId: clubId.trim() } : {}),
+      };
       const res = await fetch("/api/assets/import-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
       const text = await res.text();
       let data: Record<string, unknown> = {};
@@ -224,6 +252,26 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
         </div>
 
         <div className="px-5 py-4">
+          <div className="mb-4">
+            <label className="text-xs font-medium text-black/70">
+              Club name (optional)
+            </label>
+            <select
+              value={clubId}
+              onChange={(e) => setClubId(e.target.value)}
+              disabled={clubsLoading}
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+            >
+              <option value="">
+                {clubsLoading ? "Loading clubs…" : "— None —"}
+              </option>
+              {clubs.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
           {formError ? (
             <div
               className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"

@@ -17,7 +17,7 @@ export async function GET(
     const { id } = await params;
     const asset = await prisma.asset.findUnique({
       where: { id },
-      include: { status: true, repairs: true, deviceTemplate: true },
+      include: { status: true, repairs: true, deviceTemplate: true, club: true },
     });
     if (!asset) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
@@ -60,6 +60,7 @@ export async function PUT(
       manufacturer,
       model,
       deviceTemplateId,
+      clubId,
       dataSource,
       zohoAssistDeviceId,
       zohoAssistOrgId,
@@ -176,10 +177,24 @@ export async function PUT(
       }
     }
 
+    if (clubId !== undefined) {
+      if (clubId === null || clubId === "") {
+        updateData.clubId = null;
+      } else if (typeof clubId === "string" && clubId.trim()) {
+        const clubRow = await prisma.club.findUnique({
+          where: { id: clubId.trim() },
+        });
+        if (!clubRow) {
+          return NextResponse.json({ error: "clubId not found" }, { status: 400 });
+        }
+        updateData.clubId = clubId.trim();
+      }
+    }
+
     if (Object.keys(updateData).length === 0) {
       const unchanged = await prisma.asset.findUnique({
         where: { id },
-        include: { status: true, deviceTemplate: true },
+        include: { status: true, deviceTemplate: true, club: true },
       });
       return NextResponse.json(unchanged);
     }
@@ -187,7 +202,7 @@ export async function PUT(
     const asset = await prisma.asset.update({
       where: { id },
       data: updateData,
-      include: { status: true, deviceTemplate: true },
+      include: { status: true, deviceTemplate: true, club: true },
     });
 
     const changes: Record<string, { from: unknown; to: unknown }> = {};
@@ -225,6 +240,12 @@ export async function PUT(
       changes.deviceTemplateId = {
         from: before.deviceTemplateId,
         to: asset.deviceTemplateId,
+      };
+    }
+    if (before.clubId !== asset.clubId) {
+      changes.clubId = {
+        from: before.clubId,
+        to: asset.clubId,
       };
     }
     if (before.dataSource !== asset.dataSource) {

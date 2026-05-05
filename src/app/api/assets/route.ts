@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const [assets, total] = await Promise.all([
       prisma.asset.findMany({
         where,
-        include: { status: true, deviceTemplate: true },
+        include: { status: true, deviceTemplate: true, club: true },
         orderBy: { dateUpdated: "desc" },
         take: limit,
         skip: offset,
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       manufacturer,
       model,
       deviceTemplateId,
+      clubId,
       dataSource,
       zohoAssistDeviceId,
       zohoAssistOrgId,
@@ -95,6 +96,17 @@ export async function POST(request: NextRequest) {
       typeof deviceTemplateId === "string" && deviceTemplateId.trim()
         ? deviceTemplateId.trim()
         : undefined;
+
+    const resolvedClubId: string | undefined =
+      typeof clubId === "string" && clubId.trim() ? clubId.trim() : undefined;
+    if (resolvedClubId) {
+      const clubRow = await prisma.club.findUnique({
+        where: { id: resolvedClubId },
+      });
+      if (!clubRow) {
+        return NextResponse.json({ error: "clubId not found" }, { status: 400 });
+      }
+    }
 
     if (templateId) {
       const tpl = await prisma.deviceTemplate.findUnique({
@@ -142,6 +154,7 @@ export async function POST(request: NextRequest) {
         statusId,
         reason,
         deviceTemplateId: templateId,
+        clubId: resolvedClubId,
         serialNumber:
           typeof serialNumber === "string" && serialNumber.trim()
             ? serialNumber.trim()
@@ -181,7 +194,7 @@ export async function POST(request: NextRequest) {
         ...(purchaseD !== undefined ? { purchaseDate: purchaseD } : {}),
         ...(warrantyD !== undefined ? { warrantyEndDate: warrantyD } : {}),
       },
-      include: { status: true, deviceTemplate: true },
+      include: { status: true, deviceTemplate: true, club: true },
     });
 
     await createAuditLog({

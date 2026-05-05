@@ -19,6 +19,11 @@ type DeviceTemplate = {
   systemGpu: string | null;
 };
 
+type Club = {
+  id: string;
+  name: string;
+};
+
 type Props = {
   /** Optional: parent may pass statuses; if empty, the form fetches `/api/statuses` itself. */
   statuses: Status[];
@@ -77,6 +82,8 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
 
   const [templates, setTemplates] = useState<DeviceTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [clubs, setClubs] = useState<Club[]>([]);
+  const [clubsLoading, setClubsLoading] = useState(true);
   const [templateId, setTemplateId] = useState("");
   const [templateFilter, setTemplateFilter] = useState("");
   const [assetName, setAssetName] = useState("");
@@ -90,6 +97,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   const [systemGpu, setSystemGpu] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [warrantyEndDate, setWarrantyEndDate] = useState("");
+  const [clubId, setClubId] = useState("");
   /** null = use defaultStatusId; otherwise user’s explicit choice (must still exist in statuses). */
   const [statusId, setStatusId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -133,6 +141,25 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       })
       .finally(() => {
         if (!cancelled) setTemplatesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setClubsLoading(true);
+    fetch("/api/clubs")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setClubs(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setClubs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setClubsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -183,6 +210,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
         systemGpu: systemGpu.trim() || undefined,
       };
       if (templateId) payload.deviceTemplateId = templateId;
+      if (clubId.trim()) payload.clubId = clubId.trim();
       if (purchaseDate.trim()) payload.purchaseDate = purchaseDate.trim();
       if (warrantyEndDate.trim()) payload.warrantyEndDate = warrantyEndDate.trim();
 
@@ -207,6 +235,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       setSystemGpu("");
       setPurchaseDate("");
       setWarrantyEndDate("");
+      setClubId("");
       onCreated();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not add hardware");
@@ -234,8 +263,9 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
           Each row on the board is a <strong>physical unit</strong>. Pick a{" "}
           <strong>device template</strong> for consistent make/model/category, then
           enter the <strong>serial</strong> (or service tag) so the unit is
-          identifiable. Manage templates under{" "}
-          <strong>Settings → Device templates</strong>.
+          identifiable.           Manage templates under{" "}
+          <strong>Settings → Device templates</strong> and club names under{" "}
+          <strong>Settings → Clubs</strong>.
         </p>
       </div>
 
@@ -525,6 +555,36 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   Used to avoid duplicates and track warranty. Must be unique if
                   provided.
                 </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="hw-club"
+                  className="text-xs font-medium text-black/70"
+                >
+                  Club name
+                </label>
+                <select
+                  id="hw-club"
+                  value={clubId}
+                  onChange={(e) => setClubId(e.target.value)}
+                  disabled={clubsLoading}
+                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                >
+                  <option value="">
+                    {clubsLoading ? "Loading clubs…" : "— None —"}
+                  </option>
+                  {clubs.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {!clubsLoading && clubs.length === 0 ? (
+                  <p className="mt-1.5 text-xs text-black/45">
+                    No clubs in Settings yet — optional until you add some.
+                  </p>
+                ) : null}
               </div>
 
               <div>

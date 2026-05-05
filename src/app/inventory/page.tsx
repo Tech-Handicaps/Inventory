@@ -38,6 +38,7 @@ type Asset = {
   geoCity: string | null;
   status: Status;
   deviceTemplate?: { id: string; label: string } | null;
+  club?: { id: string; name: string } | null;
 };
 
 const PRIMARY_ORDER = [
@@ -240,7 +241,8 @@ export default function InventoryPage() {
             <strong>Register hardware</strong> above (template + serial), then
             move cards by changing status. Use{" "}
             <strong>Settings → Device templates</strong> for reusable make/model
-            presets. Status codes live in the database so you can extend stages
+            presets and <strong>Settings → Clubs</strong> for club/site labels on each unit.
+            Status codes live in the database so you can extend stages
             later without losing data.
           </p>
         </div>
@@ -314,6 +316,7 @@ export default function InventoryPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-black/10 bg-white/80 text-left">
+                      <th className="px-4 py-3 font-medium">Club name</th>
                       <th className="px-4 py-3 font-medium">Name</th>
                       <th className="px-4 py-3 font-medium">Category</th>
                       <th className="px-4 py-3 font-medium">Manufacturer</th>
@@ -332,6 +335,9 @@ export default function InventoryPage() {
                         key={asset.id}
                         className="border-b border-black/5"
                       >
+                        <td className="px-4 py-2 text-black/80">
+                          {asset.club?.name ?? "—"}
+                        </td>
                         <td className="px-4 py-2">{asset.assetName}</td>
                         <td className="px-4 py-2">{asset.category}</td>
                         <td className="px-4 py-2">
@@ -452,6 +458,11 @@ function HardwareCard({
             <p className="font-heading font-semibold text-black">
               {asset.assetName}
             </p>
+            {asset.club ? (
+              <span className="rounded border border-brand/40 bg-brand-muted/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand">
+                {asset.club.name}
+              </span>
+            ) : null}
             {asset.dataSource === "zoho_assist" ? (
               <span className="rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-900">
                 Assist

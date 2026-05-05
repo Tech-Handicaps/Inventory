@@ -14,7 +14,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Extensible: add new rows to load additional states later
+/// Fixed list of club/site names — assets reference via clubId for reporting and registry columns.
+model Club {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assets    Asset[]
+}
+
 model DeviceTemplate {
   id             String   @id @default(cuid())
   label          String   // display name for dropdowns (e.g. "Dell Latitude 5540")
@@ -35,6 +43,7 @@ model DeviceTemplate {
   @@unique([manufacturer, model])
 }
 
+// Extensible: add new rows to AssetStatus to load additional lifecycle states later.
 model AssetStatus {
   id          String   @id @default(cuid())
   code        String   @unique // e.g. "new", "repair", "refurbished", "written_off"
@@ -53,6 +62,8 @@ model Asset {
   model             String?
   deviceTemplateId  String?
   deviceTemplate    DeviceTemplate?  @relation(fields: [deviceTemplateId], references: [id], onDelete: SetNull)
+  clubId            String?
+  club              Club?            @relation(fields: [clubId], references: [id], onDelete: SetNull)
   statusId          String
   status            AssetStatus      @relation(fields: [statusId], references: [id])
   reason            String?          // e.g. write-off reason
