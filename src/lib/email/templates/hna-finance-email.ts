@@ -71,16 +71,21 @@ export function buildInRepairEmail(params: {
   repairReference: string;
   appUrl: string;
 }): { subject: string; html: string } {
-  const clubTail =
-    typeof params.clubName === "string" && params.clubName.trim()
-      ? ` ${params.clubName.trim()}`
-      : "";
-  const subject = `Repair logged · ${params.repairReference} · ${params.assetName}${clubTail}`;
+  const clubTrimmed =
+    typeof params.clubName === "string" ? params.clubName.trim() : "";
+  const subject =
+    clubTrimmed !== ""
+      ? `Repair logged · ${params.repairReference} · ${params.assetName} · ${clubTrimmed}`
+      : `Repair logged · ${params.repairReference} · ${params.assetName}`;
+  const clubBodyCell =
+    clubTrimmed !== ""
+      ? `<strong>${esc(clubTrimmed)}</strong>`
+      : escOptional(params.clubName);
   const body = `
     <p style="margin:0 0 12px 0;">${esc(params.greeting)}</p>
     <p style="margin:0 0 12px 0;">A device has been moved to <strong>In repairs</strong> and a repair voucher was created.</p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
-      <tr><td style="padding:6px 0;color:${MUTED};width:140px;"><strong>Club Name</strong></td><td style="padding:6px 0;">${escOptional(params.clubName)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};width:140px;"><strong>Club Name</strong></td><td style="padding:6px 0;">${clubBodyCell}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};width:140px;">Repair reference</td><td style="padding:6px 0;"><strong>${esc(params.repairReference)}</strong></td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Asset</td><td style="padding:6px 0;">${esc(params.assetName)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Category</td><td style="padding:6px 0;">${esc(params.category)}</td></tr>
