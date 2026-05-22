@@ -18,10 +18,81 @@ type DeskGetResponse = {
   configured: boolean;
 };
 
+type DeskHeaderStatus = "connecting" | "live" | "offline";
+
+function deskHeaderStatus(
+  oauthConnecting: boolean,
+  meta: DeskGetResponse | Pick<
+    DeskGetResponse,
+    "readyForOAuth" | "hasRefreshToken" | "canCreateTickets"
+  > | null
+): DeskHeaderStatus {
+  if (oauthConnecting) return "connecting";
+  if (meta?.canCreateTickets) return "live";
+  return "offline";
+}
+
+function DeskStatusPill({
+  status,
+  hint,
+}: {
+  status: DeskHeaderStatus;
+  hint: string | null;
+}) {
+  const cfg = {
+    offline: {
+      label: "Offline",
+      border: "border-slate-300 bg-slate-50 text-slate-800",
+      dot: "bg-slate-400",
+    },
+    connecting: {
+      label: "Connecting…",
+      border: "border-amber-300 bg-amber-50 text-amber-950",
+      dot: "animate-pulse bg-amber-500",
+    },
+    live: {
+      label: "Live",
+      border: "border-emerald-300 bg-emerald-50 text-emerald-950",
+      dot: "bg-emerald-500",
+    },
+  } as const;
+
+  const c = cfg[status];
+  return (
+    <div
+      className="flex flex-col items-end gap-1 text-right"
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-heading text-[10px] font-bold uppercase tracking-widest ${c.border}`}
+      >
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${c.dot}`}
+          aria-hidden
+        />
+        {c.label}
+      </div>
+      {hint ? (
+        <p className="max-w-[240px] text-[11px] leading-snug text-black/55">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ZohoDeskSettingsSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [oauthConnecting, setOauthConnecting] = useState(false);
+  const [banner, setBanner] = useState<{ type: "ok" | "err"; text: string } | null>(
+    null
+  );
+  const [appOrigin, setAppOrigin] = useState("");
+  const [lastDeskApiVerified, setLastDeskApiVerified] = useState<string | null>(
+    null
+  );
+
   const [orgId, setOrgId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [clientId, setClientId] = useState("");
@@ -73,10 +144,46 @@ export function ZohoDeskSettingsSection() {
       .finally(() => setLoading(false));
   }, [load]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setAppOrigin(window.location.origin);
+    try {
+      const v = window.localStorage.getItem("zoho_desk_last_api_ok");
+      if (v) setLastDeskApiVerified(v);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    const tab = p.get("tab");
+    if (tab !== "zoho-desk") return;
+
+    const connected = p.get("zoho_desk");
+    const err = p.get("zoho_desk_error");
+    if (connected === "connected") {
+      setBanner({
+        type: "ok",
+        text: "Zoho Desk connected — refresh token saved. Save organization details if needed, then run Test Desk API.",
+      });
+      window.history.replaceState({}, "", "/settings?tab=zoho-desk");
+      void load().catch(console.error);
+    } else if (err) {
+      setBanner({
+        type: "err",
+        text: `Zoho Desk OAuth: ${decodeURIComponent(err)}`,
+      });
+      window.history.replaceState({}, "", "/settings?tab=zoho-desk");
+    }
+  }, [load]);
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setTestResult(null);
+    setBanner(null);
     try {
       const res = await fetch("/api/settings/zoho-desk", {
         method: "PUT",
@@ -104,6 +211,25 @@ export function ZohoDeskSettingsSection() {
     }
   }
 
+  async function connectZohoDesk() {
+    setOauthConnecting(true);
+    setBanner(null);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/settings/zoho-desk/oauth-url");
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof j.error === "string" ? j.error : "OAuth URL failed");
+      }
+      const url = typeof j.url === "string" ? j.url : "";
+      if (!url) throw new Error("No OAuth URL returned");
+      window.location.assign(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not start OAuth");
+      setOauthConnecting(false);
+    }
+  }
+
   async function runTest() {
     setTesting(true);
     setTestResult(null);
@@ -116,6 +242,15 @@ export function ZohoDeskSettingsSection() {
         throw new Error(typeof j.error === "string" ? j.error : "Test failed");
       }
       setTestResult(JSON.stringify(j, null, 2));
+      if (typeof j.ok === "boolean" && j.ok === true && typeof window !== "undefined") {
+        const stamp = new Date().toISOString();
+        try {
+          window.localStorage.setItem("zoho_desk_last_api_ok", stamp);
+        } catch {
+          /* ignore */
+        }
+        setLastDeskApiVerified(stamp);
+      }
     } catch (err) {
       setTestResult(
         JSON.stringify(
@@ -137,13 +272,60 @@ export function ZohoDeskSettingsSection() {
     );
   }
 
+  const headerStatus = deskHeaderStatus(oauthConnecting, meta);
+
+  let statusHint: string | null = null;
+  if (headerStatus === "offline") {
+    if (!meta?.readyForOAuth) {
+      statusHint = "Save client ID and secret to enable sign-in.";
+    } else if (!orgId.trim()) {
+      statusHint = "Enter your Desk organization id to create tickets.";
+    } else if (!meta?.hasRefreshToken) {
+      statusHint = "Connect Zoho or paste a refresh token.";
+    } else {
+      statusHint = "Complete required fields below.";
+    }
+  } else if (headerStatus === "connecting") {
+    statusHint = "Continuing at Zoho…";
+  } else {
+    statusHint = "Desk API is authorized for ticketing.";
+    if (lastDeskApiVerified) {
+      statusHint +=
+        ` Tested ${new Date(lastDeskApiVerified).toLocaleString(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })}.`;
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
-        Zoho Desk API
-      </h2>
-      <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
-      <p className="mt-4 text-sm leading-relaxed text-black/70">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+            Zoho Desk API
+          </h2>
+          <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
+        </div>
+        <div className="flex shrink-0 justify-end">
+          <DeskStatusPill status={headerStatus} hint={statusHint} />
+        </div>
+      </div>
+
+      {banner ? (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            banner.type === "ok"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "border-red-200 bg-red-50 text-red-900"
+          }`}
+          role="status"
+        >
+          {banner.text}
+        </div>
+      ) : null}
+
+      <p className="text-sm leading-relaxed text-black/70">
         Separate OAuth client from <strong>Zoho Assist</strong>. Register a client in the{" "}
         <a
           href="https://api-console.zoho.com/"
@@ -153,11 +335,25 @@ export function ZohoDeskSettingsSection() {
         >
           Zoho API Console
         </a>{" "}
-        with scopes such as <code className="rounded bg-black/5 px-1 text-xs">Desk.tickets.ALL</code>{" "}
-        (or create/update ticket scopes). Paste the{" "}
-        <strong>organization id</strong> from Zoho Desk (Setup → Developer Space →
+        with scopes{" "}
+        <code className="rounded bg-black/5 px-1 text-[11px]">
+          Desk.tickets.ALL
+        </code>{" "}
+        and{" "}
+        <code className="rounded bg-black/5 px-1 text-[11px]">Desk.basic.READ</code>
+        {" "}
+        (the latter is required for <strong>Test Desk API</strong>, which lists departments — without it
+        Zoho returns <code className="rounded bg-black/5 px-1 text-[11px]">SCOPE_MISMATCH</code>
+        ). Add the same scopes to this client in the Zoho API Console. Set the authorized redirect URI to{" "}
+        <code className="rounded bg-black/5 px-1 text-[11px]">
+          {(appOrigin || "https://your-app.example").replace(/\/$/, "")}
+          /api/settings/zoho-desk/callback
+        </code>
+        . If you extend scopes later, click <strong>Connect Zoho Desk</strong> again so the stored refresh
+        token includes them. Paste the <strong>organization id</strong> from Zoho Desk (Setup → Developer Space →
         APIs) and optionally a default <strong>department id</strong> for new tickets.
-        If department is empty, the first department returned by the API is used.
+        Save client credentials, then use <strong>Connect Zoho Desk</strong> or paste a refresh
+        token. If department is empty, the first department returned by the API is used.
       </p>
 
       <form onSubmit={save} className="mt-6 space-y-4">
@@ -243,7 +439,7 @@ export function ZohoDeskSettingsSection() {
             value={refreshToken}
             onChange={(e) => setRefreshToken(e.target.value)}
             rows={2}
-            placeholder="Generate in API Console (Self Client) with Desk scopes"
+            placeholder="Paste from Self Client with Desk scopes, or use Connect Zoho Desk"
             className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-xs"
           />
           <label className="mt-2 flex items-center gap-2 text-xs text-black/70">
@@ -271,6 +467,14 @@ export function ZohoDeskSettingsSection() {
             className="font-heading rounded-lg border-2 border-brand bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-brand disabled:opacity-50"
           >
             {testing ? "Testing…" : "Test Desk API"}
+          </button>
+          <button
+            type="button"
+            disabled={oauthConnecting || !meta?.readyForOAuth}
+            onClick={() => void connectZohoDesk()}
+            className="font-heading rounded-lg border-2 border-black bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-black transition-colors hover:bg-black/[0.04] disabled:opacity-50"
+          >
+            {oauthConnecting ? "Redirecting…" : "Connect Zoho Desk"}
           </button>
         </div>
         {meta?.canCreateTickets ? (

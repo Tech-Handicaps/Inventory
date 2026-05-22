@@ -3,11 +3,12 @@ import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { getPublicOriginFromRequest } from "@/lib/http/public-origin";
 import { prisma } from "@/lib/prisma";
-import { exchangeAuthorizationCode, loadZohoAssistSettings } from "@/lib/zoho/client";
+import { exchangeAuthorizationCode } from "@/lib/zoho/client";
+import { loadZohoDeskSettings } from "@/lib/zoho/desk";
 
-const STATE_COOKIE = "zoho_oauth_state";
+const STATE_COOKIE = "zoho_desk_oauth_state";
 
-// GET /api/settings/zoho/callback — OAuth redirect from Zoho Accounts
+// GET /api/settings/zoho-desk/callback — OAuth redirect from Zoho Accounts
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
@@ -15,12 +16,12 @@ export async function GET(request: NextRequest) {
 
   const origin = getPublicOriginFromRequest(request).replace(/\/$/, "");
   const settingsUrl = new URL("/settings", origin);
-  settingsUrl.searchParams.set("tab", "zoho");
+  settingsUrl.searchParams.set("tab", "zoho-desk");
 
   const searchParams = request.nextUrl.searchParams;
   const error = searchParams.get("error");
   if (error) {
-    settingsUrl.searchParams.set("zoho_error", error);
+    settingsUrl.searchParams.set("zoho_desk_error", error);
     return NextResponse.redirect(settingsUrl);
   }
 
@@ -29,21 +30,18 @@ export async function GET(request: NextRequest) {
   const cookieState = request.cookies.get(STATE_COOKIE)?.value;
 
   if (!code || !state || !cookieState || state !== cookieState) {
-    settingsUrl.searchParams.set(
-      "zoho_error",
-      "invalid_state"
-    );
+    settingsUrl.searchParams.set("zoho_desk_error", "invalid_state");
     return NextResponse.redirect(settingsUrl);
   }
 
   try {
-    const c = await loadZohoAssistSettings();
+    const c = await loadZohoDeskSettings();
     if (!c.clientId || !c.clientSecret) {
-      settingsUrl.searchParams.set("zoho_error", "missing_credentials");
+      settingsUrl.searchParams.set("zoho_desk_error", "missing_credentials");
       return NextResponse.redirect(settingsUrl);
     }
 
-    const redirectUri = `${origin}/api/settings/zoho/callback`;
+    const redirectUri = `${origin}/api/settings/zoho-desk/callback`;
 
     const tokens = await exchangeAuthorizationCode({
       code,
@@ -55,19 +53,21 @@ export async function GET(request: NextRequest) {
 
     if (!tokens.refresh_token) {
       settingsUrl.searchParams.set(
-        "zoho_error",
+        "zoho_desk_error",
         "no_refresh_token — try again with prompt=consent or paste a Self Client refresh token"
       );
       return NextResponse.redirect(settingsUrl);
     }
 
-    await prisma.zohoAssistSettings.upsert({
+    await prisma.zohoDeskSettings.upsert({
       where: { id: "singleton" },
       create: {
         id: "singleton",
+        orgId: c.orgId,
+        departmentId: c.departmentId,
         clientId: c.clientId,
         clientSecret: c.clientSecret,
-        refreshToken: tokens.refresh_token ?? null,
+        refreshToken: tokens.refresh_token,
         dataCenter: c.dataCenter,
       },
       update: {
@@ -77,20 +77,23 @@ export async function GET(request: NextRequest) {
 
     await createAuditLog({
       userId: user.id,
-      actionType: "integration.zoho.oauth_connected",
-      notes: "Zoho Assist OAuth completed; refresh token stored",
-      metadata: { dataCenter: c.dataCenter },
+      actionType: "integration.zoho_desk.oauth_connected",
+      notes: "Zoho Desk OAuth completed; refresh token stored",
+      metadata: {
+        dataCenter: c.dataCenter,
+        hasOrgId: !!(c.orgId && c.orgId.length > 0),
+      },
     });
 
-    settingsUrl.searchParams.set("zoho", "connected");
+    settingsUrl.searchParams.set("zoho_desk", "connected");
     const res = NextResponse.redirect(settingsUrl);
     res.cookies.delete(STATE_COOKIE);
     return res;
   } catch (e) {
-    console.error("GET /api/settings/zoho/callback", e);
+    console.error("GET /api/settings/zoho-desk/callback", e);
     const msg =
       e instanceof Error ? e.message.slice(0, 120) : "token_exchange_failed";
-    settingsUrl.searchParams.set("zoho_error", encodeURIComponent(msg));
+    settingsUrl.searchParams.set("zoho_desk_error", encodeURIComponent(msg));
     return NextResponse.redirect(settingsUrl);
   }
 }

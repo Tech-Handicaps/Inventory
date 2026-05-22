@@ -6,6 +6,9 @@ import {
 } from "@/lib/zoho/client";
 import { type ZohoDataCenter } from "@/lib/zoho/constants";
 
+/** Scopes for Desk: tickets + listing departments (org setup & tests use GET /departments). */
+export const ZOHO_DESK_OAUTH_SCOPES = "Desk.tickets.ALL,Desk.basic.READ";
+
 /** Desk API hosts (v1) — align with Zoho data center docs. */
 const DESK_API_V1: Record<ZohoDataCenter, string> = {
   us: "https://desk.zoho.com/api/v1",
