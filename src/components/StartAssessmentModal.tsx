@@ -15,24 +15,15 @@ type DeskMeta = {
 
 type Props = {
   asset: Asset | null;
-  /** When the asset is in Assessment, linking the open intake record (required by API). */
-  assessmentId?: string | null;
-  assessmentReference?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 };
 
-export function LogRepairModal({
-  asset,
-  assessmentId,
-  assessmentReference,
-  onClose,
-  onSuccess,
-}: Props) {
-  const [notes, setNotes] = useState("");
+/** Modal: Deployed → Assessment lifecycle + optional Zoho Desk (matches POST /api/assessments) */
+export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
+  const [intakeNotes, setIntakeNotes] = useState("");
   const [existingDeskTicket, setExistingDeskTicket] = useState("");
   const [createDeskTicket, setCreateDeskTicket] = useState(false);
-  const [moveToRepair, setMoveToRepair] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [desk, setDesk] = useState<DeskMeta | null>(null);
@@ -52,10 +43,9 @@ export function LogRepairModal({
 
   useEffect(() => {
     if (asset) {
-      setNotes("");
+      setIntakeNotes("");
       setExistingDeskTicket("");
       setCreateDeskTicket(false);
-      setMoveToRepair(true);
       setError(null);
       loadDesk().catch(() =>
         setDesk({ canCreateTickets: false, configured: false })
@@ -73,29 +63,30 @@ export function LogRepairModal({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!asset) return;
+    const selected = asset;
+    if (!selected) return;
+
     const linkTrimmed = existingDeskTicket.replace(/^#/, "").trim();
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/repairs", {
+      const res = await fetch("/api/assessments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          assetId: asset.id,
-          assessmentId: assessmentId?.trim() || undefined,
-          technicianNotes: notes.trim() || undefined,
-          repairStatus: "pending",
+          assetId: selected.id,
+          intakeNotes: intakeNotes.trim() || undefined,
           createDeskTicket:
-            linkTrimmed.length === 0 && createDeskTicket && (desk?.canCreateTickets ?? false),
+            linkTrimmed.length === 0 &&
+            createDeskTicket &&
+            (desk?.canCreateTickets ?? false),
           existingDeskTicket: linkTrimmed || undefined,
-          moveAssetToRepairStage: moveToRepair,
         }),
       });
-      const j = await res.json().catch(() => ({}));
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         throw new Error(
-          typeof j.error === "string" ? j.error : "Could not log repair"
+          typeof j.error === "string" ? j.error : "Could not start assessment"
         );
       }
       onSuccess();
@@ -115,7 +106,7 @@ export function LogRepairModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="log-repair-title"
+      aria-labelledby="start-assessment-title"
       onClick={onClose}
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
@@ -126,41 +117,36 @@ export function LogRepairModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2
-          id="log-repair-title"
+          id="start-assessment-title"
           className="font-heading text-lg font-bold uppercase tracking-wide text-black"
         >
-          Log repair
+          Send to assessment
         </h2>
         <p className="mt-1 text-sm text-black/65">
-          {asset.assetName}
+          Moves this unit into triage between field deployment and a formal repair
+          record.
+
+          <span className="ml-2">
+            <span className="font-semibold text-black">{asset.assetName}</span>
+          </span>
           {asset.serialNumber ? (
             <span className="ml-2 font-mono text-xs">
               S/N {asset.serialNumber}
             </span>
           ) : null}
         </p>
-        {assessmentReference?.trim() ? (
-          <p className="mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-            Completing intake{" "}
-            <span className="font-mono font-semibold">
-              {assessmentReference.trim()}
-            </span>
-            {" — "}
-            a formal repair record will close this assessment.
-          </p>
-        ) : null}
 
         <form onSubmit={submit} className="mt-4 space-y-4">
           <label className="block">
             <span className="text-xs font-medium text-black/70">
-              Technician notes (optional)
+              Intake / triage notes (optional)
             </span>
             <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={intakeNotes}
+              onChange={(e) => setIntakeNotes(e.target.value)}
               rows={3}
               className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-              placeholder="Fault, parts requested, etc."
+              placeholder="Symptoms, depot collection context, urgency, etc."
             />
           </label>
 
@@ -175,29 +161,14 @@ export function LogRepairModal({
                 onChange={(e) => setExistingDeskTicket(e.target.value)}
                 autoComplete="off"
                 className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
-                placeholder="e.g. 12345 or long id from the ticket URL"
+                placeholder="Ticket id or URL fragment"
               />
               <p className="mt-1 text-[11px] leading-snug text-black/55">
-                If you enter a ticket, this repair is linked to it and we{" "}
-                <strong>do not</strong> create a new Desk ticket. Technician notes
-                (and a short inventory summary) are posted as an{" "}
-                <strong>internal</strong> Desk comment — not visible to the
-                requester on the portal.
+                If set, intake context is appended as an <strong>internal</strong>
+                Desk comment (not visible on the portal to the requester).
               </p>
             </label>
           ) : null}
-
-          <label className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              checked={moveToRepair}
-              onChange={(e) => setMoveToRepair(e.target.checked)}
-              className="mt-1"
-            />
-            <span className="text-sm text-black/80">
-              Move asset to <strong>In Repairs</strong> lifecycle stage
-            </span>
-          </label>
 
           {deskEnabled ? (
             <label
@@ -214,15 +185,14 @@ export function LogRepairModal({
                 className="mt-1"
               />
               <span className="text-sm text-black/80">
-                Create a <strong>new</strong> Zoho Desk ticket (includes
-                inventory reference in the description)
+                Create a <strong>new</strong> Zoho Desk ticket for this assessment
               </span>
             </label>
           ) : (
             <p className="rounded-lg bg-black/[0.04] px-3 py-2 text-xs text-black/55">
-              Zoho Desk ticketing is not configured. Add org id and OAuth in{" "}
-              <strong>Settings → Zoho Desk API</strong> to enable linking or new
-              tickets.
+              Zoho Desk is not configured. Configure{" "}
+              <strong>Settings → Zoho Desk API</strong> to link or create tickets
+              from here.
             </p>
           )}
 
@@ -238,7 +208,7 @@ export function LogRepairModal({
               disabled={saving}
               className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Create repair record"}
+              {saving ? "Saving…" : "Start assessment"}
             </button>
             <button
               type="button"

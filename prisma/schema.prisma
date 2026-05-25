@@ -102,15 +102,41 @@ model Asset {
   warrantyEndDate   DateTime?
   dateAdded         DateTime         @default(now())
   dateUpdated       DateTime         @updatedAt
+  assessments     Assessment[]
   repairs           Repair[]
   xeroSyncs         XeroSync[]
   financeAcknowledgements FinanceAcknowledgement[]
+}
+
+/// Intake / triage between deployed field returns and formal repair authorization.
+model Assessment {
+  id                   String       @id @default(cuid())
+  assetId              String
+  asset                Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// e.g. HNA-ASM-2026-A1B2C3D4 — stable until completed or cancelled
+  referenceNumber      String       @unique
+  /// open | completed | cancelled
+  workflowStatus       String       @default("open")
+  intakeNotes          String?
+  zohoDeskTicketId     String?
+  zohoDeskTicketNumber String?
+  completedAt          DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  repairs              Repair[]
+  financeAcknowledgements FinanceAcknowledgement[]
+
+  @@index([assetId, workflowStatus])
 }
 
 model Repair {
   id             String   @id @default(cuid())
   assetId        String
   asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// When set: repair originated from completing an Assessment (one-to-one per assessment).
+  assessmentId   String?  @unique
+  assessment     Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   /// Human-readable case id for PDFs, audit, and cross-reference to Zoho Desk (e.g. HNA-REP-2026-A1B2C3D4)
   referenceNumber String  @unique
   repairStatus   String   // pending, in_progress, completed, cancelled
@@ -187,6 +213,8 @@ model EmailNotificationSettings {
   /// Master switch — when false, emails are skipped (acknowledgement rows still created).
   sendEnabled          Boolean  @default(false)
   notifyOnRepair       Boolean  @default(true)
+  /// Email finance when hardware enters Assessment (Deployed → Assessment).
+  notifyOnAssessment   Boolean  @default(true)
   notifyOnWrittenOff   Boolean  @default(true)
   /// Comma-separated recipient emails for finance notifications.
   financeEmails        String   @default("")
@@ -203,14 +231,16 @@ model FinanceAcknowledgement {
   id                     String    @id @default(cuid())
   assetId                String
   asset                  Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  /// in_repair | written_off
+  /// in_repair | in_assessment | written_off
   eventType              String
   /// pending | acknowledged
   status                 String      @default("pending")
-  /// Human-readable ref: repair voucher (HNA-REP-…) or write-off context.
+  /// Human-readable ref: repair voucher (HNA-REP-…), assessment ref (HNA-ASM-…), or write-off context.
   referenceText          String?
   repairId               String?     @unique
   repair                 Repair?     @relation(fields: [repairId], references: [id], onDelete: SetNull)
+  assessmentId           String?     @unique
+  assessment             Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   createdAt              DateTime    @default(now())
   acknowledgedAt         DateTime?
   acknowledgedByUserId   String?

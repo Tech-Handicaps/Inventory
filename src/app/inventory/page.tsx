@@ -5,6 +5,7 @@ import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
 import { LogRepairModal } from "@/components/LogRepairModal";
+import { StartAssessmentModal } from "@/components/StartAssessmentModal";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 
 type Status = {
@@ -13,6 +14,12 @@ type Status = {
   label: string;
   description: string | null;
   sortOrder: number;
+};
+
+type OpenAssessmentBrief = {
+  id: string;
+  referenceNumber: string;
+  workflowStatus: string;
 };
 
 type Asset = {
@@ -39,15 +46,70 @@ type Asset = {
   status: Status;
   deviceTemplate?: { id: string; label: string } | null;
   club?: { id: string; name: string } | null;
+  /** Open assessments for this asset (API returns at most one when workflowStatus is open). */
+  assessments?: OpenAssessmentBrief[];
 };
 
 const PRIMARY_ORDER = [
   "new_stock",
   "in_stock",
   "deployed",
+  "assessment",
   "repair",
   "refurbished",
 ] as const;
+
+function openAssessment(asset: Asset): OpenAssessmentBrief | null {
+  const row = asset.assessments?.[0];
+  return row ?? null;
+}
+
+/** Hide invalid lifecycle shortcuts (server also enforces transitions). */
+function statusesForMoves(statuses: Status[], asset: Asset): Status[] {
+  return statuses.filter((s) => {
+    if (asset.status.code === "deployed" && s.code === "repair") return false;
+    if (asset.status.code === "assessment" && s.code === "repair") return false;
+    return true;
+  });
+}
+
+function AssessmentWorkflowPill({ workflowStatus }: { workflowStatus: string }) {
+  const norm = workflowStatus.trim().toLowerCase();
+  const cfg =
+    norm === "completed"
+      ? {
+          label: "Completed",
+          ring: "ring-emerald-500/35",
+          dot: "bg-emerald-500",
+          fg: "text-emerald-950",
+          bg: "bg-emerald-50",
+        }
+      : norm === "cancelled"
+        ? {
+            label: "Cancelled",
+            ring: "ring-red-500/35",
+            dot: "bg-red-600",
+            fg: "text-red-950",
+            bg: "bg-red-50",
+          }
+        : {
+            label: "Open",
+            ring: "ring-amber-400/45",
+            dot: "bg-amber-400",
+            fg: "text-amber-950",
+            bg: "bg-amber-50",
+          };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${cfg.ring} ${cfg.bg} ${cfg.fg}`}
+      title="Assessment workflow status"
+    >
+      <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`} aria-hidden />
+      {cfg.label}
+    </span>
+  );
+}
 
 /** When GET /api/statuses fails, columns still render using status embedded on each asset. */
 function deriveStatusesFromAssets(assets: Asset[]): Status[] {
@@ -65,6 +127,7 @@ const columnAccent: Record<string, string> = {
   new_stock: "border-t-black bg-white",
   in_stock: "border-t-brand bg-brand-muted",
   deployed: "border-t-sky-500 bg-sky-50/90",
+  assessment: "border-t-amber-500 bg-amber-50/90",
   repair: "border-t-orange-500 bg-orange-50/90",
   refurbished: "border-t-[#0b5d2e] bg-emerald-50/80",
   written_off: "border-t-neutral-400 bg-neutral-100",
@@ -78,6 +141,11 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [repairAsset, setRepairAsset] = useState<Asset | null>(null);
+  const [repairAssessment, setRepairAssessment] = useState<{
+    id: string;
+    referenceNumber: string;
+  } | null>(null);
+  const [assessAsset, setAssessAsset] = useState<Asset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -183,6 +251,39 @@ export default function InventoryPage() {
     }
   }
 
+  async function cancelOpenAssessment(asset: Asset) {
+    const o = openAssessment(asset);
+    if (!o) {
+      window.alert("No open assessment is linked on this card. Refresh if this looks wrong.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Cancel assessment ${o.referenceNumber}? The unit moves back to Deployed unless you change stage again.`
+      )
+    ) {
+      return;
+    }
+    setSavingId(asset.id);
+    try {
+      const res = await fetch(`/api/assessments/${encodeURIComponent(o.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel" }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(typeof j.error === "string" ? j.error : "Cancel failed");
+      }
+      await load();
+    } catch (e) {
+      console.error(e);
+      window.alert(e instanceof Error ? e.message : "Cancel failed");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   const removeAsset = useCallback(
     async (id: string, name: string) => {
       if (!confirm(`Delete “${name}”? This cannot be undone.`)) return;
@@ -239,7 +340,8 @@ export default function InventoryPage() {
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-black/70">
             Each column is a lifecycle stage for hardware. Use{" "}
             <strong>Register hardware</strong> above (template + serial), then
-            move cards by changing status. Use{" "}
+            move cards by changing status. <strong>Deployed</strong> field returns flow
+            through <strong>Assessment</strong> (triage) before <strong>In repairs</strong>. Use{" "}
             <strong>Settings → Device templates</strong> for reusable make/model
             presets and <strong>Settings → Clubs</strong> for club/site labels on each unit.
             Status codes live in the database so you can extend stages
@@ -258,7 +360,7 @@ export default function InventoryPage() {
               (new_stock, deployed, …) exist.
             </p>
           ) : null}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {orderedPrimary.map((st) => (
               <div
                 key={st.id}
@@ -287,7 +389,28 @@ export default function InventoryPage() {
                         statuses={effectiveStatuses}
                         disabled={savingId === asset.id}
                         onStatusChange={updateAssetStatus}
-                        onLogRepair={() => setRepairAsset(asset)}
+                        onStartAssessment={
+                          asset.status.code === "deployed"
+                            ? () => setAssessAsset(asset)
+                            : undefined
+                        }
+                        onLogRepair={() => {
+                          setRepairAsset(asset);
+                          const o = openAssessment(asset);
+                          if (asset.status.code === "assessment" && o) {
+                            setRepairAssessment({
+                              id: o.id,
+                              referenceNumber: o.referenceNumber,
+                            });
+                          } else {
+                            setRepairAssessment(null);
+                          }
+                        }}
+                        onCancelAssessment={
+                          asset.status.code === "assessment"
+                            ? () => void cancelOpenAssessment(asset)
+                            : undefined
+                        }
                         onEdit={() => setEditingId(asset.id)}
                         onDelete={() => void removeAsset(asset.id, asset.assetName)}
                       />
@@ -400,10 +523,20 @@ export default function InventoryPage() {
             </div>
           </section>
         )}
+        <StartAssessmentModal
+          asset={assessAsset}
+          onClose={() => setAssessAsset(null)}
+          onSuccess={() => void load()}
+        />
         <LogRepairModal
           asset={repairAsset}
-          onClose={() => setRepairAsset(null)}
-          onSuccess={() => load()}
+          assessmentId={repairAssessment?.id}
+          assessmentReference={repairAssessment?.referenceNumber}
+          onClose={() => {
+            setRepairAsset(null);
+            setRepairAssessment(null);
+          }}
+          onSuccess={() => void load()}
         />
 
         {editingId ? (
@@ -431,7 +564,9 @@ function HardwareCard({
   statuses,
   disabled,
   onStatusChange,
+  onStartAssessment,
   onLogRepair,
+  onCancelAssessment,
   onEdit,
   onDelete,
 }: {
@@ -439,7 +574,9 @@ function HardwareCard({
   statuses: Status[];
   disabled: boolean;
   onStatusChange: (id: string, statusId: string) => void;
+  onStartAssessment?: () => void;
   onLogRepair: () => void;
+  onCancelAssessment?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -450,6 +587,8 @@ function HardwareCard({
     asset.geoRegionName
   );
 
+  const intake = openAssessment(asset);
+
   return (
     <article className="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -458,6 +597,24 @@ function HardwareCard({
             <p className="font-heading font-semibold text-black">
               {asset.assetName}
             </p>
+            {asset.status.code === "assessment" ? (
+              <>
+                {intake ? (
+                  <>
+                    <AssessmentWorkflowPill
+                      workflowStatus={intake.workflowStatus}
+                    />
+                    <span className="rounded border border-black/15 bg-black/[0.04] px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-black/75">
+                      {intake.referenceNumber}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] font-semibold uppercase text-amber-800">
+                    No open intake link
+                  </span>
+                )}
+              </>
+            ) : null}
             {asset.club ? (
               <span className="rounded border border-brand/40 bg-brand-muted/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand">
                 {asset.club.name}
@@ -562,14 +719,36 @@ function HardwareCard({
         </div>
       </div>
       <div className="mt-3 flex flex-col gap-2">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onLogRepair}
-          className="font-heading w-full rounded-md border-2 border-orange-500/80 bg-orange-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-orange-900 transition-colors hover:bg-orange-100 disabled:opacity-50"
-        >
-          Log repair
-        </button>
+        {asset.status.code === "deployed" && onStartAssessment ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onStartAssessment}
+            className="font-heading w-full rounded-md border-2 border-amber-500/90 bg-amber-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-950 transition-colors hover:bg-amber-100 disabled:opacity-50"
+          >
+            Send to assessment
+          </button>
+        ) : null}
+        {asset.status.code !== "deployed" ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onLogRepair}
+            className="font-heading w-full rounded-md border-2 border-orange-500/80 bg-orange-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-orange-900 transition-colors hover:bg-orange-100 disabled:opacity-50"
+          >
+            Log repair
+          </button>
+        ) : null}
+        {asset.status.code === "assessment" && onCancelAssessment ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onCancelAssessment}
+            className="w-full rounded-md border border-red-400/70 bg-red-50 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-900 hover:bg-red-100 disabled:opacity-50"
+          >
+            Cancel assessment
+          </button>
+        ) : null}
         <div>
           <label className="block text-[10px] font-medium uppercase tracking-wide text-black/40">
             Move to
@@ -580,7 +759,7 @@ function HardwareCard({
             disabled={disabled}
             onChange={(e) => onStatusChange(asset.id, e.target.value)}
           >
-            {statuses.map((s) => (
+            {statusesForMoves(statuses, asset).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.label}
               </option>

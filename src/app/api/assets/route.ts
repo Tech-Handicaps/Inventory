@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       if (st) where.statusId = st.id;
     }
 
-    const [assets, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       prisma.asset.findMany({
         where,
         include: { status: true, deviceTemplate: true, club: true },
@@ -39,6 +39,64 @@ export async function GET(request: NextRequest) {
       }),
       prisma.asset.count({ where }),
     ]);
+
+    /** Open assessments (one per asset, latest first) — merged here so GET works even if `prisma generate` is stale (Windows EPERM while dev locks the query engine DLL). */
+    type OpenAssessmentRow = {
+      id: string;
+      assetId: string;
+      referenceNumber: string;
+      workflowStatus: string;
+    };
+
+    let openAssessByAssetId = new Map<
+      string,
+      Pick<
+        OpenAssessmentRow,
+        "id" | "referenceNumber" | "workflowStatus"
+      >
+    >();
+
+    if (rows.length > 0) {
+      const assetIds = rows.map((r) => r.id);
+      try {
+        const openRows = await prisma.$queryRaw<OpenAssessmentRow[]>(
+          Prisma.sql`
+            SELECT DISTINCT ON ("assetId")
+              id,
+              "assetId",
+              "referenceNumber",
+              "workflowStatus"
+            FROM "Assessment"
+            WHERE "workflowStatus" = 'open'
+              AND "assetId" IN (${Prisma.join(assetIds)})
+            ORDER BY "assetId", "createdAt" DESC
+          `
+        );
+        openAssessByAssetId = new Map(
+          openRows.map((a) => [
+            a.assetId,
+            {
+              id: a.id,
+              referenceNumber: a.referenceNumber,
+              workflowStatus: a.workflowStatus,
+            },
+          ])
+        );
+      } catch (e) {
+        console.warn(
+          "GET /api/assets: could not load open assessments (table missing or DB error); continuing without.",
+          e
+        );
+      }
+    }
+
+    const assets = rows.map((a) => {
+      const one = openAssessByAssetId.get(a.id);
+      return {
+        ...a,
+        assessments: one ? [one] : [],
+      };
+    });
 
     return NextResponse.json({ assets, total });
   } catch (error) {

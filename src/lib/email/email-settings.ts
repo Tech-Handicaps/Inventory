@@ -10,6 +10,7 @@ export type EmailNotificationSettingsResolved = {
   emailTransport: EmailTransport;
   sendEnabled: boolean;
   notifyOnRepair: boolean;
+  notifyOnAssessment: boolean;
   notifyOnWrittenOff: boolean;
   financeEmails: string[];
   financeGreetingName: string | null;
@@ -77,6 +78,7 @@ export async function getEmailNotificationSettings(): Promise<EmailNotificationS
     emailTransport: transport,
     sendEnabled: row?.sendEnabled ?? false,
     notifyOnRepair: row?.notifyOnRepair ?? true,
+    notifyOnAssessment: row?.notifyOnAssessment ?? true,
     notifyOnWrittenOff: row?.notifyOnWrittenOff ?? true,
     financeEmails: parseEmailList(row?.financeEmails ?? ""),
     financeGreetingName: row?.financeGreetingName?.trim() || null,

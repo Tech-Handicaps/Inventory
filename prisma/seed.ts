@@ -27,22 +27,28 @@ async function main() {
       sortOrder: 3,
     },
     {
+      code: "assessment",
+      label: "Assessment",
+      description: "Returned for triage — diagnose before formal repair authorisation",
+      sortOrder: 4,
+    },
+    {
       code: "repair",
       label: "In Repairs",
       description: "Out of circulation for service",
-      sortOrder: 4,
+      sortOrder: 5,
     },
     {
       code: "refurbished",
       label: "Refurbished",
       description: "Serviced and ready for reuse",
-      sortOrder: 5,
+      sortOrder: 6,
     },
     {
       code: "written_off",
       label: "Written Off",
       description: "Removed from active inventory",
-      sortOrder: 6,
+      sortOrder: 7,
     },
   ];
 

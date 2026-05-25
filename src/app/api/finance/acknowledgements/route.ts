@@ -35,6 +35,9 @@ export async function GET(request: NextRequest) {
         repair: {
           select: { id: true, referenceNumber: true },
         },
+        assessment: {
+          select: { id: true, referenceNumber: true },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: 200,

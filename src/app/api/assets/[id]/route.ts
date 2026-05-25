@@ -199,6 +199,33 @@ export async function PUT(
       return NextResponse.json(unchanged);
     }
 
+    if (typeof updateData.statusId === "string") {
+      const nextStatus = await prisma.assetStatus.findUnique({
+        where: { id: updateData.statusId },
+      });
+      if (!nextStatus) {
+        return NextResponse.json({ error: "statusId not found" }, { status: 400 });
+      }
+      if (before.status.code === "deployed" && nextStatus.code === "repair") {
+        return NextResponse.json(
+          {
+            error:
+              "Move Deployed hardware to Assessment first (then Log repair after triage).",
+          },
+          { status: 400 }
+        );
+      }
+      if (before.status.code === "assessment" && nextStatus.code === "repair") {
+        return NextResponse.json(
+          {
+            error:
+              "Use Log repair on the Assessment card — it completes the intake and opens the repair.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const asset = await prisma.asset.update({
       where: { id },
       data: updateData,

@@ -13,6 +13,7 @@ type EmailSettingsRow = {
   emailTransport: EmailTransportId;
   sendEnabled: boolean;
   notifyOnRepair: boolean;
+  notifyOnAssessment: boolean;
   notifyOnWrittenOff: boolean;
   financeEmails: string;
   financeGreetingName: string;
@@ -34,6 +35,7 @@ function mapApiToRow(j: EmailSettingsRow & { error?: string }): EmailSettingsRow
     emailTransport: parseEmailTransport(j.emailTransport),
     sendEnabled: j.sendEnabled,
     notifyOnRepair: j.notifyOnRepair,
+    notifyOnAssessment: j.notifyOnAssessment ?? true,
     notifyOnWrittenOff: j.notifyOnWrittenOff,
     financeEmails: j.financeEmails,
     financeGreetingName: j.financeGreetingName,
@@ -86,6 +88,7 @@ export function EmailNotificationsSettingsSection() {
           emailTransport: data.emailTransport,
           sendEnabled: data.sendEnabled,
           notifyOnRepair: data.notifyOnRepair,
+          notifyOnAssessment: data.notifyOnAssessment,
           notifyOnWrittenOff: data.notifyOnWrittenOff,
           financeEmails: data.financeEmails,
           financeGreetingName: data.financeGreetingName,
@@ -236,6 +239,23 @@ export function EmailNotificationsSettingsSection() {
           <span className="text-sm text-black/80">
             <strong>Enable sending</strong> — when off, acknowledgement rows are
             still created; emails are skipped.
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={data.notifyOnAssessment}
+            onChange={(e) =>
+              setData((d) =>
+                d ? { ...d, notifyOnAssessment: e.target.checked } : d
+              )
+            }
+            className="mt-1"
+          />
+          <span className="text-sm text-black/80">
+            Notify finance when hardware enters <strong>assessment</strong> (field
+            return / triage)
           </span>
         </label>
 

@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       emailTransport: resolved.emailTransport,
       sendEnabled: row?.sendEnabled ?? false,
       notifyOnRepair: row?.notifyOnRepair ?? true,
+      notifyOnAssessment: row?.notifyOnAssessment ?? true,
       notifyOnWrittenOff: row?.notifyOnWrittenOff ?? true,
       financeEmails: row?.financeEmails ?? "",
       financeGreetingName: row?.financeGreetingName ?? "",
@@ -67,6 +68,7 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
     const sendEnabled = body.sendEnabled === true;
     const notifyOnRepair = body.notifyOnRepair !== false;
+    const notifyOnAssessment = body.notifyOnAssessment !== false;
     const notifyOnWrittenOff = body.notifyOnWrittenOff !== false;
     const financeEmails =
       typeof body.financeEmails === "string" ? body.financeEmails : "";
@@ -94,6 +96,7 @@ export async function PATCH(request: NextRequest) {
         emailTransport,
         sendEnabled,
         notifyOnRepair,
+        notifyOnAssessment,
         notifyOnWrittenOff,
         financeEmails,
         financeGreetingName,
@@ -104,6 +107,7 @@ export async function PATCH(request: NextRequest) {
         emailTransport,
         sendEnabled,
         notifyOnRepair,
+        notifyOnAssessment,
         notifyOnWrittenOff,
         financeEmails,
         financeGreetingName,
