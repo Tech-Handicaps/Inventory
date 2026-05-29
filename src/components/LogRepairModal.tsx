@@ -15,7 +15,7 @@ type DeskMeta = {
 
 type Props = {
   asset: Asset | null;
-  /** When the asset is in Assessment, linking the open intake record (required by API). */
+  /** When the asset is in Assessment/Maintenance, links the open intake record (required by API). */
   assessmentId?: string | null;
   assessmentReference?: string | null;
   onClose: () => void;
@@ -146,7 +146,7 @@ export function LogRepairModal({
               {assessmentReference.trim()}
             </span>
             {" — "}
-            a formal repair record will close this assessment.
+              a formal repair record will close this Assessment/Maintenance intake.
           </p>
         ) : null}
 

@@ -1,13 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AssetSearchFields } from "@/lib/inventory/asset-search";
+import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 
-type AssetOption = {
-  id: string;
-  assetName: string;
-  serialNumber: string | null;
-  status: { label: string; code: string };
-};
+/** API returns full asset rows; we only rely on searchable fields plus id for keys. */
+type PickerAsset = AssetSearchFields & { id: string };
 
 type AuditRow = {
   id: string;
@@ -57,8 +55,9 @@ type Props = {
 };
 
 export function AssetLifecycleSection({ auditAccess = true }: Props) {
-  const [assets, setAssets] = useState<AssetOption[]>([]);
+  const [assets, setAssets] = useState<PickerAsset[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(true);
+  const [pickerQuery, setPickerQuery] = useState("");
   const [assetId, setAssetId] = useState("");
   const [timeline, setTimeline] = useState<AuditRow[]>([]);
   const [loadingLog, setLoadingLog] = useState(false);
@@ -69,7 +68,7 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
     try {
       const res = await fetch("/api/assets?limit=500");
       const j = await res.json();
-      const list = (j.assets ?? []) as AssetOption[];
+      const list = (j.assets ?? []) as PickerAsset[];
       setAssets(
         Array.isArray(list)
           ? [...list].sort((a, b) =>
@@ -134,6 +133,24 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
     [assets, assetId]
   );
 
+  const pickerOptions = useMemo(() => {
+    const filtered = assets.filter(
+      (a) => matchesAssetSearch(a, pickerQuery) || a.id === assetId
+    );
+    return filtered.sort((a, b) =>
+      a.assetName.localeCompare(b.assetName, undefined, {
+        sensitivity: "base",
+      })
+    );
+  }, [assets, pickerQuery, assetId]);
+
+  /** True when filter text would hide the chosen row; we keep it visible in options. */
+  const pickerSelectionPinned = useMemo(() => {
+    if (!pickerQuery.trim() || !assetId) return false;
+    const cur = assets.find((a) => a.id === assetId);
+    return cur ? !matchesAssetSearch(cur, pickerQuery) : false;
+  }, [assets, assetId, pickerQuery]);
+
   return (
     <section
       id="lifecycle"
@@ -163,30 +180,80 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
         )}
       </p>
 
-      <div className="mt-6 max-w-xl">
-        <label
-          htmlFor="lifecycle-asset"
-          className="text-xs font-medium text-black/70"
-        >
-          Select asset
-        </label>
-        <select
-          id="lifecycle-asset"
-          value={assetId}
-          onChange={(e) => setAssetId(e.target.value)}
-          disabled={loadingAssets}
-          className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-        >
-          <option value="">
-            {loadingAssets ? "Loading…" : "— Choose an asset —"}
-          </option>
-          {assets.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.assetName}
-              {a.serialNumber ? ` · S/N ${a.serialNumber}` : ""}
+      <div className="mt-6 max-w-xl space-y-3">
+        <div>
+          <label
+            htmlFor="lifecycle-asset-search"
+            className="text-xs font-medium text-black/70"
+          >
+            Filter assets
+          </label>
+          <div className="mt-1 flex gap-2">
+            <input
+              id="lifecycle-asset-search"
+              type="search"
+              enterKeyHint="search"
+              value={pickerQuery}
+              onChange={(e) => setPickerQuery(e.target.value)}
+              disabled={loadingAssets || assets.length === 0}
+              placeholder="Name, club, serial, template, category, location…"
+              className="min-w-0 flex-1 rounded-lg border border-black/15 px-3 py-2 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:ring-2"
+              autoComplete="off"
+              aria-label="Search assets for lifecycle picker"
+            />
+            {pickerQuery.trim() ? (
+              <button
+                type="button"
+                onClick={() => setPickerQuery("")}
+                disabled={loadingAssets || assets.length === 0}
+                className="shrink-0 rounded-lg border border-black/15 px-3 py-2 text-xs font-medium text-black/70 hover:bg-black/[0.04]"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+          {!loadingAssets && assets.length ? (
+            <p className="mt-1.5 text-[11px] text-black/50">
+              Showing{" "}
+              <strong className="tabular-nums text-black/70">
+                {pickerOptions.length}
+              </strong>{" "}
+              of {assets.length} assets in the dropdown
+              {pickerSelectionPinned ? (
+                <span className="text-black/45">
+                  {" "}
+                  (current selection kept visible)
+                </span>
+              ) : null}
+              .
+            </p>
+          ) : null}
+        </div>
+        <div>
+          <label
+            htmlFor="lifecycle-asset"
+            className="text-xs font-medium text-black/70"
+          >
+            Select asset
+          </label>
+          <select
+            id="lifecycle-asset"
+            value={assetId}
+            onChange={(e) => setAssetId(e.target.value)}
+            disabled={loadingAssets}
+            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+          >
+            <option value="">
+              {loadingAssets ? "Loading…" : "— Choose an asset —"}
             </option>
-          ))}
-        </select>
+            {pickerOptions.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.assetName}
+                {a.serialNumber ? ` · S/N ${a.serialNumber}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {selected ? (

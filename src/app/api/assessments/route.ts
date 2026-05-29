@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Only assets in Deployed can start Assessment (use lifecycle move for depot stock repairs).",
+            "Only assets in Deployed can start Assessment/Maintenance (use Log repair from depot stock when no triage step is needed).",
         },
         { status: 400 }
       );
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (dup) {
       return NextResponse.json(
         {
-          error: `This asset already has an open Assessment (${dup.referenceNumber}).`,
+          error: `This asset already has an open Assessment/Maintenance intake (${dup.referenceNumber}).`,
         },
         { status: 409 }
       );
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     });
     if (!assessmentStatusRow) {
       return NextResponse.json(
-        { error: "Assessment lifecycle status missing — run db seed." },
+        { error: "Assessment/Maintenance lifecycle status missing — run db seed." },
         { status: 500 }
       );
     }
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const deskHtmlIntro = `<p><strong>Inventory assessment</strong> ${escapeHtml(referenceNumber)}.</p>
+    const deskHtmlIntro = `<p><strong>Inventory Assessment/Maintenance</strong> ${escapeHtml(referenceNumber)}.</p>
 <p><strong>Asset:</strong> ${escapeHtml(asset.assetName)}</p>`;
 
     try {
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
           .join("");
 
         const desk = await createZohoDeskTicket({
-          subject: `Hardware assessment · ${referenceNumber} · ${asset.assetName}`,
+          subject: `Assessment/Maintenance · ${referenceNumber} · ${asset.assetName}`,
           description: html,
         });
         zohoDeskTicketId = desk.ticketId;
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     await createAuditLog({
       userId: user.id,
       actionType: "assessment.created",
-      notes: `Assessment ${referenceNumber} for ${asset.assetName}`,
+      notes: `Assessment/Maintenance intake ${referenceNumber} for ${asset.assetName}`,
       metadata: {
         assessmentId: assessment.id,
         referenceNumber,

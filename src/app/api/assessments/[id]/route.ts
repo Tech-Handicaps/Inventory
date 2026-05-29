@@ -23,7 +23,7 @@ export async function PATCH(
     });
 
     if (!row) {
-      return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
+      return NextResponse.json({ error: "Assessment/Maintenance intake not found" }, { status: 404 });
     }
 
     if (action !== "cancel") {
@@ -35,7 +35,7 @@ export async function PATCH(
 
     if (row.workflowStatus !== "open") {
       return NextResponse.json(
-        { error: "Only open assessments can be cancelled." },
+        { error: "Only open intakes can be cancelled." },
         { status: 400 }
       );
     }
@@ -66,7 +66,7 @@ export async function PATCH(
     await createAuditLog({
       userId: user.id,
       actionType: "assessment.cancelled",
-      notes: `Assessment ${row.referenceNumber} cancelled — ${row.asset.assetName}`,
+      notes: `Assessment/Maintenance intake ${row.referenceNumber} cancelled — ${row.asset.assetName}`,
       metadata: { assessmentId: id, assetId: row.assetId },
     });
 

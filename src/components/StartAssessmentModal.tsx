@@ -19,7 +19,7 @@ type Props = {
   onSuccess: () => void;
 };
 
-/** Modal: Deployed → Assessment lifecycle + optional Zoho Desk (matches POST /api/assessments) */
+/** Modal: Deployed → Assessment/Maintenance lifecycle + optional Zoho Desk (matches POST /api/assessments) */
 export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
   const [intakeNotes, setIntakeNotes] = useState("");
   const [existingDeskTicket, setExistingDeskTicket] = useState("");
@@ -86,7 +86,7 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         throw new Error(
-          typeof j.error === "string" ? j.error : "Could not start assessment"
+          typeof j.error === "string" ? j.error : "Could not start Assessment/Maintenance intake"
         );
       }
       onSuccess();
@@ -106,7 +106,7 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="start-assessment-title"
+      aria-labelledby="start-assessment-maintenance-title"
       onClick={onClose}
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
@@ -117,14 +117,14 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2
-          id="start-assessment-title"
+          id="start-assessment-maintenance-title"
           className="font-heading text-lg font-bold uppercase tracking-wide text-black"
         >
-          Send to assessment
+          Send for Assessment/Maintenance
         </h2>
         <p className="mt-1 text-sm text-black/65">
-          Moves this unit into triage between field deployment and a formal repair
-          record.
+          Moves this unit into triage or light maintenance (e.g. software reload, OS refresh) before
+          a formal repair record if needed.
 
           <span className="ml-2">
             <span className="font-semibold text-black">{asset.assetName}</span>
@@ -185,7 +185,7 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
                 className="mt-1"
               />
               <span className="text-sm text-black/80">
-                Create a <strong>new</strong> Zoho Desk ticket for this assessment
+                Create a <strong>new</strong> Zoho Desk ticket for this intake
               </span>
             </label>
           ) : (
@@ -208,7 +208,7 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
               disabled={saving}
               className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Start assessment"}
+              {saving ? "Saving…" : "Start intake"}
             </button>
             <button
               type="button"

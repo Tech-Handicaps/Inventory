@@ -28,8 +28,9 @@ async function main() {
     },
     {
       code: "assessment",
-      label: "Assessment",
-      description: "Returned for triage — diagnose before formal repair authorisation",
+      label: "Assessment/Maintenance",
+      description:
+        "Returned for triage, software/OS reload, or depot maintenance — decide next step before formal hardware repair",
       sortOrder: 4,
     },
     {

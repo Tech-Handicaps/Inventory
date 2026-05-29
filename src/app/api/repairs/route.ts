@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Use Send to assessment first for deployed hardware, then Log repair after triage.",
+            "Use Send for Assessment/Maintenance first for deployed hardware, then Log repair after triage if needed.",
         },
         { status: 400 }
       );
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error:
-              "assessmentId is required — open Log repair from the Assessment card so the intake is completed correctly.",
+              "assessmentId is required — open Log repair from the Assessment/Maintenance card so the intake is completed correctly.",
           },
           { status: 400 }
         );
@@ -93,14 +93,14 @@ export async function POST(request: NextRequest) {
       });
       if (!row || row.assetId !== assetId) {
         return NextResponse.json(
-          { error: "Assessment not found for this asset." },
+          { error: "Assessment/Maintenance intake not found for this asset." },
           { status: 400 }
         );
       }
       if (row.workflowStatus !== "open") {
         return NextResponse.json(
           {
-            error: `That assessment is no longer open (${row.referenceNumber}).`,
+            error: `That intake is no longer open (${row.referenceNumber}).`,
           },
           { status: 400 }
         );
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "assessmentId is only used when the asset is in the Assessment stage.",
+            "assessmentId is only used when the asset is in the Assessment/Maintenance stage.",
         },
         { status: 400 }
       );
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
           `<p><strong>Inventory reference:</strong> ${referenceNumber}</p>`,
           ...(assessmentRow
             ? [
-                `<p><strong>From assessment:</strong> ${escapeHtml(assessmentRow.referenceNumber)}</p>`,
+                `<p><strong>From Assessment/Maintenance:</strong> ${escapeHtml(assessmentRow.referenceNumber)}</p>`,
               ]
             : []),
           `<p><strong>Asset:</strong> ${asset.assetName}</p>`,
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
       const htmlParts = [
         `<p><strong>Formal repair started</strong> — ${escapeHtml(referenceNumber)}</p>`,
         assessmentRow
-          ? `<p>Continued from assessment <strong>${escapeHtml(assessmentRow.referenceNumber)}</strong>.</p>`
+          ? `<p>Continued from Assessment/Maintenance intake <strong>${escapeHtml(assessmentRow.referenceNumber)}</strong>.</p>`
           : "",
         `<p><strong>Technician notes:</strong></p><p>${escapeHtml(notesTrim).replace(/\n/g, "<br/>")}</p>`,
       ].filter(Boolean);
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
       await createAuditLog({
         userId: user.id,
         actionType: "assessment.completed",
-        notes: `Assessment ${assessmentRow.referenceNumber} completed via repair ${referenceNumber}`,
+        notes: `Assessment/Maintenance intake ${assessmentRow.referenceNumber} completed via repair ${referenceNumber}`,
         metadata: {
           assessmentId: assessmentRow.id,
           referenceNumber: assessmentRow.referenceNumber,

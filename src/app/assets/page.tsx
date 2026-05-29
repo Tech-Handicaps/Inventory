@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
 import { InventoryHeader } from "@/components/InventoryHeader";
 import { formatGeoLabel } from "@/lib/geo/region-display";
+import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 
 type Asset = {
   id: string;
@@ -34,6 +35,8 @@ type Asset = {
   geoRegionName: string | null;
   geoCity: string | null;
   publicIpAssistSyncedAt: string | null;
+  /** Present when API includes open assessment row (same as hardware board). */
+  assessments?: { referenceNumber: string }[];
 };
 type Status = { id: string; code: string; label: string };
 
@@ -55,11 +58,13 @@ export default function AssetsPage() {
   const [assistImportOpen, setAssistImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [registrySearch, setRegistrySearch] = useState("");
+  const [statusFilterId, setStatusFilterId] = useState("");
 
   const load = useCallback(async () => {
     setFetchError(null);
     const [aRes, sRes] = await Promise.all([
-      fetch("/api/assets"),
+      fetch("/api/assets?limit=500"),
       fetch("/api/statuses"),
     ]);
 
@@ -97,6 +102,19 @@ export default function AssetsPage() {
 
   const effectiveStatuses =
     statuses.length > 0 ? statuses : deriveStatusesFromAssets(assets);
+
+  const statusesForFilter = useMemo(() => {
+    return [...effectiveStatuses].sort((a, b) =>
+      a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
+    );
+  }, [effectiveStatuses]);
+
+  const filteredRegistryAssets = useMemo(() => {
+    return assets.filter((a) => {
+      if (statusFilterId && a.status.id !== statusFilterId) return false;
+      return matchesAssetSearch(a, registrySearch);
+    });
+  }, [assets, registrySearch, statusFilterId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,7 +230,97 @@ export default function AssetsPage() {
 
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           {assets.length ? (
-            <div className="overflow-x-auto">
+            <>
+              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:gap-4">
+                <label className="block min-w-0 flex-1 lg:max-w-xl">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-black/50">
+                    Search registry
+                  </span>
+                  <div className="mt-1 flex gap-2">
+                    <input
+                      type="search"
+                      enterKeyHint="search"
+                      value={registrySearch}
+                      onChange={(e) => setRegistrySearch(e.target.value)}
+                      placeholder="Name, club, serial, template, category, location, IP…"
+                      className="min-w-0 flex-1 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:ring-2"
+                      autoComplete="off"
+                      aria-label="Search all assets table"
+                    />
+                    {registrySearch.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => setRegistrySearch("")}
+                        className="shrink-0 rounded-lg border border-black/15 px-3 py-2 text-xs font-medium text-black/70 hover:bg-black/[0.04]"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                </label>
+                <label className="block w-full sm:max-w-[220px]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-black/50">
+                    Status
+                  </span>
+                  <select
+                    value={statusFilterId}
+                    onChange={(e) => setStatusFilterId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                    aria-label="Filter by lifecycle status"
+                  >
+                    <option value="">All statuses</option>
+                    {statusesForFilter.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {registrySearch.trim() || statusFilterId ? (
+                <p className="mb-3 text-xs text-black/55">
+                  Showing{" "}
+                  <strong className="tabular-nums text-black/80">
+                    {filteredRegistryAssets.length}
+                  </strong>{" "}
+                  of {assets.length} assets
+                  {statusFilterId
+                    ? ` · status: ${effectiveStatuses.find((x) => x.id === statusFilterId)?.label ?? ""}`
+                    : ""}
+                  .{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegistrySearch("");
+                      setStatusFilterId("");
+                    }}
+                    className="font-semibold text-brand hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                </p>
+              ) : null}
+
+              {filteredRegistryAssets.length === 0 ? (
+                <div
+                  className="rounded-lg border border-dashed border-black/15 bg-black/[0.02] py-12 text-center text-sm text-black/55"
+                  role="status"
+                >
+                  No assets match these filters — adjust search or status, or{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegistrySearch("");
+                      setStatusFilterId("");
+                    }}
+                    className="font-semibold text-brand hover:underline"
+                  >
+                    reset filters
+                  </button>
+                  .
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
               <table className="w-full min-w-[1580px] text-sm">
                 <thead>
                   <tr className="border-b border-black/10">
@@ -251,7 +359,7 @@ export default function AssetsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {assets.map((a) => (
+                  {filteredRegistryAssets.map((a) => (
                     <tr key={a.id} className="border-b border-black/5">
                       <td className="py-2 text-black/85">{a.club?.name ?? "—"}</td>
                       <td className="py-2">{a.assetName}</td>
@@ -346,7 +454,9 @@ export default function AssetsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+                </div>
+              )}
+            </>
           ) : (
             <p className="py-8 text-center text-black/50">
               No assets yet. Use the form above to register hardware.

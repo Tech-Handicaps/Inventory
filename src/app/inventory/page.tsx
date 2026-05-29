@@ -6,6 +6,7 @@ import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
 import { LogRepairModal } from "@/components/LogRepairModal";
 import { StartAssessmentModal } from "@/components/StartAssessmentModal";
+import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 
 type Status = {
@@ -103,7 +104,7 @@ function AssessmentWorkflowPill({ workflowStatus }: { workflowStatus: string }) 
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${cfg.ring} ${cfg.bg} ${cfg.fg}`}
-      title="Assessment workflow status"
+      title="Assessment/Maintenance intake status"
     >
       <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`} aria-hidden />
       {cfg.label}
@@ -147,6 +148,10 @@ export default function InventoryPage() {
   } | null>(null);
   const [assessAsset, setAssessAsset] = useState<Asset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [columnSearchByStatusId, setColumnSearchByStatusId] = useState<
+    Record<string, string>
+  >({});
 
   const load = useCallback(async () => {
     setFetchError(null);
@@ -200,13 +205,26 @@ export default function InventoryPage() {
     return deriveStatusesFromAssets(assets);
   }, [statuses, assets]);
 
+  const globallyFilteredAssets = useMemo(() => {
+    return assets.filter((a) => matchesAssetSearch(a, globalSearch));
+  }, [assets, globalSearch]);
+
   const byStatus = useMemo(() => {
     const m = new Map<string, Asset[]>();
     for (const s of effectiveStatuses) m.set(s.id, []);
-    for (const asset of assets) {
+    for (const asset of globallyFilteredAssets) {
       const list = m.get(asset.status.id);
       if (list) list.push(asset);
       else m.set(asset.status.id, [asset]);
+    }
+    return m;
+  }, [globallyFilteredAssets, effectiveStatuses]);
+
+  const byStatusUnfilteredCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of effectiveStatuses) m.set(s.id, 0);
+    for (const asset of assets) {
+      m.set(asset.status.id, (m.get(asset.status.id) ?? 0) + 1);
     }
     return m;
   }, [assets, effectiveStatuses]);
@@ -222,6 +240,16 @@ export default function InventoryPage() {
     () => effectiveStatuses.find((s) => s.code === "written_off"),
     [effectiveStatuses]
   );
+
+  const writtenOffRows = useMemo(() => {
+    if (!writtenOff) return [];
+    return byStatus.get(writtenOff.id) ?? [];
+  }, [writtenOff, byStatus]);
+
+  const writtenOffStageTotal = useMemo(() => {
+    if (!writtenOff) return 0;
+    return assets.filter((a) => a.status.id === writtenOff.id).length;
+  }, [writtenOff, assets]);
 
   async function updateAssetStatus(assetId: string, statusId: string) {
     setSavingId(assetId);
@@ -254,12 +282,12 @@ export default function InventoryPage() {
   async function cancelOpenAssessment(asset: Asset) {
     const o = openAssessment(asset);
     if (!o) {
-      window.alert("No open assessment is linked on this card. Refresh if this looks wrong.");
+      window.alert("No open Assessment/Maintenance intake is linked on this card. Refresh if this looks wrong.");
       return;
     }
     if (
       !window.confirm(
-        `Cancel assessment ${o.referenceNumber}? The unit moves back to Deployed unless you change stage again.`
+        `Cancel Assessment/Maintenance intake (${o.referenceNumber})? The unit moves back to Deployed unless you change stage again.`
       )
     ) {
       return;
@@ -341,7 +369,8 @@ export default function InventoryPage() {
             Each column is a lifecycle stage for hardware. Use{" "}
             <strong>Register hardware</strong> above (template + serial), then
             move cards by changing status. <strong>Deployed</strong> field returns flow
-            through <strong>Assessment</strong> (triage) before <strong>In repairs</strong>. Use{" "}
+            through <strong>Assessment/Maintenance</strong> (triage or light depot work such as reloads){" "}
+            before <strong>In repairs</strong> when a formal repair record is needed. Use{" "}
             <strong>Settings → Device templates</strong> for reusable make/model
             presets and <strong>Settings → Clubs</strong> for club/site labels on each unit.
             Status codes live in the database so you can extend stages
@@ -350,9 +379,61 @@ export default function InventoryPage() {
         </div>
 
         <section>
-          <h2 className="font-heading mb-4 text-sm font-bold uppercase tracking-[0.15em] text-black">
-            Stock & workflow
-          </h2>
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+            <h2 className="font-heading text-sm font-bold uppercase tracking-[0.15em] text-black shrink-0">
+              Stock & workflow
+            </h2>
+            <div className="min-w-0 flex-1 max-w-2xl">
+              <label className="block">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-black/50">
+                  Search entire board
+                </span>
+                <div className="mt-1 flex gap-2">
+                  <input
+                    type="search"
+                    enterKeyHint="search"
+                    value={globalSearch}
+                    onChange={(e) => setGlobalSearch(e.target.value)}
+                    placeholder="Name, club, serial, template, category, location, IP…"
+                    className="min-w-0 flex-1 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:ring-2"
+                    autoComplete="off"
+                  />
+                  {globalSearch.trim() ? (
+                    <button
+                      type="button"
+                      onClick={() => setGlobalSearch("")}
+                      className="shrink-0 rounded-lg border border-black/15 px-3 py-2 text-xs font-medium text-black/70 hover:bg-black/[0.04]"
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+              </label>
+              <p className="mt-1.5 text-[11px] text-black/45">
+                Narrows cards in every stage at once (including written-off below). Combine with{" "}
+                <strong className="text-black/55">each column&apos;s filter</strong> for the last
+                bit of narrowing.
+              </p>
+            </div>
+          </div>
+          {globalSearch.trim() &&
+          assets.length > 0 &&
+          globallyFilteredAssets.length === 0 ? (
+            <div
+              className="mb-4 rounded-lg border border-black/10 bg-black/[0.03] px-3 py-2 text-sm text-black/75"
+              role="status"
+            >
+              No hardware matches your board search.{" "}
+              <button
+                type="button"
+                onClick={() => setGlobalSearch("")}
+                className="font-semibold text-brand hover:underline"
+              >
+                Clear search
+              </button>{" "}
+              to see all cards again.
+            </div>
+          ) : null}
           {!fetchError && assets.length > 0 && orderedPrimary.length === 0 ? (
             <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
               No matching lifecycle columns for these assets. Check Settings or re-run{" "}
@@ -360,8 +441,33 @@ export default function InventoryPage() {
               (new_stock, deployed, …) exist.
             </p>
           ) : null}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {orderedPrimary.map((st) => (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {orderedPrimary.map((st) => {
+              const bucket = byStatus.get(st.id) ?? [];
+              const colRaw = columnSearchByStatusId[st.id] ?? "";
+              const displayed = colRaw.trim()
+                ? bucket.filter((a) => matchesAssetSearch(a, colRaw))
+                : bucket;
+              const fullStageCount =
+                byStatusUnfilteredCount.get(st.id) ?? 0;
+
+              let emptyHint = "";
+              if (displayed.length === 0) {
+                if (fullStageCount === 0)
+                  emptyHint = "Nothing in this stage.";
+                else if (
+                  bucket.length === 0 &&
+                  globalSearch.trim()
+                )
+                  emptyHint =
+                    "No cards here match board search.";
+                else if (bucket.length > 0 && colRaw.trim())
+                  emptyHint =
+                    "No matches for this column filter — try different words.";
+                else emptyHint = "Nothing in this stage.";
+              }
+
+              return (
               <div
                 key={st.id}
                 className={`flex max-h-[min(70vh,720px)] flex-col rounded-xl border border-black/10 border-t-4 bg-white shadow-sm ${
@@ -377,12 +483,36 @@ export default function InventoryPage() {
                       {st.description}
                     </p>
                   ) : null}
+                  <label className="mt-3 block">
+                    <span className="sr-only">Filter assets in {st.label}</span>
+                    <input
+                      type="search"
+                      enterKeyHint="search"
+                      value={colRaw}
+                      onChange={(e) =>
+                        setColumnSearchByStatusId((prev) => ({
+                          ...prev,
+                          [st.id]: e.target.value,
+                        }))
+                      }
+                      placeholder="Search this column…"
+                      className="w-full rounded-md border border-black/15 bg-white px-2 py-2 text-xs outline-none placeholder:text-black/35 ring-brand/25 focus:border-brand/40 focus:ring-2"
+                      autoComplete="off"
+                      aria-label={`Filter ${st.label} column`}
+                    />
+                  </label>
                   <p className="mt-2 text-2xl font-bold tabular-nums text-black">
-                    {(byStatus.get(st.id) ?? []).length}
+                    {displayed.length}
                   </p>
+                  {(globalSearch.trim() || colRaw.trim()) &&
+                  fullStageCount !== displayed.length ? (
+                    <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-black/45">
+                      {fullStageCount} in stage · {displayed.length} matching
+                    </p>
+                  ) : null}
                 </div>
                 <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-                  {(byStatus.get(st.id) ?? []).map((asset) => (
+                  {displayed.map((asset) => (
                     <li key={asset.id}>
                       <HardwareCard
                         asset={asset}
@@ -416,14 +546,15 @@ export default function InventoryPage() {
                       />
                     </li>
                   ))}
-                  {(byStatus.get(st.id) ?? []).length === 0 && (
+                  {displayed.length === 0 && (
                     <li className="rounded-lg border border-dashed border-black/15 py-8 text-center text-sm text-black/40">
-                      Nothing in this stage.
+                      {emptyHint}
                     </li>
                   )}
                 </ul>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -453,7 +584,7 @@ export default function InventoryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(byStatus.get(writtenOff.id) ?? []).map((asset) => (
+                    {writtenOffRows.map((asset) => (
                       <tr
                         key={asset.id}
                         className="border-b border-black/5"
@@ -514,11 +645,27 @@ export default function InventoryPage() {
                     ))}
                   </tbody>
                 </table>
-                {(byStatus.get(writtenOff.id) ?? []).length === 0 && (
+                {writtenOffRows.length === 0 ? (
                   <p className="py-10 text-center text-sm text-black/45">
-                    No written-off hardware.
+                    {writtenOffStageTotal === 0 ? (
+                      "No written-off hardware."
+                    ) : globalSearch.trim() ? (
+                      <>
+                        No written-off rows match board search —{" "}
+                        <button
+                          type="button"
+                          className="font-semibold text-brand hover:underline"
+                          onClick={() => setGlobalSearch("")}
+                        >
+                          Clear board search
+                        </button>
+                        .
+                      </>
+                    ) : (
+                      "No written-off hardware."
+                    )}
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
           </section>
@@ -726,7 +873,7 @@ function HardwareCard({
             onClick={onStartAssessment}
             className="font-heading w-full rounded-md border-2 border-amber-500/90 bg-amber-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-950 transition-colors hover:bg-amber-100 disabled:opacity-50"
           >
-            Send to assessment
+            Send for Assessment/Maintenance
           </button>
         ) : null}
         {asset.status.code !== "deployed" ? (
@@ -746,7 +893,7 @@ function HardwareCard({
             onClick={onCancelAssessment}
             className="w-full rounded-md border border-red-400/70 bg-red-50 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-900 hover:bg-red-100 disabled:opacity-50"
           >
-            Cancel assessment
+            Cancel intake
           </button>
         ) : null}
         <div>

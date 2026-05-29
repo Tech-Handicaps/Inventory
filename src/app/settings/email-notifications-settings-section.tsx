@@ -254,8 +254,8 @@ export function EmailNotificationsSettingsSection() {
             className="mt-1"
           />
           <span className="text-sm text-black/80">
-            Notify finance when hardware enters <strong>assessment</strong> (field
-            return / triage)
+            Notify finance when hardware enters <strong>Assessment/Maintenance</strong>{" "}
+            (triage, reloads, or light depot work before a repair)
           </span>
         </label>
 

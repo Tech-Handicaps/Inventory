@@ -115,18 +115,18 @@ export function buildInAssessmentEmail(params: {
     typeof params.clubName === "string" ? params.clubName.trim() : "";
   const subject =
     clubTrimmed !== ""
-      ? `Assessment · ${params.assessmentReference} · ${params.assetName} · ${clubTrimmed}`
-      : `Assessment · ${params.assessmentReference} · ${params.assetName}`;
+      ? `Assessment/Maintenance · ${params.assessmentReference} · ${params.assetName} · ${clubTrimmed}`
+      : `Assessment/Maintenance · ${params.assessmentReference} · ${params.assetName}`;
   const clubBodyCell =
     clubTrimmed !== ""
       ? `<strong>${esc(clubTrimmed)}</strong>`
       : escOptional(params.clubName);
   const body = `
     <p style="margin:0 0 12px 0;">${esc(params.greeting)}</p>
-    <p style="margin:0 0 12px 0;">A deployed device has been moved to <strong>Assessment</strong> (intake before formal repair).</p>
+    <p style="margin:0 0 12px 0;">A deployed device has been moved to <strong>Assessment/Maintenance</strong> (triage, software/OS work, or light depot service before a formal repair if needed).</p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <tr><td style="padding:6px 0;color:${MUTED};width:140px;"><strong>Club name</strong></td><td style="padding:6px 0;">${clubBodyCell}</td></tr>
-      <tr><td style="padding:6px 0;color:${MUTED};width:140px;">Assessment reference</td><td style="padding:6px 0;"><strong>${esc(params.assessmentReference)}</strong></td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};width:140px;">Intake reference</td><td style="padding:6px 0;"><strong>${esc(params.assessmentReference)}</strong></td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Asset</td><td style="padding:6px 0;">${esc(params.assetName)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Category</td><td style="padding:6px 0;">${esc(params.category)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Manufacturer</td><td style="padding:6px 0;">${escOptional(params.manufacturer)}</td></tr>

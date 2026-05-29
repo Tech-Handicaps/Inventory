@@ -108,7 +108,7 @@ model Asset {
   financeAcknowledgements FinanceAcknowledgement[]
 }
 
-/// Intake / triage between deployed field returns and formal repair authorization.
+/// Intake / triage between deployed field returns and formal repair authorization; also used for depot maintenance (reloads, etc.) without implying hardware repair.
 model Assessment {
   id                   String       @id @default(cuid())
   assetId              String

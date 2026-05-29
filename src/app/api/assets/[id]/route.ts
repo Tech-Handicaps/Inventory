@@ -210,7 +210,7 @@ export async function PUT(
         return NextResponse.json(
           {
             error:
-              "Move Deployed hardware to Assessment first (then Log repair after triage).",
+              "Move Deployed hardware to Assessment/Maintenance first (then Log repair only if a formal repair is required).",
           },
           { status: 400 }
         );
@@ -219,7 +219,7 @@ export async function PUT(
         return NextResponse.json(
           {
             error:
-              "Use Log repair on the Assessment card — it completes the intake and opens the repair.",
+              "Use Log repair on the Assessment/Maintenance card — it completes this intake and opens the repair record when needed.",
           },
           { status: 400 }
         );
