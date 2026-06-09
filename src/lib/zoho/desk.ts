@@ -6,8 +6,13 @@ import {
 } from "@/lib/zoho/client";
 import { type ZohoDataCenter } from "@/lib/zoho/constants";
 
-/** Scopes for Desk: tickets + listing departments (org setup & tests use GET /departments). */
-export const ZOHO_DESK_OAUTH_SCOPES = "Desk.tickets.ALL,Desk.basic.READ";
+/**
+ * Scopes for Desk: tickets + listing departments (org setup & tests use GET /departments).
+ * `Desk.search.READ` is required to resolve a display ticket number (e.g. "1292") to its
+ * internal id — GET /tickets/{id} only accepts the long id, not the ticket number.
+ */
+export const ZOHO_DESK_OAUTH_SCOPES =
+  "Desk.tickets.ALL,Desk.basic.READ,Desk.search.READ";
 
 /** Desk API hosts (v1) — align with Zoho data center docs. */
 const DESK_API_V1: Record<ZohoDataCenter, string> = {
@@ -232,6 +237,24 @@ export function normalizeDeskTicketLookup(raw: string): string {
   return raw.replace(/^#/, "").trim();
 }
 
+/**
+ * Internal Desk ticket ids are long (15+ digit) numbers from the ticket URL.
+ * Display ticket numbers (what users see, e.g. "1292") are short. We use this to
+ * decide whether a value can be fetched directly via GET /tickets/{id} or must be
+ * resolved through the Search API first.
+ */
+function looksLikeDeskTicketId(key: string): boolean {
+  return /^\d{12,}$/.test(key);
+}
+
+/** True when a Desk error response indicates the OAuth token lacks a required scope. */
+function isDeskScopeError(status: number, json: Record<string, unknown>): boolean {
+  if (status !== 401 && status !== 403) return false;
+  const code =
+    typeof json.errorCode === "string" ? json.errorCode.toUpperCase() : "";
+  return code.includes("OAUTHSCOPE") || code.includes("OAUTH_SCOPE");
+}
+
 async function deskJsonOrThrow(
   res: Response,
   context: string
@@ -244,8 +267,113 @@ async function deskJsonOrThrow(
   }
 }
 
+type DeskTicketLookupArgs = {
+  accessToken: string;
+  orgId: string;
+  dataCenter: string;
+};
+
 /**
- * Resolve Desk ticket via GET /api/v1/tickets/{ticket_id} — Zoho accepts long id OR display ticket number here.
+ * GET /api/v1/tickets/{ticket_id} — only accepts the long internal ticket id.
+ * Returns null on 404 (id not found) so callers can fall back to a number search.
+ */
+async function getDeskTicketById(
+  args: DeskTicketLookupArgs,
+  id: string
+): Promise<{ ticketId: string; ticketNumber: string } | null> {
+  const res = await deskFetch(
+    args.accessToken,
+    args.orgId,
+    args.dataCenter,
+    `/tickets/${encodeURIComponent(id)}`,
+    { method: "GET" }
+  );
+
+  if (res.status === 404) {
+    await res.text().catch(() => "");
+    return null;
+  }
+
+  const json = await deskJsonOrThrow(res, "Desk ticket lookup");
+  const resolvedId =
+    json.id !== undefined && json.id !== null ? String(json.id) : "";
+  if (!res.ok || !resolvedId) {
+    const msg =
+      typeof json.message === "string"
+        ? json.message
+        : typeof json.errorCode === "string"
+          ? String(json.errorCode)
+          : "";
+    throw new Error(`Desk ticket lookup ${res.status}${msg ? `: ${msg}` : ""}`);
+  }
+
+  const ticketNumber =
+    json.ticketNumber !== undefined && json.ticketNumber !== null
+      ? String(json.ticketNumber)
+      : resolvedId;
+  return { ticketId: resolvedId, ticketNumber };
+}
+
+/**
+ * GET /api/v1/tickets/search?ticketNumber={n} — resolves a display ticket number
+ * (e.g. "1292") to its internal id. Requires the `Desk.search.READ` scope.
+ * Returns null when no ticket matches (Zoho replies 204 No Content).
+ */
+async function searchDeskTicketByNumber(
+  args: DeskTicketLookupArgs,
+  ticketNumber: string
+): Promise<{ ticketId: string; ticketNumber: string } | null> {
+  const qs = new URLSearchParams({ ticketNumber, limit: "1" });
+  const res = await deskFetch(
+    args.accessToken,
+    args.orgId,
+    args.dataCenter,
+    `/tickets/search?${qs.toString()}`,
+    { method: "GET" }
+  );
+
+  // Zoho returns 204 (no body) when the search yields no results.
+  if (res.status === 204) {
+    await res.text().catch(() => "");
+    return null;
+  }
+
+  const json = await deskJsonOrThrow(res, "Desk ticket search");
+  if (!res.ok) {
+    if (isDeskScopeError(res.status, json)) {
+      throw new Error(
+        'Zoho Desk needs the "Desk.search.READ" permission to look up tickets by number. ' +
+          "Reconnect Zoho Desk in Settings to grant it, or paste the long ticket id from the ticket URL."
+      );
+    }
+    const msg =
+      typeof json.message === "string"
+        ? json.message
+        : typeof json.errorCode === "string"
+          ? String(json.errorCode)
+          : "";
+    throw new Error(`Desk ticket search ${res.status}${msg ? `: ${msg}` : ""}`);
+  }
+
+  const data = Array.isArray(json.data)
+    ? (json.data as Array<Record<string, unknown>>)
+    : [];
+  const match =
+    data.find((t) => String(t.ticketNumber ?? "") === ticketNumber) ?? data[0];
+  const id = match?.id != null ? String(match.id) : "";
+  if (!id) return null;
+
+  const num =
+    match?.ticketNumber != null ? String(match.ticketNumber) : ticketNumber;
+  return { ticketId: id, ticketNumber: num };
+}
+
+/**
+ * Resolve a Desk ticket from user input that may be either the long internal id
+ * (from the ticket URL) or the short display ticket number (e.g. "1292").
+ *
+ * Order: long ids hit GET /tickets/{id} directly; everything else (and numeric ids
+ * that 404 on the direct call) is resolved via the Search API by ticketNumber.
  */
 export async function resolveDeskTicketByLookup(params: {
   accessToken: string;
@@ -258,38 +386,33 @@ export async function resolveDeskTicketByLookup(params: {
     throw new Error("Enter a Desk ticket number or ticket id.");
   }
 
-  const res = await deskFetch(
-    params.accessToken,
-    params.orgId,
-    params.dataCenter,
-    `/tickets/${encodeURIComponent(key)}`,
-    { method: "GET" }
-  );
+  const args: DeskTicketLookupArgs = {
+    accessToken: params.accessToken,
+    orgId: params.orgId,
+    dataCenter: params.dataCenter,
+  };
 
-  const json = await deskJsonOrThrow(res, "Desk ticket lookup");
-
-  const id =
-    json.id !== undefined && json.id !== null ? String(json.id) : "";
-  if (!res.ok || !id) {
-    const msg =
-      typeof json.message === "string"
-        ? json.message
-        : typeof json.errorCode === "string"
-          ? String(json.errorCode)
-          : "";
-    throw new Error(
-      msg
-        ? `Desk ticket "${key}" not found (${msg}). Paste the numeric ticket number from Desk, or the long ticket id from the ticket URL.`
-        : `Desk ticket "${key}" not found. Paste the numeric ticket number from Desk, or the long ticket id from the ticket URL.`
-    );
+  // 1) Long internal id → direct fetch (cheapest, no search scope needed).
+  if (looksLikeDeskTicketId(key)) {
+    const byId = await getDeskTicketById(args, key);
+    if (byId) return byId;
   }
 
-  const ticketNumber =
-    json.ticketNumber !== undefined && json.ticketNumber !== null
-      ? String(json.ticketNumber)
-      : id;
+  // 2) Display ticket number → resolve via Search API.
+  if (/^\d+$/.test(key)) {
+    const found = await searchDeskTicketByNumber(args, key);
+    if (found) return found;
+  }
 
-  return { ticketId: id, ticketNumber };
+  // 3) Fallback: try a direct fetch for anything not already attempted above.
+  if (!looksLikeDeskTicketId(key)) {
+    const byId = await getDeskTicketById(args, key);
+    if (byId) return byId;
+  }
+
+  throw new Error(
+    `Desk ticket "${key}" not found. Paste the numeric ticket number shown in Desk, or the long ticket id from the ticket URL.`
+  );
 }
 
 /**

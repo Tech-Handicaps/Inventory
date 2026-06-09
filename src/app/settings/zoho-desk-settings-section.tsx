@@ -338,13 +338,17 @@ export function ZohoDeskSettingsSection() {
         with scopes{" "}
         <code className="rounded bg-black/5 px-1 text-[11px]">
           Desk.tickets.ALL
-        </code>{" "}
-        and{" "}
+        </code>
+        ,{" "}
         <code className="rounded bg-black/5 px-1 text-[11px]">Desk.basic.READ</code>
         {" "}
-        (the latter is required for <strong>Test Desk API</strong>, which lists departments — without it
+        (required for <strong>Test Desk API</strong>, which lists departments — without it
         Zoho returns <code className="rounded bg-black/5 px-1 text-[11px]">SCOPE_MISMATCH</code>
-        ). Add the same scopes to this client in the Zoho API Console. Set the authorized redirect URI to{" "}
+        ), and{" "}
+        <code className="rounded bg-black/5 px-1 text-[11px]">Desk.search.READ</code>
+        {" "}
+        (required to look up tickets by their <strong>display number</strong>, e.g.{" "}
+        <code className="rounded bg-black/5 px-1 text-[11px]">1292</code>). Add the same scopes to this client in the Zoho API Console. Set the authorized redirect URI to{" "}
         <code className="rounded bg-black/5 px-1 text-[11px]">
           {(appOrigin || "https://your-app.example").replace(/\/$/, "")}
           /api/settings/zoho-desk/callback
