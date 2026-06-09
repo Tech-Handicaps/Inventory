@@ -53,7 +53,6 @@ type Asset = {
 
 const PRIMARY_ORDER = [
   "new_stock",
-  "in_stock",
   "deployed",
   "assessment",
   "repair",
@@ -123,10 +122,9 @@ function deriveStatusesFromAssets(assets: Asset[]): Status[] {
   return [...map.values()].sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-/** Brand-aligned columns: green reserved for “In stock”; distinct hues elsewhere */
+/** Brand-aligned columns: greens flag the distributable stages (New Stock, Refurbished). */
 const columnAccent: Record<string, string> = {
-  new_stock: "border-t-black bg-white",
-  in_stock: "border-t-brand bg-brand-muted",
+  new_stock: "border-t-brand bg-brand-muted",
   deployed: "border-t-sky-500 bg-sky-50/90",
   assessment: "border-t-amber-500 bg-amber-50/90",
   repair: "border-t-orange-500 bg-orange-50/90",
@@ -370,7 +368,10 @@ export default function InventoryPage() {
             <strong>Register hardware</strong> above (template + serial), then
             move cards by changing status. <strong>Deployed</strong> field returns flow
             through <strong>Assessment/Maintenance</strong> (triage or light depot work such as reloads){" "}
-            before <strong>In repairs</strong> when a formal repair record is needed. Use{" "}
+            before <strong>In repairs</strong> when a formal repair record is needed. The two
+            <strong> distributable</strong> stages are <strong>New Stock</strong> (never deployed) and{" "}
+            <strong>Refurbished</strong> (serviced, ready for reuse); the dashboard rolls both into{" "}
+            <strong>Available to distribute</strong>. Use{" "}
             <strong>Settings → Device templates</strong> for reusable make/model
             presets and <strong>Settings → Clubs</strong> for club/site labels on each unit.
             Status codes live in the database so you can extend stages

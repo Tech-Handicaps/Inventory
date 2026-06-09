@@ -13,11 +13,11 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 /** Lifecycle-aware colours (aligns with inventory column accents). */
 const STATUS_COLORS: Record<string, string> = {
-  new_stock: "rgba(15, 15, 15, 0.78)",
-  in_stock: "rgba(19, 157, 75, 0.88)",
+  new_stock: "rgba(19, 157, 75, 0.88)",
   deployed: "rgba(14, 165, 233, 0.88)",
-  repair: "rgba(245, 158, 11, 0.9)",
-  refurbished: "rgba(124, 58, 237, 0.78)",
+  assessment: "rgba(245, 158, 11, 0.9)",
+  repair: "rgba(234, 88, 12, 0.9)",
+  refurbished: "rgba(11, 93, 46, 0.85)",
   written_off: "rgba(220, 38, 38, 0.72)",
   unknown: "rgba(100, 116, 139, 0.75)",
 };

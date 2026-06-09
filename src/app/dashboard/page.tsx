@@ -182,10 +182,13 @@ export default function DashboardPage() {
   const kpis = useMemo(() => {
     const rows = stock?.stock ?? [];
     const c = countsByCode(rows);
-    const depot = (c.new_stock ?? 0) + (c.in_stock ?? 0);
+    const newStock = c.new_stock ?? 0;
+    const refurbished = c.refurbished ?? 0;
     return {
       total: stock?.total ?? 0,
-      depot,
+      newStock,
+      refurbished,
+      available: newStock + refurbished,
       deployed: c.deployed ?? 0,
       inRepair: c.repair ?? 0,
       writtenOff: c.written_off ?? 0,
@@ -282,9 +285,9 @@ export default function DashboardPage() {
               hint="All lifecycle stages"
             />
             <KpiCard
-              label="Depot & shelf"
-              value={kpis.depot}
-              hint="New stock + in stock"
+              label="Available to distribute"
+              value={kpis.available}
+              hint={`New ${kpis.newStock} · Refurb ${kpis.refurbished}`}
               accent="brand"
             />
             <KpiCard

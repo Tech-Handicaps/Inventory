@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "db:retire-in-stock": "npx tsx scripts/retire-in-stock-status.ts",
     "brand:upload-supabase": "npx tsx scripts/upload-brand-logo.ts"
   },
   "dependencies": {

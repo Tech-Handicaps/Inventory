@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
 
 const REPORT_TYPES = [
   "overall",
-  "in_stock",
+  "available",
   "deployed",
   "refurbished",
-  "terminals_in_stock",
+  "terminals_available",
 ] as const;
 type ReportType = (typeof REPORT_TYPES)[number];
 
@@ -134,20 +134,28 @@ export async function GET(request: NextRequest) {
       return pdfResponse(buffer, "hna-inventory-overall");
     }
 
-    if (type === "in_stock") {
-      const title = "Hardware in stock";
+    if (type === "available") {
+      const title = "Hardware available to distribute";
       const subtitle =
-        "Items currently marked In stock — available for deployment";
-      const sid = byCode.in_stock;
-      const assets = sid
+        "Ready to hand out — New Stock (never deployed) plus Refurbished (serviced)";
+      const newId = byCode.new_stock;
+      const refurbId = byCode.refurbished;
+      const availableIds = [newId, refurbId].filter(
+        (id): id is string => Boolean(id)
+      );
+      const assets = availableIds.length
         ? await prisma.asset.findMany({
-            where: { statusId: sid },
+            where: { statusId: { in: availableIds } },
             include,
-            orderBy: { assetName: "asc" },
+            orderBy: [{ status: { sortOrder: "asc" } }, { assetName: "asc" }],
           })
         : [];
+      const newCount = assets.filter((a) => a.statusId === newId).length;
+      const refurbCount = assets.filter((a) => a.statusId === refurbId).length;
       const summaryRows = [
-        { label: "In stock count", value: String(assets.length) },
+        { label: "Available to distribute", value: String(assets.length) },
+        { label: "New stock", value: String(newCount) },
+        { label: "Refurbished", value: String(refurbCount) },
       ];
       const buffer = await renderInventoryReportPdf({
         title,
@@ -157,7 +165,7 @@ export async function GET(request: NextRequest) {
         summaryRows,
         rows: toRows(assets),
       });
-      return pdfResponse(buffer, "hna-inventory-in-stock");
+      return pdfResponse(buffer, "hna-inventory-available");
     }
 
     if (type === "deployed") {
@@ -232,14 +240,16 @@ export async function GET(request: NextRequest) {
       return pdfResponse(buffer, "hna-inventory-refurbished");
     }
 
-    const title = "Terminals in stock";
+    const title = "Terminals available to distribute";
     const subtitle =
-      "In-stock items where category or name suggests terminal / POS class hardware";
-    const sid = byCode.in_stock;
-    const assets = sid
+      "Available stock (New + Refurbished) where category or name suggests terminal / POS class hardware";
+    const availableIds = [byCode.new_stock, byCode.refurbished].filter(
+      (id): id is string => Boolean(id)
+    );
+    const assets = availableIds.length
       ? await prisma.asset.findMany({
           where: {
-            statusId: sid,
+            statusId: { in: availableIds },
             OR: [
               { category: { contains: "terminal", mode: "insensitive" } },
               { category: { contains: "pos", mode: "insensitive" } },
@@ -248,11 +258,11 @@ export async function GET(request: NextRequest) {
             ],
           },
           include,
-          orderBy: { assetName: "asc" },
+          orderBy: [{ status: { sortOrder: "asc" } }, { assetName: "asc" }],
         })
       : [];
     const summaryRows = [
-      { label: "Matching terminals in stock", value: String(assets.length) },
+      { label: "Matching terminals available", value: String(assets.length) },
     ];
     const buffer = await renderInventoryReportPdf({
       title,
@@ -262,7 +272,7 @@ export async function GET(request: NextRequest) {
       summaryRows,
       rows: toRows(assets),
     });
-    return pdfResponse(buffer, "hna-inventory-terminals-in-stock");
+    return pdfResponse(buffer, "hna-inventory-terminals-available");
   } catch (error) {
     console.error("GET /api/reports/pdf", error);
     return NextResponse.json(

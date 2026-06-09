@@ -24,11 +24,11 @@ const REPORTS: {
       "Full snapshot: counts by lifecycle stage plus every asset row. Suited for stakeholders and period-end accounting review.",
   },
   {
-    id: "in_stock",
-    type: "in_stock",
-    title: "Hardware in stock",
+    id: "available",
+    type: "available",
+    title: "Hardware available to distribute",
     description:
-      "All items currently in the In stock stage — typically what is available for deployment or issue.",
+      "Everything ready to hand out — New Stock (never deployed) plus Refurbished (serviced, ready for reuse), with the split shown in the summary.",
   },
   {
     id: "deployed",
@@ -46,10 +46,10 @@ const REPORTS: {
   },
   {
     id: "terminals",
-    type: "terminals_in_stock",
-    title: "Terminals in stock",
+    type: "terminals_available",
+    title: "Terminals available to distribute",
     description:
-      "Subset of In stock where the category or asset name suggests terminal, POS, or kiosk-class hardware. Adjust naming in inventory data to refine this list.",
+      "Subset of available stock (New Stock + Refurbished) where the category or asset name suggests terminal, POS, or kiosk-class hardware. Adjust naming in inventory data to refine this list.",
   },
 ];
 

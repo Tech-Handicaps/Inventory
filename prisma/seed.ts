@@ -11,45 +11,39 @@ async function main() {
     {
       code: "new_stock",
       label: "New Stock",
-      description: "Received, not yet shelved or processed",
+      description: "Received, never deployed — available to distribute",
       sortOrder: 1,
-    },
-    {
-      code: "in_stock",
-      label: "In Stock",
-      description: "Available on hand for deployment or sale",
-      sortOrder: 2,
     },
     {
       code: "deployed",
       label: "Deployed",
       description: "Dispatched to customer site or in the field (not on depot stock)",
-      sortOrder: 3,
+      sortOrder: 2,
     },
     {
       code: "assessment",
       label: "Assessment/Maintenance",
       description:
         "Returned for triage, software/OS reload, or depot maintenance — decide next step before formal hardware repair",
-      sortOrder: 4,
+      sortOrder: 3,
     },
     {
       code: "repair",
       label: "In Repairs",
       description: "Out of circulation for service",
-      sortOrder: 5,
+      sortOrder: 4,
     },
     {
       code: "refurbished",
       label: "Refurbished",
-      description: "Serviced and ready for reuse",
-      sortOrder: 6,
+      description: "Serviced and ready for reuse — available to distribute",
+      sortOrder: 5,
     },
     {
       code: "written_off",
       label: "Written Off",
       description: "Removed from active inventory",
-      sortOrder: 7,
+      sortOrder: 6,
     },
   ];
 
