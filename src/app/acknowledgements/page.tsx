@@ -31,6 +31,7 @@ type Row = {
   };
   repair: { referenceNumber: string } | null;
   assessment: { referenceNumber: string } | null;
+  dispatchVoucher: { referenceNumber: string } | null;
 };
 
 export default function AcknowledgementsPage() {
@@ -188,7 +189,8 @@ export default function AcknowledgementsPage() {
                       ) : null}
                     </td>
                     <td className="px-4 py-3 align-top font-mono text-xs">
-                      {r.assessment?.referenceNumber ??
+                      {r.dispatchVoucher?.referenceNumber ??
+                        r.assessment?.referenceNumber ??
                         r.repair?.referenceNumber ??
                         r.referenceText ??
                         "—"}

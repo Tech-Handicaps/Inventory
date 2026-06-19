@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       notifyOnRepair: row?.notifyOnRepair ?? true,
       notifyOnAssessment: row?.notifyOnAssessment ?? true,
       notifyOnWrittenOff: row?.notifyOnWrittenOff ?? true,
+      notifyOnDispatch: row?.notifyOnDispatch ?? true,
       financeEmails: row?.financeEmails ?? "",
       financeGreetingName: row?.financeGreetingName ?? "",
       fromName: row?.fromName ?? "Handicaps Network Africa Inventory",
@@ -70,6 +71,7 @@ export async function PATCH(request: NextRequest) {
     const notifyOnRepair = body.notifyOnRepair !== false;
     const notifyOnAssessment = body.notifyOnAssessment !== false;
     const notifyOnWrittenOff = body.notifyOnWrittenOff !== false;
+    const notifyOnDispatch = body.notifyOnDispatch !== false;
     const financeEmails =
       typeof body.financeEmails === "string" ? body.financeEmails : "";
     const financeGreetingName =
@@ -98,6 +100,7 @@ export async function PATCH(request: NextRequest) {
         notifyOnRepair,
         notifyOnAssessment,
         notifyOnWrittenOff,
+        notifyOnDispatch,
         financeEmails,
         financeGreetingName,
         fromName,
@@ -109,6 +112,7 @@ export async function PATCH(request: NextRequest) {
         notifyOnRepair,
         notifyOnAssessment,
         notifyOnWrittenOff,
+        notifyOnDispatch,
         financeEmails,
         financeGreetingName,
         fromName,

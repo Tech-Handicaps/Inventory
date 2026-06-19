@@ -15,6 +15,7 @@ type EmailSettingsRow = {
   notifyOnRepair: boolean;
   notifyOnAssessment: boolean;
   notifyOnWrittenOff: boolean;
+  notifyOnDispatch: boolean;
   financeEmails: string;
   financeGreetingName: string;
   fromName: string;
@@ -37,6 +38,7 @@ function mapApiToRow(j: EmailSettingsRow & { error?: string }): EmailSettingsRow
     notifyOnRepair: j.notifyOnRepair,
     notifyOnAssessment: j.notifyOnAssessment ?? true,
     notifyOnWrittenOff: j.notifyOnWrittenOff,
+    notifyOnDispatch: j.notifyOnDispatch ?? true,
     financeEmails: j.financeEmails,
     financeGreetingName: j.financeGreetingName,
     fromName: j.fromName,
@@ -90,6 +92,7 @@ export function EmailNotificationsSettingsSection() {
           notifyOnRepair: data.notifyOnRepair,
           notifyOnAssessment: data.notifyOnAssessment,
           notifyOnWrittenOff: data.notifyOnWrittenOff,
+          notifyOnDispatch: data.notifyOnDispatch,
           financeEmails: data.financeEmails,
           financeGreetingName: data.financeGreetingName,
           fromName: data.fromName,
@@ -272,6 +275,24 @@ export function EmailNotificationsSettingsSection() {
           />
           <span className="text-sm text-black/80">
             Notify finance when a <strong>repair</strong> is logged
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={data.notifyOnDispatch}
+            onChange={(e) =>
+              setData((d) =>
+                d ? { ...d, notifyOnDispatch: e.target.checked } : d
+              )
+            }
+            className="mt-1"
+          />
+          <span className="text-sm text-black/80">
+            Notify finance with a <strong>dispatch voucher</strong> (PDF attached)
+            when hardware moves from <strong>Assessment/Maintenance</strong> or{" "}
+            <strong>In repairs</strong> to <strong>Deployed</strong>
           </span>
         </label>
 

@@ -6,6 +6,11 @@ export type SendHtmlEmailParams = {
   html: string;
   from: string;
   replyTo?: string | null;
+  attachments?: {
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+  }[];
 };
 
 export type SendHtmlEmailResult =
@@ -60,6 +65,11 @@ export async function sendHtmlEmailViaSmtp(
       subject: params.subject,
       html: params.html,
       replyTo: params.replyTo?.trim() || undefined,
+      attachments: params.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType ?? "application/octet-stream",
+      })),
     });
 
     return {

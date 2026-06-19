@@ -1,0 +1,200 @@
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+} from "@react-pdf/renderer";
+import { PdfBrandBlock } from "@/lib/pdf/pdf-brand-block";
+
+export type DispatchVoucherPdfFields = {
+  referenceNumber: string;
+  dispatchedAt: string;
+  fromStageLabel: string;
+  assetName: string;
+  clubName: string | null;
+  category: string;
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  deviceLocation: string | null;
+  templateLabel: string | null;
+  processorName: string | null;
+  systemRam: string | null;
+  systemGpu: string | null;
+  dataSource: string;
+};
+
+const brandGreen = "#139d4b";
+const black = "#111111";
+const muted = "#555555";
+
+const styles = StyleSheet.create({
+  page: {
+    paddingTop: 36,
+    paddingBottom: 48,
+    paddingHorizontal: 40,
+    fontFamily: "Helvetica",
+    fontSize: 10,
+    color: black,
+  },
+  headerBar: {
+    height: 4,
+    backgroundColor: brandGreen,
+    marginBottom: 16,
+    marginHorizontal: -40,
+    marginTop: -36,
+  },
+  title: {
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  voucherNo: {
+    fontSize: 14,
+    fontFamily: "Helvetica-Bold",
+    color: brandGreen,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 10,
+    color: muted,
+    marginBottom: 16,
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#dddddd",
+  },
+  metaLabel: { fontSize: 8, color: muted, marginBottom: 3 },
+  metaValue: { fontSize: 10, fontFamily: "Helvetica-Bold" },
+  sectionTitle: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: brandGreen,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    marginBottom: 10,
+  },
+  table: {
+    borderWidth: 1,
+    borderColor: "#dddddd",
+    marginBottom: 20,
+  },
+  row: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#eeeeee",
+  },
+  labelCell: {
+    width: "32%",
+    padding: 8,
+    backgroundColor: "#f9faf9",
+    fontSize: 9,
+    color: muted,
+    fontFamily: "Helvetica-Bold",
+  },
+  valueCell: {
+    width: "68%",
+    padding: 8,
+    fontSize: 9,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 24,
+    left: 40,
+    right: 40,
+    fontSize: 8,
+    color: muted,
+    borderTopWidth: 0.5,
+    borderTopColor: "#cccccc",
+    paddingTop: 8,
+  },
+});
+
+function row(label: string, value: string) {
+  return (
+    <View style={styles.row} wrap={false}>
+      <Text style={styles.labelCell}>{label}</Text>
+      <Text style={styles.valueCell}>{value || "—"}</Text>
+    </View>
+  );
+}
+
+type Props = DispatchVoucherPdfFields & {
+  logoSource: Buffer | string | null;
+};
+
+export function DispatchVoucherDocument({
+  logoSource,
+  referenceNumber,
+  dispatchedAt,
+  fromStageLabel,
+  assetName,
+  clubName,
+  category,
+  manufacturer,
+  model,
+  serialNumber,
+  deviceLocation,
+  templateLabel,
+  processorName,
+  systemRam,
+  systemGpu,
+  dataSource,
+}: Props) {
+  const hw = [processorName, systemRam, systemGpu].filter(Boolean).join(" · ");
+  const makeModel = [manufacturer, model].filter(Boolean).join(" · ");
+  const sourceLabel = dataSource === "zoho_assist" ? "Zoho Assist" : "Manual";
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.headerBar} />
+        <PdfBrandBlock logoSource={logoSource} />
+        <Text style={styles.title}>Dispatch voucher</Text>
+        <Text style={styles.voucherNo}>{referenceNumber}</Text>
+        <Text style={styles.subtitle}>
+          Hardware dispatched to the field — retain for finance and audit records.
+        </Text>
+
+        <View style={styles.metaRow}>
+          <View>
+            <Text style={styles.metaLabel}>Dispatch date</Text>
+            <Text style={styles.metaValue}>{dispatchedAt}</Text>
+          </View>
+          <View>
+            <Text style={styles.metaLabel}>From stage</Text>
+            <Text style={styles.metaValue}>{fromStageLabel}</Text>
+          </View>
+          <View>
+            <Text style={styles.metaLabel}>To stage</Text>
+            <Text style={styles.metaValue}>Deployed</Text>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Asset details</Text>
+        <View style={styles.table}>
+          {row("Asset name", assetName)}
+          {row("Club / site", clubName ?? "—")}
+          {row("Category", category)}
+          {row("Make / model", makeModel || "—")}
+          {row("Device template", templateLabel ?? "—")}
+          {row("Serial number", serialNumber ?? "—")}
+          {row("Location", deviceLocation ?? "—")}
+          {row("CPU / RAM / GPU", hw || "—")}
+          {row("Source", sourceLabel)}
+        </View>
+
+        <Text style={styles.footer}>
+          Generated by Handicaps Network Africa Inventory · {referenceNumber}
+        </Text>
+      </Page>
+    </Document>
+  );
+}

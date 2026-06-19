@@ -4,6 +4,10 @@ import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
 import { createWrittenOffAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
+import {
+  createDispatchVoucherAndNotify,
+  shouldIssueDispatchVoucher,
+} from "@/lib/finance/dispatch-notify";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/assets/:id
@@ -318,12 +322,23 @@ export async function PUT(
     const transitionToWrittenOff =
       before.status.code !== "written_off" && asset.status.code === "written_off";
 
+    const transitionToDeployed = shouldIssueDispatchVoucher(
+      before.status.code,
+      asset.status.code
+    );
+
     await createAuditLog({
       userId: user.id,
-      actionType: transitionToWrittenOff ? "asset.write_off" : "asset.updated",
+      actionType: transitionToWrittenOff
+        ? "asset.write_off"
+        : transitionToDeployed
+          ? "dispatch.created"
+          : "asset.updated",
       notes: transitionToWrittenOff
         ? `Written off: ${asset.assetName}${asset.reason ? ` — ${asset.reason}` : ""}`
-        : `Updated: ${asset.assetName}`,
+        : transitionToDeployed
+          ? `Dispatched: ${asset.assetName} (${before.status.code} → deployed)`
+          : `Updated: ${asset.assetName}`,
       metadata: {
         assetId: id,
         changes,
@@ -339,6 +354,17 @@ export async function PUT(
         });
       } catch (e) {
         console.error("createWrittenOffAcknowledgementAndNotify", e);
+      }
+    }
+
+    if (transitionToDeployed) {
+      try {
+        await createDispatchVoucherAndNotify({
+          assetId: id,
+          fromStatusCode: before.status.code,
+        });
+      } catch (e) {
+        console.error("createDispatchVoucherAndNotify", e);
       }
     }
 

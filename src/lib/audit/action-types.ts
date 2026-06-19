@@ -16,6 +16,7 @@ export const AUDIT_ACTION_TYPES = [
   "assessment.created",
   "assessment.completed",
   "assessment.cancelled",
+  "dispatch.created",
   "integration.zoho.settings_updated",
   "integration.zoho_desk.settings_updated",
   "integration.zoho.oauth_connected",

@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
         assessment: {
           select: { id: true, referenceNumber: true },
         },
+        dispatchVoucher: {
+          select: { id: true, referenceNumber: true },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: 200,

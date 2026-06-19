@@ -140,6 +140,69 @@ export function buildInAssessmentEmail(params: {
   return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }
 
+export function buildDispatchVoucherEmail(params: {
+  greeting: string;
+  voucherReference: string;
+  fromStageLabel: string;
+  assetName: string;
+  clubName: string | null;
+  serial: string | null;
+  category: string;
+  manufacturer: string | null;
+  model: string | null;
+  deviceLocation: string | null;
+  templateLabel: string | null;
+  processorName: string | null;
+  systemRam: string | null;
+  systemGpu: string | null;
+  dataSource: string;
+  dispatchedAt: string;
+  appUrl: string;
+}): { subject: string; html: string } {
+  const clubTrimmed =
+    typeof params.clubName === "string" ? params.clubName.trim() : "";
+  const subject =
+    clubTrimmed !== ""
+      ? `Dispatch voucher · ${params.voucherReference} · ${params.assetName} · ${clubTrimmed}`
+      : `Dispatch voucher · ${params.voucherReference} · ${params.assetName}`;
+  const clubBodyCell =
+    clubTrimmed !== ""
+      ? `<strong>${esc(clubTrimmed)}</strong>`
+      : escOptional(params.clubName);
+  const hw = [params.processorName, params.systemRam, params.systemGpu]
+    .filter((x): x is string => typeof x === "string" && Boolean(x.trim()))
+    .map((x) => esc(x.trim()))
+    .join(" · ");
+  const sourceLabel =
+    params.dataSource === "zoho_assist" ? "Zoho Assist" : "Manual";
+  const body = `
+    <p style="margin:0 0 12px 0;">${esc(params.greeting)}</p>
+    <p style="margin:0 0 12px 0;">Hardware has been <strong>dispatched to the field</strong> (moved to <strong>Deployed</strong>) from <strong>${esc(params.fromStageLabel)}</strong>. The dispatch voucher is attached as a PDF and summarised below.</p>
+    <p style="margin:0 0 16px 0;padding:12px 14px;background:#f0fdf4;border-left:4px solid ${BRAND};font-size:15px;">
+      <span style="color:${MUTED};font-size:11px;display:block;margin-bottom:4px;">Dispatch voucher number</span>
+      <strong style="color:#0b5d2e;">${esc(params.voucherReference)}</strong>
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <tr><td style="padding:6px 0;color:${MUTED};width:160px;">Dispatch date</td><td style="padding:6px 0;">${esc(params.dispatchedAt)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">From stage</td><td style="padding:6px 0;">${esc(params.fromStageLabel)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};"><strong>Club / site</strong></td><td style="padding:6px 0;">${clubBodyCell}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Asset</td><td style="padding:6px 0;"><strong>${esc(params.assetName)}</strong></td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Category</td><td style="padding:6px 0;">${esc(params.category)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Manufacturer</td><td style="padding:6px 0;">${escOptional(params.manufacturer)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Model</td><td style="padding:6px 0;">${escOptional(params.model)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Device template</td><td style="padding:6px 0;">${escOptional(params.templateLabel)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Serial</td><td style="padding:6px 0;">${params.serial ? esc(params.serial) : "—"}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Location</td><td style="padding:6px 0;">${escOptional(params.deviceLocation)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">CPU / RAM / GPU</td><td style="padding:6px 0;">${hw || "—"}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Source</td><td style="padding:6px 0;">${esc(sourceLabel)}</td></tr>
+    </table>
+    <p style="margin:16px 0 0 0;">
+      <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
+    </p>
+  `;
+  return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
+}
+
 export function buildWrittenOffEmail(params: {
   greeting: string;
   assetName: string;

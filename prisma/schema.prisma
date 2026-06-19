@@ -106,6 +106,25 @@ model Asset {
   repairs           Repair[]
   xeroSyncs         XeroSync[]
   financeAcknowledgements FinanceAcknowledgement[]
+  dispatchVouchers        DispatchVoucher[]
+}
+
+/// Issued when hardware is dispatched to the field (Assessment or Repairs → Deployed).
+model DispatchVoucher {
+  id              String   @id @default(cuid())
+  assetId         String
+  asset           Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// e.g. HNA-DSP-2026-A1B2C3D4
+  referenceNumber String   @unique
+  /// Lifecycle stage before dispatch: assessment | repair
+  fromStatusCode  String
+  clubName        String?
+  deviceLocation  String?
+  dispatchedAt    DateTime @default(now())
+  createdAt       DateTime @default(now())
+  financeAcknowledgement FinanceAcknowledgement?
+
+  @@index([assetId, dispatchedAt])
 }
 
 /// Intake / triage between deployed field returns and formal repair authorization; also used for depot maintenance (reloads, etc.) without implying hardware repair.
@@ -216,6 +235,8 @@ model EmailNotificationSettings {
   /// Email finance when hardware enters Assessment (Deployed → Assessment).
   notifyOnAssessment   Boolean  @default(true)
   notifyOnWrittenOff   Boolean  @default(true)
+  /// Email finance with dispatch voucher when hardware moves to Deployed from Assessment or Repairs.
+  notifyOnDispatch     Boolean  @default(true)
   /// Comma-separated recipient emails for finance notifications.
   financeEmails        String   @default("")
   /// Optional greeting name, e.g. "Lerisha" → "Hi Lerisha," in emails.
@@ -231,7 +252,7 @@ model FinanceAcknowledgement {
   id                     String    @id @default(cuid())
   assetId                String
   asset                  Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  /// in_repair | in_assessment | written_off
+  /// in_repair | in_assessment | written_off | dispatched
   eventType              String
   /// pending | acknowledged
   status                 String      @default("pending")
@@ -241,6 +262,8 @@ model FinanceAcknowledgement {
   repair                 Repair?     @relation(fields: [repairId], references: [id], onDelete: SetNull)
   assessmentId           String?     @unique
   assessment             Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  dispatchVoucherId      String?     @unique
+  dispatchVoucher        DispatchVoucher? @relation(fields: [dispatchVoucherId], references: [id], onDelete: SetNull)
   createdAt              DateTime    @default(now())
   acknowledgedAt         DateTime?
   acknowledgedByUserId   String?

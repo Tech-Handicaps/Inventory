@@ -2,12 +2,19 @@ import type { EmailNotificationSettingsResolved } from "@/lib/email/email-settin
 import { sendHtmlEmailViaResend } from "@/lib/email/resend-send";
 import { sendHtmlEmailViaSmtp } from "@/lib/email/smtp-send";
 
+export type EmailAttachment = {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+};
+
 export type SendHtmlEmailInput = {
   to: string[];
   subject: string;
   html: string;
   from: string;
   replyTo?: string | null;
+  attachments?: EmailAttachment[];
 };
 
 export type SendHtmlEmailUnifiedResult =
@@ -28,6 +35,7 @@ export async function sendHtmlEmailUnified(
       html: params.html,
       from: params.from,
       replyTo: params.replyTo,
+      attachments: params.attachments,
     });
     if (!r.ok) return { ok: false, error: r.error };
     return { ok: true, provider: "smtp", id: r.messageId };
@@ -39,6 +47,7 @@ export async function sendHtmlEmailUnified(
     html: params.html,
     from: params.from,
     replyTo: params.replyTo,
+    attachments: params.attachments,
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, provider: "resend_rest", id: r.id };

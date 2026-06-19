@@ -9,6 +9,11 @@ export type SendHtmlEmailParams = {
   html: string;
   from: string;
   replyTo?: string | null;
+  attachments?: {
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+  }[];
 };
 
 export type SendHtmlEmailResult =
@@ -42,6 +47,15 @@ export async function sendHtmlEmailViaResend(
         html: params.html,
         ...(params.replyTo?.trim()
           ? { reply_to: params.replyTo.trim() }
+          : {}),
+        ...(params.attachments?.length
+          ? {
+              attachments: params.attachments.map((a) => ({
+                filename: a.filename,
+                content: a.content.toString("base64"),
+                content_type: a.contentType ?? "application/octet-stream",
+              })),
+            }
           : {}),
       }),
     });

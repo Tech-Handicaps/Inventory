@@ -12,6 +12,7 @@ export type EmailNotificationSettingsResolved = {
   notifyOnRepair: boolean;
   notifyOnAssessment: boolean;
   notifyOnWrittenOff: boolean;
+  notifyOnDispatch: boolean;
   financeEmails: string[];
   financeGreetingName: string | null;
   fromName: string;
@@ -80,6 +81,7 @@ export async function getEmailNotificationSettings(): Promise<EmailNotificationS
     notifyOnRepair: row?.notifyOnRepair ?? true,
     notifyOnAssessment: row?.notifyOnAssessment ?? true,
     notifyOnWrittenOff: row?.notifyOnWrittenOff ?? true,
+    notifyOnDispatch: row?.notifyOnDispatch ?? true,
     financeEmails: parseEmailList(row?.financeEmails ?? ""),
     financeGreetingName: row?.financeGreetingName?.trim() || null,
     fromName: row?.fromName?.trim() || "Handicaps Network Africa Inventory",
