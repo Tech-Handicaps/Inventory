@@ -9,6 +9,7 @@ export function newDispatchVoucherReference(): string {
 export function dispatchFromStatusLabel(code: string): string {
   if (code === "assessment") return "Assessment / Maintenance";
   if (code === "repair") return "In Repairs";
+  if (code === "written_off") return "Written off";
   return code;
 }
 

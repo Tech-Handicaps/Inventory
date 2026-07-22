@@ -271,6 +271,8 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
   replacementRequested?: boolean;
   replacementNotes?: string | null;
   assessmentReference?: string | null;
+  writeOffCertificateId?: string | null;
+  writeOffCertificateReference?: string | null;
 }): Promise<void> {
   const settings = await getEmailNotificationSettings();
   if (!settings.notifyOnWrittenOff) return;
@@ -283,11 +285,14 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
       serialNumber: true,
       manufacturer: true,
       model: true,
+      club: { select: { name: true } },
     },
   });
   if (!asset) return;
 
+  const certRef = params.writeOffCertificateReference?.trim() || null;
   const refParts = [
+    certRef,
     params.assessmentReference?.trim()
       ? `From ${params.assessmentReference.trim()}`
       : null,
@@ -304,6 +309,9 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
       eventType: "written_off",
       status: "pending",
       referenceText: ref.slice(0, 500),
+      ...(params.writeOffCertificateId
+        ? { writeOffCertificateId: params.writeOffCertificateId }
+        : {}),
     },
   });
 
@@ -345,16 +353,44 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
   const { subject, html } = buildWrittenOffEmail({
     greeting,
     assetName: asset.assetName,
+    clubName: asset.club?.name ?? null,
     serial: asset.serialNumber,
     category: asset.category,
     manufacturer: asset.manufacturer,
     model: asset.model,
     reason: params.reason?.trim() ?? null,
     assessmentReference: params.assessmentReference?.trim() ?? null,
+    writeOffCertificateReference: certRef,
     replacementRequested: params.replacementRequested === true,
     replacementNotes: params.replacementNotes?.trim() ?? null,
     appUrl: appBaseUrl(),
   });
+
+  let attachments:
+    | { filename: string; content: Buffer; contentType: string }[]
+    | undefined;
+  if (params.writeOffCertificateId) {
+    try {
+      const cert = await prisma.writeOffCertificate.findUnique({
+        where: { id: params.writeOffCertificateId },
+      });
+      if (cert) {
+        const { renderWriteOffCertificatePdfForRecord } = await import(
+          "@/lib/finance/write-off-certificate"
+        );
+        const pdfBuffer = await renderWriteOffCertificatePdfForRecord(cert);
+        attachments = [
+          {
+            filename: `${cert.referenceNumber}.pdf`,
+            content: pdfBuffer,
+            contentType: "application/pdf",
+          },
+        ];
+      }
+    } catch (e) {
+      console.error("write-off certificate PDF attach failed", e);
+    }
+  }
 
   const result = await sendHtmlEmailUnified(settings, {
     to: recipients,
@@ -362,6 +398,7 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     html,
     from: settings.fromAddress,
     replyTo: settings.replyTo,
+    attachments,
   });
 
   if (result.ok) {

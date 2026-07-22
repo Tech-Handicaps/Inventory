@@ -10,6 +10,7 @@ import { renderCatalogReportPdf } from "@/lib/pdf/render-catalog-report";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const REPORT_TYPES = [
   "overall",

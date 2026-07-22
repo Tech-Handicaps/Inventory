@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { createWrittenOffAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
+import { createWriteOffCertificate } from "@/lib/finance/write-off-certificate";
 import { prisma } from "@/lib/prisma";
 
 export type WriteOffAssetInput = {
@@ -18,7 +19,7 @@ type WrittenOffAsset = Prisma.AssetGetPayload<{
 }>;
 
 export type WriteOffAssetResult =
-  | { ok: true; asset: WrittenOffAsset }
+  | { ok: true; asset: WrittenOffAsset; certificateReference: string }
   | { ok: false; status: number; error: string };
 
 function normalizeSerial(v: string | null | undefined): string | null {
@@ -115,10 +116,7 @@ export async function writeOffAsset(
     input.serialNumber !== undefined
       ? normalizeSerial(input.serialNumber)
       : undefined;
-  if (
-    nextSerial &&
-    nextSerial !== asset.serialNumber
-  ) {
+  if (nextSerial && nextSerial !== asset.serialNumber) {
     const taken = await prisma.asset.findFirst({
       where: {
         serialNumber: nextSerial,
@@ -139,6 +137,7 @@ export async function writeOffAsset(
   const replacementNotes = replacementRequested
     ? input.replacementNotes?.trim() || null
     : null;
+  const fromStatusCode = asset.status.code;
 
   const updated = await prisma.$transaction(async (tx) => {
     if (assessmentRow) {
@@ -162,6 +161,15 @@ export async function writeOffAsset(
     });
   });
 
+  const certificate = await createWriteOffCertificate({
+    assetId: asset.id,
+    fromStatusCode,
+    assessmentReference: assessmentRow?.referenceNumber ?? null,
+    reason,
+    replacementRequested,
+    replacementNotes,
+  });
+
   if (assessmentRow) {
     await createAuditLog({
       userId: input.userId,
@@ -174,6 +182,7 @@ export async function writeOffAsset(
         outcome: "written_off",
         writeOffReason: reason,
         replacementRequested,
+        writeOffCertificate: certificate.referenceNumber,
       },
     });
   }
@@ -181,13 +190,14 @@ export async function writeOffAsset(
   await createAuditLog({
     userId: input.userId,
     actionType: "asset.write_off",
-    notes: `Written off: ${asset.assetName}${reason ? ` — ${reason}` : ""}`,
+    notes: `Written off: ${asset.assetName}${reason ? ` — ${reason}` : ""} (${certificate.referenceNumber})`,
     metadata: {
       assetId: asset.id,
       writeOffReason: reason,
       replacementRequested,
       replacementNotes,
-      fromStatusCode: asset.status.code,
+      fromStatusCode,
+      writeOffCertificate: certificate.referenceNumber,
       ...(assessmentRow
         ? {
             assessmentId: assessmentRow.id,
@@ -204,10 +214,16 @@ export async function writeOffAsset(
       replacementRequested,
       replacementNotes,
       assessmentReference: assessmentRow?.referenceNumber ?? null,
+      writeOffCertificateId: certificate.id,
+      writeOffCertificateReference: certificate.referenceNumber,
     });
   } catch (e) {
     console.error("createWrittenOffAcknowledgementAndNotify", e);
   }
 
-  return { ok: true, asset: updated };
+  return {
+    ok: true,
+    asset: updated,
+    certificateReference: certificate.referenceNumber,
+  };
 }

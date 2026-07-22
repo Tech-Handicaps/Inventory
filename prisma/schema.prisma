@@ -107,6 +107,7 @@ model Asset {
   xeroSyncs         XeroSync[]
   financeAcknowledgements FinanceAcknowledgement[]
   dispatchVouchers        DispatchVoucher[]
+  writeOffCertificates    WriteOffCertificate[]
 }
 
 /// Issued when hardware is dispatched to the field (Assessment or Repairs → Deployed).
@@ -125,6 +126,33 @@ model DispatchVoucher {
   financeAcknowledgement FinanceAcknowledgement?
 
   @@index([assetId, dispatchedAt])
+}
+
+/// Issued when hardware is written off from Assessment/Maintenance or In Repairs (downloadable certificate).
+model WriteOffCertificate {
+  id                     String   @id @default(cuid())
+  assetId                String
+  asset                  Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// e.g. HNA-WOF-2026-A1B2C3D4
+  referenceNumber        String   @unique
+  /// Assessment intake that led to write-off (kept for lineage; not replaced).
+  assessmentReference    String?
+  assetName              String
+  clubName               String?
+  /// Asset category / type
+  category               String
+  manufacturer           String?
+  model                  String?
+  serialNumber           String?
+  reason                 String?
+  replacementRequested   Boolean  @default(false)
+  replacementNotes       String?
+  fromStatusCode         String
+  writtenOffAt           DateTime @default(now())
+  createdAt              DateTime @default(now())
+  financeAcknowledgement FinanceAcknowledgement?
+
+  @@index([assetId, writtenOffAt])
 }
 
 /// Intake / triage between deployed field returns and formal repair authorization; also used for depot maintenance (reloads, etc.) without implying hardware repair.
@@ -264,6 +292,8 @@ model FinanceAcknowledgement {
   assessment             Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   dispatchVoucherId      String?     @unique
   dispatchVoucher        DispatchVoucher? @relation(fields: [dispatchVoucherId], references: [id], onDelete: SetNull)
+  writeOffCertificateId  String?     @unique
+  writeOffCertificate    WriteOffCertificate? @relation(fields: [writeOffCertificateId], references: [id], onDelete: SetNull)
   createdAt              DateTime    @default(now())
   acknowledgedAt         DateTime?
   acknowledgedByUserId   String?

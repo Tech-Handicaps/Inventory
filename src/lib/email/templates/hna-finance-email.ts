@@ -206,22 +206,35 @@ export function buildDispatchVoucherEmail(params: {
 export function buildWrittenOffEmail(params: {
   greeting: string;
   assetName: string;
+  clubName: string | null;
   serial: string | null;
   category: string;
   manufacturer: string | null;
   model: string | null;
   reason: string | null;
   assessmentReference?: string | null;
+  writeOffCertificateReference?: string | null;
   replacementRequested?: boolean;
   replacementNotes?: string | null;
   appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `Written off · ${params.assetName}`;
+  const clubTrimmed =
+    typeof params.clubName === "string" ? params.clubName.trim() : "";
+  const subject =
+    clubTrimmed !== ""
+      ? `Written off · ${params.assetName} · ${clubTrimmed}`
+      : `Written off · ${params.assetName}`;
+  const clubBodyCell =
+    clubTrimmed !== ""
+      ? `<strong>${esc(clubTrimmed)}</strong>`
+      : escOptional(params.clubName);
   const body = `
     <p style="margin:0 0 12px 0;">${esc(params.greeting)}</p>
     <p style="margin:0 0 12px 0;">An asset has been marked <strong>Written off</strong>. Please update your financial records and acknowledge in the system.</p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <tr><td style="padding:6px 0;color:${MUTED};width:140px;">Asset</td><td style="padding:6px 0;">${esc(params.assetName)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};"><strong>Club name</strong></td><td style="padding:6px 0;">${clubBodyCell}</td></tr>
+      ${params.writeOffCertificateReference ? `<tr><td style="padding:6px 0;color:${MUTED};">Write-off certificate</td><td style="padding:6px 0;">${esc(params.writeOffCertificateReference)}</td></tr>` : ""}
       ${params.assessmentReference ? `<tr><td style="padding:6px 0;color:${MUTED};">Assessment intake</td><td style="padding:6px 0;">${esc(params.assessmentReference)}</td></tr>` : ""}
       <tr><td style="padding:6px 0;color:${MUTED};">Category</td><td style="padding:6px 0;">${esc(params.category)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Manufacturer</td><td style="padding:6px 0;">${escOptional(params.manufacturer)}</td></tr>

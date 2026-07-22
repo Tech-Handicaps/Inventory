@@ -608,6 +608,7 @@ export default function InventoryPage() {
                       <th className="px-4 py-3 font-medium">Model</th>
                       <th className="px-4 py-3 font-medium">Serial</th>
                       <th className="px-4 py-3 font-medium">Reason</th>
+                      <th className="px-4 py-3 font-medium">Certificate</th>
                       <th className="px-4 py-3 font-medium">Stage</th>
                       <th className="px-4 py-3 text-right font-medium">
                         Actions
@@ -634,6 +635,15 @@ export default function InventoryPage() {
                         </td>
                         <td className="px-4 py-2 text-black/65">
                           {asset.reason ?? "—"}
+                        </td>
+                        <td className="px-4 py-2">
+                          <a
+                            href={`/api/assets/${asset.id}/write-off-certificate`}
+                            className="text-xs font-semibold text-brand hover:underline"
+                            title="Download write-off certificate (PDF)"
+                          >
+                            Download PDF
+                          </a>
                         </td>
                         <td className="px-4 py-2">
                           <select

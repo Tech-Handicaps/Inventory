@@ -40,7 +40,10 @@ export async function POST(
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    return NextResponse.json({ asset: result.asset });
+    return NextResponse.json({
+      asset: result.asset,
+      certificateReference: result.certificateReference,
+    });
   } catch (e) {
     console.error("POST /api/assets/[id]/write-off", e);
     return NextResponse.json(
