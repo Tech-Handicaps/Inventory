@@ -154,158 +154,186 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
   return (
     <section
       id="lifecycle"
-      className="rounded-xl border border-black/10 bg-white p-6 shadow-sm"
+      className="scroll-mt-6 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm"
     >
-      <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
-        Asset lifecycle / movement
-      </h2>
-      <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
-      <p className="mt-4 text-sm leading-relaxed text-black/70">
-        Track how a unit moved through your stages (for example new stock → in
-        stock with clubs → repair → refurbished → written off).
-        {auditAccess ? (
-          <>
-            {" "}
-            Movement is built from the <strong>audit log</strong> when someone
-            changes status on the hardware board or updates the asset. The{" "}
-            <strong>Dashboard</strong> shows totals across all assets; this view
-            is <strong>one asset at a time</strong>.
-          </>
-        ) : (
-          <>
-            {" "}
-            Audit history is not available for your role; you can still see each
-            asset&apos;s current stage below.
-          </>
-        )}
-      </p>
-
-      <div className="mt-6 max-w-xl space-y-3">
-        <div>
-          <label
-            htmlFor="lifecycle-asset-search"
-            className="text-xs font-medium text-black/70"
-          >
-            Filter assets
-          </label>
-          <div className="mt-1 flex gap-2">
-            <input
-              id="lifecycle-asset-search"
-              type="search"
-              enterKeyHint="search"
-              value={pickerQuery}
-              onChange={(e) => setPickerQuery(e.target.value)}
-              disabled={loadingAssets || assets.length === 0}
-              placeholder="Name, club, serial, template, category, location…"
-              className="min-w-0 flex-1 rounded-lg border border-black/15 px-3 py-2 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:ring-2"
-              autoComplete="off"
-              aria-label="Search assets for lifecycle picker"
-            />
-            {pickerQuery.trim() ? (
-              <button
-                type="button"
-                onClick={() => setPickerQuery("")}
-                disabled={loadingAssets || assets.length === 0}
-                className="shrink-0 rounded-lg border border-black/15 px-3 py-2 text-xs font-medium text-black/70 hover:bg-black/[0.04]"
-              >
-                Clear
-              </button>
-            ) : null}
-          </div>
-          {!loadingAssets && assets.length ? (
-            <p className="mt-1.5 text-[11px] text-black/50">
-              Showing{" "}
-              <strong className="tabular-nums text-black/70">
-                {pickerOptions.length}
-              </strong>{" "}
-              of {assets.length} assets in the dropdown
-              {pickerSelectionPinned ? (
-                <span className="text-black/45">
-                  {" "}
-                  (current selection kept visible)
-                </span>
-              ) : null}
-              .
-            </p>
-          ) : null}
-        </div>
-        <div>
-          <label
-            htmlFor="lifecycle-asset"
-            className="text-xs font-medium text-black/70"
-          >
-            Select asset
-          </label>
-          <select
-            id="lifecycle-asset"
-            value={assetId}
-            onChange={(e) => setAssetId(e.target.value)}
-            disabled={loadingAssets}
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-          >
-            <option value="">
-              {loadingAssets ? "Loading…" : "— Choose an asset —"}
-            </option>
-            {pickerOptions.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.assetName}
-                {a.serialNumber ? ` · S/N ${a.serialNumber}` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="border-b border-black/8 bg-gradient-to-r from-brand-muted/80 to-white px-6 py-5 sm:px-8">
+        <p className="font-heading text-[10px] font-bold uppercase tracking-[0.18em] text-brand-hover">
+          Per-asset history
+        </p>
+        <h2 className="font-heading mt-1 text-lg font-bold uppercase tracking-wide text-black">
+          Asset lifecycle / movement
+        </h2>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-black/65">
+          Follow how a unit moved through stages (new stock → field → repair →
+          refurbished → written off).
+          {auditAccess ? (
+            <>
+              {" "}
+              Built from the <strong>audit log</strong> when status changes on
+              the hardware board. Dashboard shows totals; this view is{" "}
+              <strong>one asset at a time</strong>.
+            </>
+          ) : (
+            <>
+              {" "}
+              Audit history is not available for your role; you can still see
+              each asset&apos;s current stage.
+            </>
+          )}
+        </p>
       </div>
 
-      {selected ? (
-        <p className="mt-4 text-xs text-black/55">
-          Current stage:{" "}
-          <strong className="text-black">{selected.status.label}</strong> (
-          {selected.status.code})
-        </p>
-      ) : null}
-
-      {error ? (
-        <p className="mt-4 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      {assetId && auditAccess ? (
-        <div className="mt-6">
-          {loadingLog ? (
-            <p className="text-sm text-black/55">Loading history…</p>
-          ) : timeline.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-black/15 bg-black/[0.02] px-4 py-6 text-sm text-black/55">
-              No audit entries for this asset yet. History appears after the
-              asset is created or updated (for example when you change stage on
-              the board).
-            </p>
-          ) : (
-            <ol className="relative space-y-0 border-l-2 border-brand/30 pl-6">
-              {timeline.map((row) => (
-                <li key={row.id} className="relative pb-6 last:pb-0">
-                  <span
-                    className="absolute -left-[calc(0.5rem+5px)] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-brand bg-white"
-                    aria-hidden
-                  />
-                  <time
-                    dateTime={row.timestamp}
-                    className="text-xs font-medium tabular-nums text-black/45"
-                  >
-                    {new Date(row.timestamp).toLocaleString()}
-                  </time>
-                  <p className="mt-0.5 text-sm font-medium text-black">
-                    {formatTransitionSummary(row)}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wide text-black/40">
-                    {row.actionType}
-                  </p>
-                </li>
+      <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-10">
+        <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="lifecycle-asset-search"
+              className="text-xs font-medium text-black/70"
+            >
+              Filter assets
+            </label>
+            <div className="mt-1 flex gap-2">
+              <input
+                id="lifecycle-asset-search"
+                type="search"
+                enterKeyHint="search"
+                value={pickerQuery}
+                onChange={(e) => setPickerQuery(e.target.value)}
+                disabled={loadingAssets || assets.length === 0}
+                placeholder="Name, club, serial, template…"
+                className="min-w-0 flex-1 rounded-lg border border-black/15 bg-surface/50 px-3 py-2.5 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:bg-white focus:ring-2"
+                autoComplete="off"
+                aria-label="Search assets for lifecycle picker"
+              />
+              {pickerQuery.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => setPickerQuery("")}
+                  disabled={loadingAssets || assets.length === 0}
+                  className="shrink-0 rounded-lg border border-black/15 px-3 py-2 text-xs font-medium text-black/70 hover:bg-black/[0.04]"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            {!loadingAssets && assets.length ? (
+              <p className="mt-1.5 text-[11px] text-black/50">
+                Showing{" "}
+                <strong className="tabular-nums text-black/70">
+                  {pickerOptions.length}
+                </strong>{" "}
+                of {assets.length}
+                {pickerSelectionPinned ? (
+                  <span className="text-black/45">
+                    {" "}
+                    (selection kept visible)
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <label
+              htmlFor="lifecycle-asset"
+              className="text-xs font-medium text-black/70"
+            >
+              Select asset
+            </label>
+            <select
+              id="lifecycle-asset"
+              value={assetId}
+              onChange={(e) => setAssetId(e.target.value)}
+              disabled={loadingAssets}
+              className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2.5 text-sm"
+            >
+              <option value="">
+                {loadingAssets ? "Loading…" : "— Choose an asset —"}
+              </option>
+              {pickerOptions.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.assetName}
+                  {a.serialNumber ? ` · S/N ${a.serialNumber}` : ""}
+                </option>
               ))}
-            </ol>
+            </select>
+          </div>
+
+          {selected ? (
+            <div className="rounded-xl border border-brand/20 bg-brand-muted/40 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-hover">
+                Current stage
+              </p>
+              <p className="mt-0.5 font-heading text-sm font-bold text-black">
+                {selected.status.label}
+              </p>
+              <p className="text-[11px] tabular-nums text-black/45">
+                {selected.status.code}
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-black/15 bg-surface/60 px-4 py-6 text-center text-sm text-black/45">
+              Select an asset to view its stage
+              {auditAccess ? " and movement history" : ""}.
+            </p>
           )}
         </div>
-      ) : null}
+
+        <div className="min-w-0">
+          {error ? (
+            <p className="mb-4 text-sm text-red-700" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          {!auditAccess ? (
+            <p className="rounded-xl border border-dashed border-black/12 bg-surface/50 px-4 py-8 text-center text-sm text-black/50">
+              Movement timeline requires an admin role.
+            </p>
+          ) : !assetId ? (
+            <div className="flex h-full min-h-[12rem] items-center justify-center rounded-xl border border-dashed border-black/12 bg-surface/40 px-4">
+              <p className="text-sm text-black/45">
+                Timeline appears here after you choose an asset.
+              </p>
+            </div>
+          ) : loadingLog ? (
+            <p className="text-sm text-black/55">Loading history…</p>
+          ) : timeline.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-black/15 bg-surface/50 px-4 py-8 text-sm text-black/55">
+              No audit entries yet. History appears after the asset is created
+              or its stage is changed on the board.
+            </p>
+          ) : (
+            <div>
+              <h3 className="font-heading mb-4 text-xs font-bold uppercase tracking-[0.15em] text-black/45">
+                Movement timeline · {timeline.length} events
+              </h3>
+              <ol className="relative space-y-0 border-l-2 border-brand/25 pl-6">
+                {timeline.map((row) => (
+                  <li key={row.id} className="relative pb-6 last:pb-0">
+                    <span
+                      className="absolute -left-[calc(0.5rem+5px)] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-brand bg-white shadow-sm"
+                      aria-hidden
+                    />
+                    <time
+                      dateTime={row.timestamp}
+                      className="text-xs font-medium tabular-nums text-black/45"
+                    >
+                      {new Date(row.timestamp).toLocaleString()}
+                    </time>
+                    <p className="mt-0.5 text-sm font-medium text-black">
+                      {formatTransitionSummary(row)}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wide text-black/40">
+                      {row.actionType}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
+

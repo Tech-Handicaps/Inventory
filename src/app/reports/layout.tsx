@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Reports · Handicaps Network Africa",
   description:
-    "Download PDF inventory reports for stakeholders and accounting",
+    "PDF inventory reports and per-asset lifecycle history for Handicaps Network Africa",
 };
 
 export default function ReportsLayout({
