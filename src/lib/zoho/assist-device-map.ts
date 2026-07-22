@@ -121,7 +121,6 @@ export function mapAssistDeviceJsonToHardwareFields(json: unknown): AssistHardwa
     if (!out.serialNumber) {
       out.serialNumber =
         str(pd.serial_number) ??
-        str(pd.product_id) ??
         str(pd.service_tag);
     }
   }
@@ -401,8 +400,7 @@ export function mergeAssistListComputerIntoMapped(
       mapped.serialNumber ??
       str(rowDi?.serial_number) ??
       str(rowDi?.service_tag) ??
-      str(rowPd?.serial_number) ??
-      str(rowPd?.product_id),
+      str(rowPd?.serial_number),
   };
 }
 

@@ -265,8 +265,34 @@ export async function POST(request: NextRequest) {
     const ip = mapped.publicIp?.trim() || null;
     const geo = await prismaGeoFieldsFromPublicIp(ip);
 
+    const serialForCreate = mapped.serialNumber?.trim() || null;
+    if (serialForCreate) {
+      const serialConflict = await prisma.asset.findFirst({
+        where: { serialNumber: serialForCreate },
+        select: {
+          id: true,
+          assetName: true,
+          zohoAssistDeviceId: true,
+        },
+      });
+      if (serialConflict) {
+        return NextResponse.json(
+          {
+            code: "DUPLICATE_SERIAL",
+            error: `Serial number "${serialForCreate}" is already registered to "${serialConflict.assetName}".`,
+            assetId: serialConflict.id,
+            serialNumber: serialForCreate,
+            existingAssistLinked: Boolean(serialConflict.zohoAssistDeviceId),
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     // Assist-sourced fields only — purchaseDate / warrantyEndDate are never set here (Postgres-only; edit asset after import).
-    const asset = await prisma.asset.create({
+    let asset;
+    try {
+      asset = await prisma.asset.create({
       data: {
         assetName,
         category,
@@ -278,7 +304,7 @@ export async function POST(request: NextRequest) {
         deviceTemplateId: template?.id,
         clubId: resolvedImportClubId,
         deviceLocation: mapped.deviceLocation ?? undefined,
-        serialNumber: mapped.serialNumber ?? undefined,
+        serialNumber: serialForCreate ?? undefined,
         manufacturer: mapped.manufacturer ?? template?.manufacturer ?? undefined,
         model: mapped.model ?? template?.model ?? undefined,
         processorName: mapped.processorName ?? template?.processorName ?? undefined,
@@ -291,6 +317,35 @@ export async function POST(request: NextRequest) {
       },
       include: { status: true, deviceTemplate: true, club: true },
     });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002" &&
+        Array.isArray(e.meta?.target) &&
+        (e.meta.target as string[]).includes("serialNumber")
+      ) {
+        const sn = serialForCreate ?? mapped.serialNumber?.trim();
+        const conflict = sn
+          ? await prisma.asset.findFirst({
+              where: { serialNumber: sn },
+              select: { id: true, assetName: true, zohoAssistDeviceId: true },
+            })
+          : null;
+        return NextResponse.json(
+          {
+            code: "DUPLICATE_SERIAL",
+            error: sn
+              ? `Serial number "${sn}" is already registered${conflict ? ` to "${conflict.assetName}"` : ""}.`
+              : "An asset with this serial number already exists.",
+            assetId: conflict?.id,
+            serialNumber: sn,
+            existingAssistLinked: Boolean(conflict?.zohoAssistDeviceId),
+          },
+          { status: 409 }
+        );
+      }
+      throw e;
+    }
 
     await createAuditLog({
       userId: user.id,

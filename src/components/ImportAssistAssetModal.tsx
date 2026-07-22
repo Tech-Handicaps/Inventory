@@ -152,6 +152,17 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
         );
         return;
       }
+      if (res.status === 409 && data.code === "DUPLICATE_SERIAL") {
+        const msg =
+          typeof data.error === "string"
+            ? data.error
+            : "This serial number is already registered in inventory.";
+        setFormError(msg);
+        setDuplicateAssetId(
+          typeof data.assetId === "string" ? data.assetId : null
+        );
+        return;
+      }
       if (!res.ok) {
         setFormError(
           typeof data.error === "string" ? data.error : `Import failed (${res.status})`
@@ -280,7 +291,18 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
               <p>{formError}</p>
               {duplicateAssetId ? (
                 <p className="mt-3 border-t border-red-200/80 pt-3 text-red-950/95">
-                  It is already saved in this app’s database (not re-fetched from Assist).{" "}
+                  {formError?.includes("Serial number") ? (
+                    <>
+                      If this is the same physical unit, open the existing row and use{" "}
+                      <strong>Edit</strong> to link the Zoho Assist device — do not import
+                      again. If Assist reported a model id instead of a true serial, clear or
+                      correct the serial on one row after import.
+                    </>
+                  ) : (
+                    <>
+                      It is already saved in this app’s database (not re-fetched from Assist).
+                    </>
+                  )}{" "}
                   <Link
                     href="/assets"
                     className="font-semibold text-brand underline hover:no-underline"
