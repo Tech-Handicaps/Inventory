@@ -99,11 +99,12 @@ export async function htmlToPdfBuffer(
       format: options.format ?? "A4",
       landscape: options.landscape ?? false,
       printBackground: options.printBackground ?? true,
+      // Page margins come from CSS @page / body padding — avoid double margins that clip the logo.
       margin: options.margin ?? {
-        top: "12mm",
-        right: "12mm",
-        bottom: "14mm",
-        left: "12mm",
+        top: "0",
+        right: "0",
+        bottom: "0",
+        left: "0",
       },
       preferCSSPageSize: true,
     });
@@ -146,10 +147,11 @@ export function pdfDocumentChrome(params: {
   <meta charset="utf-8" />
   <title>${escHtml(params.title)}</title>
   <style>
-    @page { size: A4; margin: 12mm; }
+    @page { size: A4; margin: 0; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
+      padding: 14mm 16mm 16mm 16mm;
       font-family: "Segoe UI", Helvetica, Arial, sans-serif;
       font-size: 11px;
       color: #111;
@@ -169,14 +171,27 @@ export function pdfDocumentChrome(params: {
       pointer-events: none;
       z-index: 0;
     }
-    .sheet { position: relative; z-index: 1; }
+    .sheet { position: relative; z-index: 1; overflow: visible; }
     .bar {
       height: 5px;
       background: #139d4b;
-      margin: -12mm -12mm 16px -12mm;
+      margin: -14mm -16mm 18px -16mm;
     }
-    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-    .logo { height: 48px; width: auto; object-fit: contain; }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      overflow: visible;
+    }
+    .logo {
+      display: block;
+      height: 52px;
+      max-width: 240px;
+      width: auto;
+      object-fit: contain;
+      object-position: left center;
+    }
     .logo-fallback {
       font-weight: 800;
       font-size: 14px;
