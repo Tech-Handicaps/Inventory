@@ -143,10 +143,16 @@ export default function AssetsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ statusId }),
         });
-        if (!res.ok) throw new Error("Update failed");
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(
+            typeof j.error === "string" ? j.error : "Update failed"
+          );
+        }
         await load();
       } catch (e) {
         console.error(e);
+        window.alert(e instanceof Error ? e.message : "Update failed");
       } finally {
         setSavingId(null);
       }

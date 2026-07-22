@@ -211,6 +211,9 @@ export function buildWrittenOffEmail(params: {
   manufacturer: string | null;
   model: string | null;
   reason: string | null;
+  assessmentReference?: string | null;
+  replacementRequested?: boolean;
+  replacementNotes?: string | null;
   appUrl: string;
 }): { subject: string; html: string } {
   const subject = `Written off · ${params.assetName}`;
@@ -219,11 +222,14 @@ export function buildWrittenOffEmail(params: {
     <p style="margin:0 0 12px 0;">An asset has been marked <strong>Written off</strong>. Please update your financial records and acknowledge in the system.</p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <tr><td style="padding:6px 0;color:${MUTED};width:140px;">Asset</td><td style="padding:6px 0;">${esc(params.assetName)}</td></tr>
+      ${params.assessmentReference ? `<tr><td style="padding:6px 0;color:${MUTED};">Assessment intake</td><td style="padding:6px 0;">${esc(params.assessmentReference)}</td></tr>` : ""}
       <tr><td style="padding:6px 0;color:${MUTED};">Category</td><td style="padding:6px 0;">${esc(params.category)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Manufacturer</td><td style="padding:6px 0;">${escOptional(params.manufacturer)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Model</td><td style="padding:6px 0;">${escOptional(params.model)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Serial</td><td style="padding:6px 0;">${params.serial ? esc(params.serial) : "—"}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};vertical-align:top;">Reason / notes</td><td style="padding:6px 0;">${params.reason ? esc(params.reason) : "—"}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Replacement requested</td><td style="padding:6px 0;">${params.replacementRequested ? "Yes" : "No"}</td></tr>
+      ${params.replacementRequested && params.replacementNotes ? `<tr><td style="padding:6px 0;color:${MUTED};vertical-align:top;">Replacement notes</td><td style="padding:6px 0;">${esc(params.replacementNotes)}</td></tr>` : ""}
     </table>
     <p style="margin:16px 0 0 0;">
       <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>

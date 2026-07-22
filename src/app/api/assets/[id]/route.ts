@@ -228,6 +228,19 @@ export async function PUT(
           { status: 400 }
         );
       }
+      if (
+        (before.status.code === "assessment" ||
+          before.status.code === "repair") &&
+        nextStatus.code === "written_off"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Use Write off (cannot repair) on the hardware card — a write-off report is required from Assessment/Maintenance or In Repairs.",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const asset = await prisma.asset.update({

@@ -268,6 +268,9 @@ export async function createAssessmentAcknowledgementAndNotify(params: {
 export async function createWrittenOffAcknowledgementAndNotify(params: {
   assetId: string;
   reason: string | null;
+  replacementRequested?: boolean;
+  replacementNotes?: string | null;
+  assessmentReference?: string | null;
 }): Promise<void> {
   const settings = await getEmailNotificationSettings();
   if (!settings.notifyOnWrittenOff) return;
@@ -284,8 +287,15 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
   });
   if (!asset) return;
 
+  const refParts = [
+    params.assessmentReference?.trim()
+      ? `From ${params.assessmentReference.trim()}`
+      : null,
+    params.reason?.trim() || null,
+    params.replacementRequested ? "Replacement requested" : null,
+  ].filter(Boolean);
   const ref =
-    params.reason?.trim() ||
+    refParts.join(" · ").slice(0, 500) ||
     `Written off — ${asset.assetName}`;
 
   const ack = await prisma.financeAcknowledgement.create({
@@ -340,6 +350,9 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     manufacturer: asset.manufacturer,
     model: asset.model,
     reason: params.reason?.trim() ?? null,
+    assessmentReference: params.assessmentReference?.trim() ?? null,
+    replacementRequested: params.replacementRequested === true,
+    replacementNotes: params.replacementNotes?.trim() ?? null,
     appUrl: appBaseUrl(),
   });
 

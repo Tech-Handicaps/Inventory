@@ -6,6 +6,7 @@ import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
 import { LogRepairModal } from "@/components/LogRepairModal";
 import { StartAssessmentModal } from "@/components/StartAssessmentModal";
+import { WriteOffModal } from "@/components/WriteOffModal";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 
@@ -69,6 +70,12 @@ function statusesForMoves(statuses: Status[], asset: Asset): Status[] {
   return statuses.filter((s) => {
     if (asset.status.code === "deployed" && s.code === "repair") return false;
     if (asset.status.code === "assessment" && s.code === "repair") return false;
+    if (
+      (asset.status.code === "assessment" || asset.status.code === "repair") &&
+      s.code === "written_off"
+    ) {
+      return false;
+    }
     return true;
   });
 }
@@ -141,6 +148,11 @@ export default function InventoryPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [repairAsset, setRepairAsset] = useState<Asset | null>(null);
   const [repairAssessment, setRepairAssessment] = useState<{
+    id: string;
+    referenceNumber: string;
+  } | null>(null);
+  const [writeOffAsset, setWriteOffAsset] = useState<Asset | null>(null);
+  const [writeOffAssessment, setWriteOffAssessment] = useState<{
     id: string;
     referenceNumber: string;
   } | null>(null);
@@ -257,7 +269,12 @@ export default function InventoryPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ statusId }),
       });
-      if (!res.ok) throw new Error("Update failed");
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(
+          typeof j.error === "string" ? j.error : "Update failed"
+        );
+      }
       const updated = (await res.json()) as Asset;
       setAssets((prev) =>
         prev.map((x) =>
@@ -272,6 +289,7 @@ export default function InventoryPage() {
       );
     } catch (e) {
       console.error(e);
+      window.alert(e instanceof Error ? e.message : "Update failed");
     } finally {
       setSavingId(null);
     }
@@ -542,6 +560,18 @@ export default function InventoryPage() {
                             ? () => void cancelOpenAssessment(asset)
                             : undefined
                         }
+                        onWriteOff={() => {
+                          setWriteOffAsset(asset);
+                          const o = openAssessment(asset);
+                          if (asset.status.code === "assessment" && o) {
+                            setWriteOffAssessment({
+                              id: o.id,
+                              referenceNumber: o.referenceNumber,
+                            });
+                          } else {
+                            setWriteOffAssessment(null);
+                          }
+                        }}
                         onEdit={() => setEditingId(asset.id)}
                         onDelete={() => void removeAsset(asset.id, asset.assetName)}
                       />
@@ -686,6 +716,16 @@ export default function InventoryPage() {
           }}
           onSuccess={() => void load()}
         />
+        <WriteOffModal
+          asset={writeOffAsset}
+          assessmentId={writeOffAssessment?.id}
+          assessmentReference={writeOffAssessment?.referenceNumber}
+          onClose={() => {
+            setWriteOffAsset(null);
+            setWriteOffAssessment(null);
+          }}
+          onSuccess={() => void load()}
+        />
 
         {editingId ? (
           <EditAssetModal
@@ -714,6 +754,7 @@ function HardwareCard({
   onStatusChange,
   onStartAssessment,
   onLogRepair,
+  onWriteOff,
   onCancelAssessment,
   onEdit,
   onDelete,
@@ -724,6 +765,7 @@ function HardwareCard({
   onStatusChange: (id: string, statusId: string) => void;
   onStartAssessment?: () => void;
   onLogRepair: () => void;
+  onWriteOff?: () => void;
   onCancelAssessment?: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -895,6 +937,18 @@ function HardwareCard({
             className="w-full rounded-md border border-red-400/70 bg-red-50 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-900 hover:bg-red-100 disabled:opacity-50"
           >
             Cancel intake
+          </button>
+        ) : null}
+        {(asset.status.code === "assessment" ||
+          asset.status.code === "repair") &&
+        onWriteOff ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onWriteOff}
+            className="w-full rounded-md border-2 border-neutral-500/80 bg-neutral-100 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-neutral-900 transition-colors hover:bg-neutral-200 disabled:opacity-50"
+          >
+            Write off (cannot repair)
           </button>
         ) : null}
         <div>
