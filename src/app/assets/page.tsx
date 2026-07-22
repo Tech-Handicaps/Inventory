@@ -5,6 +5,7 @@ import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
 import { InventoryHeader } from "@/components/InventoryHeader";
+import { useToast } from "@/components/ToastProvider";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 
@@ -51,6 +52,7 @@ function deriveStatusesFromAssets(assets: Asset[]): Status[] {
 }
 
 export default function AssetsPage() {
+  const toast = useToast();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -152,12 +154,12 @@ export default function AssetsPage() {
         await load();
       } catch (e) {
         console.error(e);
-        window.alert(e instanceof Error ? e.message : "Update failed");
+        toast.showError(e instanceof Error ? e.message : "Update failed");
       } finally {
         setSavingId(null);
       }
     },
-    [assets, load]
+    [assets, load, toast]
   );
 
   const removeAsset = useCallback(
@@ -166,14 +168,14 @@ export default function AssetsPage() {
       const res = await fetch(`/api/assets/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        window.alert(
+        toast.showError(
           typeof j.error === "string" ? j.error : "Delete failed"
         );
         return;
       }
       await load();
     },
-    [load]
+    [load, toast]
   );
 
   if (loading) {

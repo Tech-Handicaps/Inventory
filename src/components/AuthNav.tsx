@@ -2,24 +2,55 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ToastProvider";
 import { createClient } from "@/lib/supabase/client";
 
 export function AuthNav() {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setEmail(user?.email ?? null);
-    });
+    let cancelled = false;
+    try {
+      const supabase = createClient();
+      void supabase.auth
+        .getUser()
+        .then(({ data: { user }, error }) => {
+          if (cancelled) return;
+          if (error) {
+            console.error("AuthNav getUser", error);
+            setEmail(null);
+            return;
+          }
+          setEmail(user?.email ?? null);
+        })
+        .catch((e) => {
+          console.error("AuthNav getUser", e);
+          if (!cancelled) setEmail(null);
+        });
+    } catch (e) {
+      console.error("AuthNav client", e);
+    }
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.showError(error.message || "Sign out failed");
+        return;
+      }
+      router.push("/login");
+      router.refresh();
+    } catch (e) {
+      console.error("AuthNav signOut", e);
+      toast.showError("Sign out failed");
+    }
   }
 
   if (!email) return null;
@@ -31,7 +62,7 @@ export function AuthNav() {
       </span>
       <button
         type="button"
-        onClick={() => signOut()}
+        onClick={() => void signOut()}
         className="font-heading font-semibold uppercase tracking-wide text-brand hover:underline"
       >
         Sign out

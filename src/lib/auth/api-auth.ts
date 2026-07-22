@@ -25,6 +25,13 @@ export async function requireApiAuth(
   }
 
   const role = await resolveAppRole(user);
+  if (!role) {
+    return NextResponse.json(
+      { error: "Forbidden: no application role assigned" },
+      { status: 403 }
+    );
+  }
+
   const pathname = request.nextUrl.pathname;
 
   if (!apiAccessAllowedForRole(pathname, role)) {
@@ -35,6 +42,6 @@ export async function requireApiAuth(
 }
 
 /** @deprecated Import `resolveAppRole` from `@/lib/auth/resolve-app-role` */
-export async function resolveUserRole(user: User): Promise<AppRole> {
+export async function resolveUserRole(user: User): Promise<AppRole | null> {
   return resolveAppRole(user);
 }

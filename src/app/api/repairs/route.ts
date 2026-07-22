@@ -310,7 +310,12 @@ export async function POST(request: NextRequest) {
         referenceNumber: repair.referenceNumber,
       });
     } catch (e) {
-      console.error("createRepairAcknowledgementAndNotify", e);
+      console.error("POST /api/repairs createRepairAcknowledgementAndNotify", e);
+      return NextResponse.json({
+        ...repair,
+        warning: "Repair saved, but finance notification failed.",
+        notifyWarnings: ["repair_notify_failed"],
+      });
     }
 
     return NextResponse.json(repair);

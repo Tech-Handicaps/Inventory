@@ -58,12 +58,20 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     let cancelled = false;
     setStatusesLoading(true);
     fetch("/api/statuses")
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to load statuses");
+        return r.json();
+      })
       .then((data) => {
         if (!cancelled && Array.isArray(data)) setLocalStatuses(data);
       })
-      .catch(() => {
-        if (!cancelled) setLocalStatuses([]);
+      .catch((e) => {
+        if (!cancelled) {
+          setLocalStatuses([]);
+          setOptionsError(
+            e instanceof Error ? e.message : "Failed to load statuses"
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setStatusesLoading(false);
@@ -102,6 +110,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   const [statusId, setStatusId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (statusId && !statuses.some((s) => s.id === statusId)) {
@@ -132,12 +141,20 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     let cancelled = false;
     setTemplatesLoading(true);
     fetch("/api/device-templates")
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to load device templates");
+        return r.json();
+      })
       .then((data) => {
         if (!cancelled) setTemplates(Array.isArray(data) ? data : []);
       })
-      .catch(() => {
-        if (!cancelled) setTemplates([]);
+      .catch((e) => {
+        if (!cancelled) {
+          setTemplates([]);
+          setOptionsError(
+            e instanceof Error ? e.message : "Failed to load device templates"
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setTemplatesLoading(false);
@@ -151,12 +168,20 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     let cancelled = false;
     setClubsLoading(true);
     fetch("/api/clubs")
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to load clubs");
+        return r.json();
+      })
       .then((data) => {
         if (!cancelled) setClubs(Array.isArray(data) ? data : []);
       })
-      .catch(() => {
-        if (!cancelled) setClubs([]);
+      .catch((e) => {
+        if (!cancelled) {
+          setClubs([]);
+          setOptionsError(
+            e instanceof Error ? e.message : "Failed to load clubs"
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setClubsLoading(false);
@@ -297,6 +322,11 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       ) : null}
 
       <form onSubmit={submit} className="px-6 py-6">
+        {optionsError ? (
+          <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {optionsError}
+          </p>
+        ) : null}
         {formError ? (
           <div
             className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"

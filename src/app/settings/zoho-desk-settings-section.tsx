@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/ToastProvider";
 import { ZOHO_DATA_CENTERS } from "@/lib/zoho/constants";
 
 type DeskGetResponse = {
@@ -81,6 +82,7 @@ function DeskStatusPill({
 }
 
 export function ZohoDeskSettingsSection() {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -205,7 +207,7 @@ export function ZohoDeskSettingsSection() {
       }
       await load();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Save failed");
+      toast.showError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -225,7 +227,7 @@ export function ZohoDeskSettingsSection() {
       if (!url) throw new Error("No OAuth URL returned");
       window.location.assign(url);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not start OAuth");
+      toast.showError(err instanceof Error ? err.message : "Could not start OAuth");
       setOauthConnecting(false);
     }
   }

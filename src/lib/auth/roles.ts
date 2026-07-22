@@ -1,10 +1,13 @@
 /**
- * Application roles. Enforced on API routes and UI in later rollout steps.
+ * Application roles. Enforced on API routes and UI.
  *
- * - super_admin: env email allowlist only (cannot be escalated via metadata alone).
- * - admin: full access (default for users without a UserRole row).
- * - reports_only: `/api/reports/*` only (see `api-route-access.ts`).
- * - accountant: all APIs except `/api/settings/zoho/*` and `/api/audit-logs`.
+ * - super_admin: SUPER_ADMIN_EMAILS env allowlist only (cannot be assigned via DB/UI).
+ * - admin: full access; also PROTECTED_ADMIN_EMAILS (and built-in protected defaults).
+ * - operations: inventory/assets/repairs/reports; no settings, admin users, finance, audit.
+ * - reports_only: `/api/reports/*` + `/api/me` only.
+ * - accountant: most APIs including finance; no Zoho settings or audit logs.
+ *
+ * Users with no UserRole row and not on an env allowlist have no role (deny-by-default).
  */
 
 export type AppRole =

@@ -5,14 +5,16 @@ import {
   isProtectedAdminEmail,
   isSuperAdminEmail,
   parseStoredRole,
-  toStoredRole,
 } from "@/lib/auth/roles";
 
 /**
  * Single place to resolve the signed-in user's application role.
  * Prefer this (or `requireApiAuth`) over reading Prisma/Supabase metadata ad hoc.
+ *
+ * Deny-by-default: users without an env allowlist hit or a UserRole row get `null`
+ * (no access). Never elevates from `user_metadata` (user-editable).
  */
-export async function resolveAppRole(user: User): Promise<AppRole> {
+export async function resolveAppRole(user: User): Promise<AppRole | null> {
   if (isSuperAdminEmail(user.email ?? null)) {
     return "super_admin";
   }
@@ -28,18 +30,5 @@ export async function resolveAppRole(user: User): Promise<AppRole> {
     if (r) return r;
   }
 
-  const fromMeta =
-    parseStoredRole(user.app_metadata?.role) ??
-    parseStoredRole(user.user_metadata?.role);
-
-  if (fromMeta) {
-    await prisma.userRole.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id, role: toStoredRole(fromMeta) },
-      update: { role: toStoredRole(fromMeta) },
-    });
-    return fromMeta;
-  }
-
-  return "admin";
+  return null;
 }

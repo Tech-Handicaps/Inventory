@@ -74,12 +74,20 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
     let cancelled = false;
     setClubsLoading(true);
     fetch("/api/clubs")
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to load clubs");
+        return r.json();
+      })
       .then((data) => {
         if (!cancelled) setClubs(Array.isArray(data) ? data : []);
       })
-      .catch(() => {
-        if (!cancelled) setClubs([]);
+      .catch((e) => {
+        if (!cancelled) {
+          setClubs([]);
+          setFormError(
+            e instanceof Error ? e.message : "Failed to load clubs"
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setClubsLoading(false);

@@ -1,5 +1,10 @@
 // Inventory Flow Control System - Prisma Schema
 // Extensible asset lifecycle states; Xero sync for fixed assets + inventory
+//
+// Data-plane note: the Next.js app uses Prisma with DATABASE_URL (direct Postgres).
+// It does not query tables through the Supabase Data API. Prefer keeping PostgREST
+// exposure minimal / RLS enabled on public tables in the Supabase project as defense
+// in depth if the API is ever enabled for other clients.
 
 generator client {
   provider      = "prisma-client-js"

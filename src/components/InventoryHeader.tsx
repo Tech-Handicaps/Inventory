@@ -36,10 +36,10 @@ const NAV_ITEMS: { href: string; key: NavKey; label: string }[] = [
 ];
 
 export function InventoryHeader({ current }: Props) {
-  const { role, loading } = useAppRole();
+  const { role, loading, loadError } = useAppRole();
 
   const visible = (key: NavKey) => {
-    if (loading || role === null) return true;
+    if (loading || loadError || role === null) return true;
     return isNavLinkVisible(role, key);
   };
 
@@ -54,9 +54,11 @@ export function InventoryHeader({ current }: Props) {
               Hardware inventory
             </p>
             <p className="text-xs text-black/55">
-              {role === "reports_only" && !loading
-                ? "PDF reports and downloads"
-                : "Track stock, repairs, and refurbishment"}
+              {loadError
+                ? "Could not load your role — refresh or sign in again"
+                : role === "reports_only" && !loading
+                  ? "PDF reports and downloads"
+                  : "Track stock, repairs, and refurbishment"}
             </p>
           </div>
         </div>

@@ -340,6 +340,8 @@ export async function PUT(
       asset.status.code
     );
 
+    const notifyWarnings: string[] = [];
+
     await createAuditLog({
       userId: user.id,
       actionType: transitionToWrittenOff
@@ -366,7 +368,8 @@ export async function PUT(
           reason: asset.reason,
         });
       } catch (e) {
-        console.error("createWrittenOffAcknowledgementAndNotify", e);
+        console.error("PUT /api/assets/[id] createWrittenOffAcknowledgementAndNotify", e);
+        notifyWarnings.push("write_off_notify_failed");
       }
     }
 
@@ -377,17 +380,23 @@ export async function PUT(
           fromStatusCode: before.status.code,
         });
       } catch (e) {
-        console.error("createDispatchVoucherAndNotify", e);
+        console.error("PUT /api/assets/[id] createDispatchVoucherAndNotify", e);
+        notifyWarnings.push("dispatch_notify_failed");
       }
+    }
+
+    if (notifyWarnings.length > 0) {
+      return NextResponse.json({
+        ...asset,
+        warning: "Asset saved, but a finance notification failed.",
+        notifyWarnings,
+      });
     }
 
     return NextResponse.json(asset);
   } catch (error) {
-    console.error("PUT /api/assets/[id]", error);
-    return NextResponse.json(
-      { error: "Failed to update asset" },
-      { status: 500 }
-    );
+    const { catchToJsonError } = await import("@/lib/api/error-response");
+    return catchToJsonError("PUT /api/assets/[id]", error, "Failed to update asset");
   }
 }
 

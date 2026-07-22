@@ -276,29 +276,46 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
-        e.code === "P2002" &&
-        Array.isArray(e.meta?.target) &&
-        (e.meta.target as string[]).includes("serialNumber")
+        e.code === "P2002"
       ) {
-        const sn = serialForCreate ?? mapped.serialNumber?.trim();
-        const conflict = sn
-          ? await prisma.asset.findFirst({
-              where: { serialNumber: sn },
-              select: { id: true, assetName: true, zohoAssistDeviceId: true },
-            })
-          : null;
-        return NextResponse.json(
-          {
-            code: "DUPLICATE_SERIAL",
-            error: sn
-              ? `Serial number "${sn}" is already registered${conflict ? ` to "${conflict.assetName}"` : ""}.`
-              : "An asset with this serial number already exists.",
-            assetId: conflict?.id,
-            serialNumber: sn,
-            existingAssistLinked: Boolean(conflict?.zohoAssistDeviceId),
-          },
-          { status: 409 }
-        );
+        const targets = Array.isArray(e.meta?.target)
+          ? (e.meta.target as string[])
+          : [];
+        if (targets.includes("zohoAssistDeviceId")) {
+          const conflict = await prisma.asset.findFirst({
+            where: { zohoAssistDeviceId: assistId },
+            select: { id: true },
+          });
+          return NextResponse.json(
+            {
+              code: "DEVICE_ALREADY_IMPORTED",
+              error: "This Assist device is already on the board.",
+              assetId: conflict?.id,
+            },
+            { status: 409 }
+          );
+        }
+        if (targets.includes("serialNumber")) {
+          const sn = serialForCreate ?? mapped.serialNumber?.trim();
+          const conflict = sn
+            ? await prisma.asset.findFirst({
+                where: { serialNumber: sn },
+                select: { id: true, assetName: true, zohoAssistDeviceId: true },
+              })
+            : null;
+          return NextResponse.json(
+            {
+              code: "DUPLICATE_SERIAL",
+              error: sn
+                ? `Serial number "${sn}" is already registered${conflict ? ` to "${conflict.assetName}"` : ""}.`
+                : "An asset with this serial number already exists.",
+              assetId: conflict?.id,
+              serialNumber: sn,
+              existingAssistLinked: Boolean(conflict?.zohoAssistDeviceId),
+            },
+            { status: 409 }
+          );
+        }
       }
       throw e;
     }
@@ -316,8 +333,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ asset });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Import failed";
     console.error("POST /api/assets/import-assist", error);
-    return NextResponse.json({ error: message }, { status: 400 });
+    const { catchToJsonError } = await import("@/lib/api/error-response");
+    return catchToJsonError(
+      "POST /api/assets/import-assist",
+      error,
+      "Import failed"
+    );
   }
 }

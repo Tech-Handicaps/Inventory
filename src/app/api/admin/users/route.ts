@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
       );
     }
     console.error("GET /api/admin/users", e);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
@@ -193,7 +193,12 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      await syncUserRole(admin, existing.id, assignRole);
+      await syncUserRole(
+        admin,
+        existing.id,
+        assignRole,
+        currentStored?.role ?? null
+      );
       return NextResponse.json({
         ok: true,
         action: "updated",
@@ -242,14 +247,18 @@ export async function POST(request: NextRequest) {
       );
     }
     console.error("POST /api/admin/users", e);
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (message === "Failed to sync role to Auth") {
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
 async function syncUserRole(
   admin: ReturnType<typeof createSupabaseAdmin>,
   userId: string,
-  assignRole: AssignableRole
+  assignRole: AssignableRole,
+  previousStoredRole: string | null
 ) {
   const stored = toStoredRole(assignRole);
   await prisma.userRole.upsert({
@@ -257,10 +266,25 @@ async function syncUserRole(
     create: { userId, role: stored },
     update: { role: stored },
   });
+  // Prefer app_metadata (Admin API only); keep user_metadata in sync for dashboard display only.
   const { error } = await admin.auth.admin.updateUserById(userId, {
+    app_metadata: { role: stored },
     user_metadata: { role: stored },
   });
   if (error) {
-    console.error("updateUserById metadata", error);
+    console.error("POST /api/admin/users syncUserRole updateUserById", error);
+    try {
+      if (previousStoredRole) {
+        await prisma.userRole.update({
+          where: { userId },
+          data: { role: previousStoredRole },
+        });
+      } else {
+        await prisma.userRole.delete({ where: { userId } }).catch(() => undefined);
+      }
+    } catch (rollbackErr) {
+      console.error("POST /api/admin/users syncUserRole role rollback failed", rollbackErr);
+    }
+    throw new Error("Failed to sync role to Auth");
   }
 }

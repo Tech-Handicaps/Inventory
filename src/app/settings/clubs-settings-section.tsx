@@ -1,29 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/ToastProvider";
+import { apiErrorMessage } from "@/lib/client/api-error";
 
 type Club = {
   id: string;
   name: string;
 };
 
-async function apiErrorMessage(res: Response): Promise<string> {
-  const text = await res.text();
-  const trimmed = text.trim();
-  if (!trimmed) return "Request failed";
-  try {
-    const j = JSON.parse(trimmed) as { error?: string; detail?: string };
-    return (
-      (typeof j.detail === "string" && j.detail) ||
-      (typeof j.error === "string" && j.error) ||
-      "Request failed"
-    );
-  } catch {
-    return "Server error (non-JSON response). Check deployment logs.";
-  }
-}
-
 export function ClubsSettingsSection() {
+  const toast = useToast();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,9 +19,14 @@ export function ClubsSettingsSection() {
 
   const load = useCallback(async () => {
     const res = await fetch("/api/clubs");
+    if (!res.ok) {
+      toast.showError(await apiErrorMessage(res));
+      setClubs([]);
+      return;
+    }
     const data = await res.json();
     setClubs(Array.isArray(data) ? data : []);
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     load().catch(console.error).finally(() => setLoading(false));
@@ -74,7 +66,7 @@ export function ClubsSettingsSection() {
       await load();
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Save failed");
+      toast.showError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -89,7 +81,7 @@ export function ClubsSettingsSection() {
       return;
     const res = await fetch(`/api/clubs/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      alert(await apiErrorMessage(res));
+      toast.showError(await apiErrorMessage(res));
       return;
     }
     if (editingId === id) resetForm();

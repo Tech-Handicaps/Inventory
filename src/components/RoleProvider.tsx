@@ -14,6 +14,8 @@ import { createClient } from "@/lib/supabase/client";
 type RoleState = {
   role: AppRole | null;
   loading: boolean;
+  /** True when /api/me failed (network/server), not merely "no role". */
+  loadError: boolean;
   refresh: () => void;
 };
 
@@ -22,30 +24,60 @@ const RoleContext = createContext<RoleState | null>(null);
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
+    setLoadError(false);
     void fetch("/api/me", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j: { role?: AppRole } | null) => {
-        setRole(j?.role ?? null);
+      .then(async (r) => {
+        if (r.status === 403) {
+          setRole(null);
+          setLoadError(false);
+          return;
+        }
+        if (!r.ok) {
+          setRole(null);
+          setLoadError(true);
+          return;
+        }
+        const j = (await r.json()) as { role?: AppRole };
+        setRole(j.role ?? null);
       })
-      .catch(() => setRole(null))
+      .catch(() => {
+        setRole(null);
+        setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    const supabase = createClient();
     let cancelled = false;
+    let supabase: ReturnType<typeof createClient> | null = null;
+    try {
+      supabase = createClient();
+    } catch (e) {
+      console.error("RoleProvider: supabase client", e);
+      const t = window.setTimeout(() => {
+        if (cancelled) return;
+        setRole(null);
+        setLoadError(true);
+        setLoading(false);
+      }, 0);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(t);
+      };
+    }
 
-    void supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (cancelled) return;
-      if (!session?.user) {
+      if (error || !user) {
         setRole(null);
         setLoading(false);
-      } else {
-        void load();
+        return;
       }
+      void load();
     });
 
     const {
@@ -53,6 +85,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         setRole(null);
+        setLoadError(false);
         setLoading(false);
         return;
       }
@@ -66,8 +99,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   }, [load]);
 
   const value = useMemo(
-    () => ({ role, loading, refresh: load }),
-    [role, loading, load]
+    () => ({ role, loading, loadError, refresh: load }),
+    [role, loading, loadError, load]
   );
 
   return (
@@ -81,6 +114,7 @@ export function useAppRole(): RoleState {
     return {
       role: null,
       loading: false,
+      loadError: false,
       refresh: () => {},
     };
   }

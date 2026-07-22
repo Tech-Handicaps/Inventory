@@ -43,12 +43,15 @@ export async function POST(
     return NextResponse.json({
       asset: result.asset,
       certificateReference: result.certificateReference,
+      ...(result.notifyFailed
+        ? {
+            warning: "Write-off saved, but finance notification failed.",
+            notifyWarnings: ["write_off_notify_failed"],
+          }
+        : {}),
     });
   } catch (e) {
     console.error("POST /api/assets/[id]/write-off", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Write-off failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Write-off failed" }, { status: 500 });
   }
 }

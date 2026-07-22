@@ -6,6 +6,7 @@ import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { InventoryHeader } from "@/components/InventoryHeader";
 import { LogRepairModal } from "@/components/LogRepairModal";
 import { StartAssessmentModal } from "@/components/StartAssessmentModal";
+import { useToast } from "@/components/ToastProvider";
 import { WriteOffModal } from "@/components/WriteOffModal";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 import { formatGeoLabel } from "@/lib/geo/region-display";
@@ -140,6 +141,7 @@ const columnAccent: Record<string, string> = {
 };
 
 export default function InventoryPage() {
+  const toast = useToast();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -289,7 +291,7 @@ export default function InventoryPage() {
       );
     } catch (e) {
       console.error(e);
-      window.alert(e instanceof Error ? e.message : "Update failed");
+      toast.showError(e instanceof Error ? e.message : "Update failed");
     } finally {
       setSavingId(null);
     }
@@ -298,7 +300,9 @@ export default function InventoryPage() {
   async function cancelOpenAssessment(asset: Asset) {
     const o = openAssessment(asset);
     if (!o) {
-      window.alert("No open Assessment/Maintenance intake is linked on this card. Refresh if this looks wrong.");
+      toast.showError(
+        "No open Assessment/Maintenance intake is linked on this card. Refresh if this looks wrong."
+      );
       return;
     }
     if (
@@ -322,7 +326,7 @@ export default function InventoryPage() {
       await load();
     } catch (e) {
       console.error(e);
-      window.alert(e instanceof Error ? e.message : "Cancel failed");
+      toast.showError(e instanceof Error ? e.message : "Cancel failed");
     } finally {
       setSavingId(null);
     }
@@ -334,14 +338,14 @@ export default function InventoryPage() {
       const res = await fetch(`/api/assets/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        window.alert(
+        toast.showError(
           typeof j.error === "string" ? j.error : "Delete failed"
         );
         return;
       }
       await load();
     },
-    [load]
+    [load, toast]
   );
 
   if (loading) {

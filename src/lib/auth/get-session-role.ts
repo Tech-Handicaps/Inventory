@@ -5,7 +5,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 export type SessionWithRole = {
   userId: string;
   email: string | undefined;
-  role: AppRole;
+  /** Null when authenticated but no UserRole / allowlist hit (deny-by-default). */
+  role: AppRole | null;
 };
 
 /**

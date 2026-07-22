@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/ToastProvider";
 import { ZOHO_DATA_CENTERS } from "@/lib/zoho/constants";
 
 type ZohoGetResponse = {
@@ -17,6 +18,7 @@ type ZohoGetResponse = {
 };
 
 export function ZohoAssistSettingsSection() {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -174,7 +176,7 @@ export function ZohoAssistSettingsSection() {
       });
       setSaveNotice(`Credentials saved (${t}).`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Save failed");
+      toast.showError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -193,7 +195,7 @@ export function ZohoAssistSettingsSection() {
       if (!url) throw new Error("No OAuth URL returned");
       window.location.assign(url);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Could not start OAuth");
+      toast.showError(err instanceof Error ? err.message : "Could not start OAuth");
     } finally {
       setConnecting(false);
     }

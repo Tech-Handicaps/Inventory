@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPublicApiPath } from "@/lib/auth/public-api-paths";
 
 function getSupabaseUrl(): string | undefined {
   return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || undefined;
@@ -71,13 +72,19 @@ export async function proxy(request: NextRequest) {
   });
 
   let user: { id: string } | null = null;
+  let authLookupFailed = false;
   try {
-    const {
-      data: { user: u },
-    } = await supabase.auth.getUser();
-    user = u;
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error("proxy: supabase.auth.getUser error", error.message);
+      authLookupFailed = true;
+      user = null;
+    } else {
+      user = data.user;
+    }
   } catch (e) {
     console.error("proxy: supabase.auth.getUser failed", e);
+    authLookupFailed = true;
     user = null;
   }
 
@@ -94,7 +101,17 @@ export async function proxy(request: NextRequest) {
   /** Marketing home (`/`) and credential page (`/login`) — no session required. */
   const isPublicPage = pathname === "/" || pathname === "/login";
 
+  /** Unauthenticated API allowlist — handlers enforce their own secrets / public contract. */
   if (pathname.startsWith("/api/")) {
+    if (isPublicApiPath(pathname)) {
+      return supabaseResponse;
+    }
+    if (authLookupFailed) {
+      return NextResponse.json(
+        { error: "Authentication service unavailable" },
+        { status: 503 }
+      );
+    }
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

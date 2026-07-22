@@ -15,6 +15,7 @@ export default async function InventoryLayout({
 }) {
   const session = await getSessionRole();
   if (!session) redirect("/login");
+  if (!session.role) redirect("/no-access");
   if (session.role === "reports_only") redirect("/reports");
   return children;
 }

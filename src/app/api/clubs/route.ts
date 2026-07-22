@@ -1,9 +1,16 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { catchToJsonError, jsonError } from "@/lib/api/error-response";
+import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import { prismaMutationError } from "@/lib/prisma/error-response";
 import { prisma } from "@/lib/prisma";
+
+const createClubSchema = z.object({
+  name: z.string().trim().min(1, "name is required").max(200),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
@@ -14,11 +21,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(clubs);
   } catch (error) {
-    console.error("GET /api/clubs", error);
-    return NextResponse.json(
-      { error: "Failed to fetch clubs" },
-      { status: 500 }
-    );
+    return catchToJsonError("GET /api/clubs", error, "Failed to fetch clubs");
   }
 }
 
@@ -28,23 +31,11 @@ export async function POST(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
     const { user } = auth;
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-    }
-
-    const { name } = body as Record<string, unknown>;
-    if (typeof name !== "string" || !name.trim()) {
-      return NextResponse.json(
-        { error: "name is required" },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseJsonBody(request, createClubSchema);
+    if (isNextResponse(parsed)) return parsed;
 
     const created = await prisma.club.create({
-      data: { name: name.trim() },
+      data: { name: parsed.name },
     });
 
     await createAuditLog({
@@ -60,10 +51,9 @@ export async function POST(request: NextRequest) {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return NextResponse.json(
-        { error: "A club with this name already exists", prismaCode: error.code },
-        { status: 409 }
-      );
+      return jsonError("A club with this name already exists", 409, {
+        prismaCode: error.code,
+      });
     }
     const { status, body } = prismaMutationError(error, "Failed to create club");
     console.error("POST /api/clubs", error);

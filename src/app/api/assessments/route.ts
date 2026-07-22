@@ -199,7 +199,15 @@ export async function POST(request: NextRequest) {
         referenceNumber,
       });
     } catch (e) {
-      console.error("createAssessmentAcknowledgementAndNotify", e);
+      console.error(
+        "POST /api/assessments createAssessmentAcknowledgementAndNotify",
+        e
+      );
+      return NextResponse.json({
+        ...assessment,
+        warning: "Assessment saved, but finance notification failed.",
+        notifyWarnings: ["assessment_notify_failed"],
+      });
     }
 
     return NextResponse.json(assessment);

@@ -15,8 +15,14 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const statusCode = searchParams.get("statusCode");
     const category = searchParams.get("category");
-    const limit = parseInt(searchParams.get("limit") ?? "500", 10);
-    const offset = parseInt(searchParams.get("offset") ?? "0", 10);
+    const limit = Math.min(
+      1000,
+      Math.max(1, parseInt(searchParams.get("limit") ?? "500", 10) || 500)
+    );
+    const offset = Math.max(
+      0,
+      parseInt(searchParams.get("offset") ?? "0", 10) || 0
+    );
 
     const where: Record<string, unknown> = {};
     if (status) where.statusId = status;

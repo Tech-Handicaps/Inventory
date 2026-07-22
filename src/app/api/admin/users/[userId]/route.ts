@@ -23,7 +23,7 @@ async function countResolvedAdmins(admin: ReturnType<typeof createSupabaseAdmin>
   return users.reduce((count, u) => {
     const stored = storedById.get(u.id);
     const role = appRoleForAuthUser(u, stored);
-    return role === "admin" ? count + 1 : count;
+    return role === "admin" || role === "super_admin" ? count + 1 : count;
   }, 0);
 }
 
@@ -117,6 +117,8 @@ export async function PATCH(
       }
     }
 
+    const previousStoredRole: string | null = stored?.role ?? null;
+
     if (assignRole) {
       await prisma.userRole.upsert({
         where: { userId },
@@ -125,23 +127,59 @@ export async function PATCH(
       });
     }
 
-    const nextMeta: Record<string, unknown> = {};
-    if (assignRole) nextMeta.role = toStoredRole(assignRole);
-    const update: Record<string, unknown> = Object.keys(nextMeta).length
-      ? { user_metadata: nextMeta }
-      : {};
+    const nextAppMeta: Record<string, unknown> = {};
+    if (assignRole) nextAppMeta.role = toStoredRole(assignRole);
+    const update: Record<string, unknown> = {};
+    if (Object.keys(nextAppMeta).length) {
+      update.app_metadata = nextAppMeta;
+      update.user_metadata = nextAppMeta;
+    }
     if (disableRequested !== undefined) {
       // Supabase supports ban_duration strings, e.g. "1h". Use a long duration to represent "disabled".
       update.ban_duration = disableRequested ? "876000h" : "none";
     }
 
-    const { error: updErr } = await admin.auth.admin.updateUserById(userId, update);
-    if (updErr) {
-      console.error("updateUserById", updErr);
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({
+        ok: true,
+        role: assignRole ?? current,
+        disabled: disableRequested,
+      });
     }
 
-    return NextResponse.json({ ok: true, role: assignRole ?? current, disabled: disableRequested });
+    const { error: updErr } = await admin.auth.admin.updateUserById(userId, update);
+    if (updErr) {
+      console.error("PATCH /api/admin/users/[userId] updateUserById", updErr);
+      if (assignRole) {
+        try {
+          if (previousStoredRole) {
+            await prisma.userRole.update({
+              where: { userId },
+              data: { role: previousStoredRole },
+            });
+          } else {
+            await prisma.userRole.delete({ where: { userId } }).catch(() => undefined);
+          }
+        } catch (rollbackErr) {
+          console.error(
+            "PATCH /api/admin/users/[userId] role rollback failed",
+            rollbackErr
+          );
+        }
+      }
+      return NextResponse.json(
+        { error: "Failed to update auth user; changes were not applied." },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      role: assignRole ?? current,
+      disabled: disableRequested,
+    });
   } catch (e) {
+    console.error("PATCH /api/admin/users/[userId]", e);
     const message = e instanceof Error ? e.message : "Server error";
     if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return NextResponse.json(
@@ -152,7 +190,6 @@ export async function PATCH(
         { status: 503 }
       );
     }
-    console.error("PATCH /api/admin/users/[userId]", e);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

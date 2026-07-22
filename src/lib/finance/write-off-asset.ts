@@ -19,7 +19,12 @@ type WrittenOffAsset = Prisma.AssetGetPayload<{
 }>;
 
 export type WriteOffAssetResult =
-  | { ok: true; asset: WrittenOffAsset; certificateReference: string }
+  | {
+      ok: true;
+      asset: WrittenOffAsset;
+      certificateReference: string;
+      notifyFailed?: boolean;
+    }
   | { ok: false; status: number; error: string };
 
 function normalizeSerial(v: string | null | undefined): string | null {
@@ -207,6 +212,7 @@ export async function writeOffAsset(
     },
   });
 
+  let notifyFailed = false;
   try {
     await createWrittenOffAcknowledgementAndNotify({
       assetId: asset.id,
@@ -218,12 +224,17 @@ export async function writeOffAsset(
       writeOffCertificateReference: certificate.referenceNumber,
     });
   } catch (e) {
-    console.error("createWrittenOffAcknowledgementAndNotify", e);
+    console.error(
+      "writeOffAsset createWrittenOffAcknowledgementAndNotify",
+      e
+    );
+    notifyFailed = true;
   }
 
   return {
     ok: true,
     asset: updated,
     certificateReference: certificate.referenceNumber,
+    ...(notifyFailed ? { notifyFailed: true } : {}),
   };
 }

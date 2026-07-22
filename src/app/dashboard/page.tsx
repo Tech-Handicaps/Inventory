@@ -144,38 +144,47 @@ export default function DashboardPage() {
   const [fleet, setFleet] = useState<FleetProcurement | null>(null);
   const [assetGeo, setAssetGeo] = useState<AssetGeoReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    async function loadJson<T>(url: string): Promise<T | null> {
+      const r = await fetch(url);
+      const j = await r.json().catch(() => null);
+      if (!r.ok) {
+        const msg =
+          j && typeof j === "object" && "error" in j && typeof (j as { error: unknown }).error === "string"
+            ? (j as { error: string }).error
+            : `Failed to load ${url}`;
+        throw new Error(msg);
+      }
+      return j as T;
+    }
+
     Promise.all([
-      fetch("/api/reports/stock").then((r) => r.json()),
-      fetch("/api/reports/repairs").then((r) => r.json()),
-      fetch("/api/reports/refurbished").then((r) => r.json()),
-      fetch("/api/reports/writeoffs").then((r) => r.json()),
-      fetch("/api/reports/dashboard-summary").then(async (r) => {
-        const j = await r.json();
-        return r.ok ? j : null;
-      }),
-      fetch("/api/xero/health").then((r) => r.json()),
-      fetch("/api/reports/hardware-procurement").then(async (r) => {
-        const j = await r.json();
-        return r.ok ? j : null;
-      }),
-      fetch("/api/reports/asset-geo").then(async (r) => {
-        const j = await r.json();
-        return r.ok ? j : null;
-      }),
+      loadJson<StockData>("/api/reports/stock"),
+      loadJson<RepairsData>("/api/reports/repairs"),
+      loadJson<RefurbishedData>("/api/reports/refurbished"),
+      loadJson<WriteoffsData>("/api/reports/writeoffs"),
+      loadJson<DashboardSummary>("/api/reports/dashboard-summary"),
+      loadJson<XeroHealth>("/api/xero/health"),
+      loadJson<FleetProcurement>("/api/reports/hardware-procurement"),
+      loadJson<AssetGeoReport>("/api/reports/asset-geo"),
     ])
       .then(([s, r, ref, w, sum, x, fl, geo]) => {
+        setLoadError(null);
         setStock(s);
         setRepairs(r);
         setRefurbished(ref);
         setWriteoffs(w);
         setSummary(sum);
         setXeroHealth(x);
-        setFleet(fl as FleetProcurement | null);
-        setAssetGeo(geo as AssetGeoReport | null);
+        setFleet(fl);
+        setAssetGeo(geo);
       })
-      .catch(console.error)
+      .catch((e) => {
+        console.error("dashboard load", e);
+        setLoadError(e instanceof Error ? e.message : "Failed to load dashboard");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -232,6 +241,29 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface">
         <p className="text-lg text-black/55">Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-surface">
+        <InventoryHeader current="dashboard" />
+        <main className="mx-auto max-w-lg p-6">
+          <h1 className="font-heading text-lg font-bold text-black">
+            Dashboard unavailable
+          </h1>
+          <p className="mt-2 text-sm text-red-800" role="alert">
+            {loadError}
+          </p>
+          <button
+            type="button"
+            className="mt-4 rounded bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </main>
       </div>
     );
   }
