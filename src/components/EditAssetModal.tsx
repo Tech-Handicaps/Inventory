@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AssistDevicePicker } from "@/components/AssistDevicePicker";
 import { toDateInputValue } from "@/lib/dates/optional-iso-date";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 
@@ -51,8 +52,15 @@ export function EditAssetModal({
   const [warrantyEndDate, setWarrantyEndDate] = useState("");
   const [publicIpDisplay, setPublicIpDisplay] = useState("");
   const [geoLine, setGeoLine] = useState("");
-  const [assistLinked, setAssistLinked] = useState(false);
+  const [zohoAssistDeviceId, setZohoAssistDeviceId] = useState("");
+  const [assistDisplayName, setAssistDisplayName] = useState("");
+  const [assistLinkBusy, setAssistLinkBusy] = useState(false);
+  const [assistUnlinkBusy, setAssistUnlinkBusy] = useState(false);
+  const [assistLinkNotice, setAssistLinkNotice] = useState<string | null>(null);
+  const [assistLinkError, setAssistLinkError] = useState<string | null>(null);
   const [ipRefreshing, setIpRefreshing] = useState(false);
+
+  const assistLinked = Boolean(zohoAssistDeviceId.trim());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,10 +119,13 @@ export function EditAssetModal({
           aJson.geoRegionName as string | undefined
         )
       );
-      setAssistLinked(
-        aJson.dataSource === "zoho_assist" &&
-          typeof aJson.zohoAssistDeviceId === "string" &&
-          Boolean(aJson.zohoAssistDeviceId)
+      setAssistLinkNotice(null);
+      setAssistLinkError(null);
+      setZohoAssistDeviceId(
+        typeof aJson.zohoAssistDeviceId === "string" ? aJson.zohoAssistDeviceId : ""
+      );
+      setAssistDisplayName(
+        typeof aJson.assetName === "string" ? aJson.assetName : ""
       );
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Load failed");
@@ -126,6 +137,70 @@ export function EditAssetModal({
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function linkToAssist(body: { resourceId?: string; displayName?: string }) {
+    setAssistLinkBusy(true);
+    setAssistLinkError(null);
+    setAssistLinkNotice(null);
+    try {
+      const res = await fetch(`/api/assets/${assetId}/link-assist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = (await res.json()) as {
+        error?: string;
+        code?: string;
+        assetId?: string;
+        assistDeviceId?: string;
+        assistDisplayName?: string | null;
+        serialMismatchWarning?: string | null;
+      };
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === "string" ? j.error : "Could not link to Assist"
+        );
+      }
+      if (j.serialMismatchWarning) {
+        setAssistLinkNotice(j.serialMismatchWarning);
+      } else {
+        setAssistLinkNotice("Linked to Zoho Assist. Public IP and location will sync from Assist.");
+      }
+      await load();
+    } catch (e) {
+      setAssistLinkError(e instanceof Error ? e.message : "Link failed");
+    } finally {
+      setAssistLinkBusy(false);
+    }
+  }
+
+  async function unlinkFromAssist() {
+    if (
+      !window.confirm(
+        "Unlink this asset from Zoho Assist? Registry details stay; only the Assist connection is removed."
+      )
+    ) {
+      return;
+    }
+    setAssistUnlinkBusy(true);
+    setAssistLinkError(null);
+    setAssistLinkNotice(null);
+    try {
+      const res = await fetch(`/api/assets/${assetId}/unlink-assist`, {
+        method: "POST",
+      });
+      const j = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        throw new Error(typeof j.error === "string" ? j.error : "Unlink failed");
+      }
+      setAssistLinkNotice("Zoho Assist link removed.");
+      await load();
+    } catch (e) {
+      setAssistLinkError(e instanceof Error ? e.message : "Unlink failed");
+    } finally {
+      setAssistUnlinkBusy(false);
+    }
+  }
 
   async function refreshPublicIpFromAssist() {
     setIpRefreshing(true);
@@ -392,6 +467,67 @@ export function EditAssetModal({
                     className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
                   />
                 </div>
+              </div>
+
+              {assistLinkError ? (
+                <div
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+                  role="alert"
+                >
+                  {assistLinkError}
+                </div>
+              ) : null}
+              {assistLinkNotice ? (
+                <div
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950"
+                  role="status"
+                >
+                  {assistLinkNotice}
+                </div>
+              ) : null}
+
+              <div className="rounded-lg border border-violet-200 bg-violet-50/40 px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+                  Zoho Assist
+                </p>
+                {assistLinked ? (
+                  <>
+                    <p className="mt-1 text-xs text-black/70">
+                      Linked device:{" "}
+                      <span className="font-mono text-[11px] text-black/85">
+                        {zohoAssistDeviceId}
+                      </span>
+                      {assistDisplayName ? (
+                        <span className="text-black/55"> · {assistDisplayName}</span>
+                      ) : null}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={assistUnlinkBusy || assistLinkBusy || ipRefreshing}
+                        onClick={() => void unlinkFromAssist()}
+                        className="rounded-lg border border-black/15 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-black/70 disabled:opacity-50"
+                      >
+                        {assistUnlinkBusy ? "Unlinking…" : "Unlink Assist"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 text-xs leading-relaxed text-black/65">
+                      Link this unit to its unattended Assist device for live public IP
+                      and GeoIP sync. Your <strong>serial number above is kept</strong>{" "}
+                      as entered — use this when import failed due to a duplicate serial.
+                    </p>
+                    <div className="mt-3">
+                      <AssistDevicePicker
+                        disabled={assistLinkBusy || saving}
+                        onLink={linkToAssist}
+                        linkLabel="Link to Assist"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               {assistLinked ? (

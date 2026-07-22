@@ -293,10 +293,10 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
                 <p className="mt-3 border-t border-red-200/80 pt-3 text-red-950/95">
                   {formError?.includes("Serial number") ? (
                     <>
-                      If this is the same physical unit, open the existing row and use{" "}
-                      <strong>Edit</strong> to link the Zoho Assist device — do not import
-                      again. If Assist reported a model id instead of a true serial, clear or
-                      correct the serial on one row after import.
+                      Open the existing asset, click <strong>Edit</strong>, and use{" "}
+                      <strong>Link to Assist</strong> in the Zoho Assist section — your
+                      registry serial is kept. Or unlink/correct the serial on one row if
+                      these are different machines.
                     </>
                   ) : (
                     <>

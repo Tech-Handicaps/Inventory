@@ -4,18 +4,15 @@ import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prismaGeoFieldsFromPublicIp } from "@/lib/geo/lookup-ip";
 import {
-  extractAssistListRows,
-  findAssistComputerRowBySearch,
   mapAssistDeviceJsonToHardwareFields,
   mergeAssistListComputerIntoMapped,
 } from "@/lib/zoho/assist-device-map";
 import {
   fetchAssistDeviceDetails,
-  fetchAssistDevicesList,
   loadZohoAssistSettings,
   refreshZohoAccessToken,
-  ZOHO_ASSIST_DEVICES_MAX_COUNT,
 } from "@/lib/zoho/client";
+import { resolveAssistResourceId } from "@/lib/zoho/resolve-assist-resource";
 import { prisma } from "@/lib/prisma";
 
 type ImportBody = {
@@ -27,51 +24,10 @@ type ImportBody = {
   clubId?: string;
 };
 
-async function resolveResourceId(
-  accessToken: string,
-  departmentId: string,
-  orgId: string | null | undefined,
-  input: { resourceId?: string; displayName?: string }
-): Promise<{ resourceId: string; listComputer?: unknown }> {
-  if (input.resourceId?.trim()) {
-    return { resourceId: input.resourceId.trim() };
-  }
-  const dn = input.displayName?.trim();
-  if (!dn) {
-    throw new Error("Provide resourceId or displayName (device display name in Assist).");
-  }
-
-  let listJson = await fetchAssistDevicesList(accessToken, {
-    departmentId,
-    orgId,
-    displayName: dn,
-    count: ZOHO_ASSIST_DEVICES_MAX_COUNT,
-    index: 1,
-  });
-  let found = findAssistComputerRowBySearch(listJson, dn);
-  if (!found) {
-    for (let page = 1; page <= 100; page++) {
-      listJson = await fetchAssistDevicesList(accessToken, {
-        departmentId,
-        orgId,
-        count: ZOHO_ASSIST_DEVICES_MAX_COUNT,
-        index: page,
-      });
-      found = findAssistComputerRowBySearch(listJson, dn);
-      if (found) break;
-      const pageRows = extractAssistListRows(listJson);
-      if (pageRows.length < ZOHO_ASSIST_DEVICES_MAX_COUNT) break;
-    }
-  }
-  if (!found) {
-    throw new Error(
-      `No unattended device matched “${dn}”. Confirm the name in Zoho Assist and your default department ID.`
-    );
-  }
-  return { resourceId: found.resourceId, listComputer: found.raw };
-}
-
-async function findMatchingTemplate(manufacturer: string | null | undefined, model: string | null | undefined) {
+async function findMatchingTemplate(
+  manufacturer: string | null | undefined,
+  model: string | null | undefined
+) {
   const m = manufacturer?.trim();
   const o = model?.trim();
   if (!m || !o) return null;
@@ -132,7 +88,7 @@ export async function POST(request: NextRequest) {
     const { access_token } = await refreshZohoAccessToken(c);
     const orgId = c.defaultOrgId;
 
-    const resolved = await resolveResourceId(access_token, departmentId, orgId, {
+    const resolved = await resolveAssistResourceId(access_token, departmentId, orgId, {
       resourceId: ridIn,
       displayName: dnIn,
     });
