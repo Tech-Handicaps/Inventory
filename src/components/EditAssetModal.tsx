@@ -62,8 +62,10 @@ export function EditAssetModal({
 
   const assistLinked = Boolean(zohoAssistDeviceId.trim());
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       const [aRes, tRes, cRes] = await Promise.all([
@@ -130,7 +132,9 @@ export function EditAssetModal({
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Load failed");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) {
+        setLoading(false);
+      }
     }
   }, [assetId]);
 
@@ -138,7 +142,7 @@ export function EditAssetModal({
     void load();
   }, [load]);
 
-  async function linkToAssist(body: { resourceId?: string; displayName?: string }) {
+  async function linkToAssist(body: { resourceId: string }) {
     setAssistLinkBusy(true);
     setAssistLinkError(null);
     setAssistLinkNotice(null);
@@ -166,7 +170,7 @@ export function EditAssetModal({
       } else {
         setAssistLinkNotice("Linked to Zoho Assist. Public IP and location will sync from Assist.");
       }
-      await load();
+      await load({ silent: true });
     } catch (e) {
       setAssistLinkError(e instanceof Error ? e.message : "Link failed");
     } finally {
@@ -194,7 +198,7 @@ export function EditAssetModal({
         throw new Error(typeof j.error === "string" ? j.error : "Unlink failed");
       }
       setAssistLinkNotice("Zoho Assist link removed.");
-      await load();
+      await load({ silent: true });
     } catch (e) {
       setAssistLinkError(e instanceof Error ? e.message : "Unlink failed");
     } finally {
@@ -212,7 +216,7 @@ export function EditAssetModal({
       if (!res.ok) {
         throw new Error(typeof j.error === "string" ? j.error : "Refresh failed");
       }
-      await load();
+      await load({ silent: true });
     } catch (e) {
       setSaveError(
         e instanceof Error ? e.message : "Could not refresh public IP"
