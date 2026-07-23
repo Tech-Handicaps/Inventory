@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPublicApiPath } from "@/lib/auth/public-api-paths";
+import { isSupabaseAuthSessionMissingError } from "@/lib/auth/supabase-auth-errors";
 import { safeRedirectPath } from "@/lib/http/safe-redirect";
 
 function getSupabaseUrl(): string | undefined {
@@ -77,9 +78,14 @@ export async function proxy(request: NextRequest) {
   try {
     const { data, error } = await supabase.auth.getUser();
     if (error) {
-      console.error("proxy: supabase.auth.getUser error", error.message);
-      authLookupFailed = true;
-      user = null;
+      // No session cookie → logged-out (401), not auth-service outage (503).
+      if (isSupabaseAuthSessionMissingError(error)) {
+        user = null;
+      } else {
+        console.error("proxy: supabase.auth.getUser error", error.message);
+        authLookupFailed = true;
+        user = null;
+      }
     } else {
       user = data.user;
     }
