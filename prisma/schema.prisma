@@ -231,6 +231,15 @@ model UserRole {
   createdAt DateTime @default(now())
 }
 
+/// Login username mapped to a Supabase Auth user (unique, lowercase).
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique // Supabase auth user id
+  username  String   @unique // lowercase: ^[a-z0-9._-]{3,32}$
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // Zoho Assist OAuth (client credentials + refresh token stored in-app; restrict DB access in production)
 model ZohoAssistSettings {
   id           String   @id @default("singleton")

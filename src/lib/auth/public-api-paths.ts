@@ -3,5 +3,9 @@
  * Kept separate from `proxy.ts` so unit tests do not import the Next.js proxy runtime.
  */
 export function isPublicApiPath(pathname: string): boolean {
-  return pathname === "/api/health" || pathname.startsWith("/api/cron/");
+  return (
+    pathname === "/api/health" ||
+    pathname === "/api/auth/login" ||
+    pathname.startsWith("/api/cron/")
+  );
 }

@@ -25,7 +25,7 @@ export function roleLabel(role: AppRole): string {
     case "super_admin":
       return "Super admin";
     case "admin":
-      return "Admin";
+      return "Administrator";
     case "operations":
       return "Technician / operations";
     case "reports_only":
@@ -34,5 +34,21 @@ export function roleLabel(role: AppRole): string {
       return "Finance / accountant";
     default:
       return role;
+  }
+}
+
+/** One-line description of what each assignable role can access. */
+export function roleDescription(role: AssignableRole): string {
+  switch (role) {
+    case "admin":
+      return "Full access: inventory, reports, finance, settings, and users.";
+    case "operations":
+      return "Hardware board, assets, repairs, and reports — no settings or finance queue.";
+    case "accountant":
+      return "Inventory plus finance acknowledgements — no user admin, Zoho settings, or audit.";
+    case "reports_only":
+      return "Home and reports only.";
+    default:
+      return "";
   }
 }

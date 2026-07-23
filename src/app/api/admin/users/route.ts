@@ -55,7 +55,24 @@ export async function GET(request: NextRequest) {
     const rows = await prisma.userRole.findMany({
       where: { userId: { in: ids } },
     });
+
+    let profiles: { userId: string; username: string }[] = [];
+    try {
+      profiles = await prisma.userProfile.findMany({
+        where: { userId: { in: ids } },
+        select: { userId: true, username: true },
+      });
+    } catch (profileErr) {
+      console.warn(
+        "GET /api/admin/users: UserProfile unavailable; listing without usernames",
+        profileErr
+      );
+    }
+
     const roleByUserId = new Map(rows.map((r) => [r.userId, r.role]));
+    const usernameByUserId = new Map(
+      profiles.map((p) => [p.userId, p.username])
+    );
 
     const items = users.map((u) => {
       const stored = roleByUserId.get(u.id);
@@ -63,6 +80,7 @@ export async function GET(request: NextRequest) {
       return {
         id: u.id,
         email: u.email ?? "",
+        username: usernameByUserId.get(u.id) ?? null,
         role,
         createdAt: u.created_at,
         lastSignInAt: u.last_sign_in_at ?? null,

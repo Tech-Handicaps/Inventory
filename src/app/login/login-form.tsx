@@ -6,14 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BrandSplashGate } from "@/components/BrandSplashGate";
 import { safeRedirectPath } from "@/lib/http/safe-redirect";
-import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect"), "/inventory");
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,13 +22,21 @@ export function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error: signError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: identifier.trim(),
+          password,
+        }),
       });
-      if (signError) {
-        setError(signError.message);
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(
+          typeof j.error === "string"
+            ? j.error
+            : "Invalid username/email or password"
+        );
         return;
       }
       router.push(redirect);
@@ -67,7 +74,7 @@ export function LoginForm() {
               Sign in
             </h1>
             <p className="mt-2 text-sm text-black/60">
-              Inventory Tracker — secure access for your team
+              Inventory Tracker — use your username or email
             </p>
           </div>
 
@@ -86,20 +93,20 @@ export function LoginForm() {
 
             <div>
               <label
-                htmlFor="email"
+                htmlFor="identifier"
                 className="text-xs font-semibold uppercase tracking-wide text-black/70"
               >
-                Email
+                Username or email
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                name="identifier"
+                type="text"
+                autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@handicaps.co.za"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="jsmith or you@handicaps.co.za"
                 className="mt-2 w-full rounded-xl border border-black/15 bg-surface/40 px-4 py-3 text-sm outline-none ring-brand/25 transition focus:border-brand/50 focus:bg-white focus:ring-2"
               />
             </div>

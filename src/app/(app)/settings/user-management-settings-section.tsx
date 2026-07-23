@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ASSIGNABLE_ROLES,
+  roleDescription,
   roleLabel,
   type AssignableRole,
 } from "@/lib/auth/assignable-roles";
@@ -11,6 +12,7 @@ import type { AppRole } from "@/lib/auth/roles";
 type Row = {
   id: string;
   email: string;
+  username: string | null;
   role: AppRole;
   createdAt: string;
   lastSignInAt: string | null;
@@ -35,8 +37,15 @@ export function UserManagementSettingsSection() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<AssignableRole>("admin");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [createRole, setCreateRole] = useState<AssignableRole>("operations");
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<AssignableRole>("operations");
+  const [showInvite, setShowInvite] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/users", { cache: "no-store" });
@@ -62,9 +71,52 @@ export function UserManagementSettingsSection() {
       .finally(() => setLoading(false));
   }, [load]);
 
+  async function submitCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (password !== passwordConfirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/users/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          role: createRole,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof j.error === "string" ? j.error : await readError(res)
+        );
+      }
+      setMessage(
+        typeof j.message === "string"
+          ? j.message
+          : "User created."
+      );
+      setUsername("");
+      setEmail("");
+      setPassword("");
+      setPasswordConfirm("");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Create failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function submitInvite(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = email.trim().toLowerCase();
+    const trimmed = inviteEmail.trim().toLowerCase();
     if (!trimmed) return;
     setSaving(true);
     setError(null);
@@ -82,11 +134,9 @@ export function UserManagementSettingsSection() {
         );
       }
       setMessage(
-        typeof j.message === "string"
-          ? j.message
-          : "Done."
+        typeof j.message === "string" ? j.message : "Done."
       );
-      setEmail("");
+      setInviteEmail("");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invite failed");
@@ -140,32 +190,45 @@ export function UserManagementSettingsSection() {
   }
 
   if (loading) {
-    return (
-      <p className="text-sm text-black/55">Loading users…</p>
-    );
+    return <p className="text-sm text-black/55">Loading users…</p>;
   }
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
-          Invite or assign role
+          Create user
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-black/65">
-          Sends a Supabase invite email when the address is new. If the user
-          already exists, their role is updated instead. Super admin accounts are
-          controlled via{" "}
+          Create an account with username, email, and password. Users can sign in
+          with either username or email. Super admin is controlled via{" "}
           <code className="rounded bg-black/[0.06] px-1 text-xs">
             SUPER_ADMIN_EMAILS
-          </code>{" "}
-          in the server environment, not here.
+          </code>
+          , not here.
         </p>
 
         <form
-          onSubmit={submitInvite}
-          className="mt-4 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+          onSubmit={submitCreate}
+          className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2"
         >
-          <label className="block min-w-0 flex-1">
+          <label className="block">
+            <span className="text-xs font-medium text-black/70">Username</span>
+            <input
+              type="text"
+              name="username"
+              autoComplete="off"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              placeholder="jsmith"
+              required
+              minLength={3}
+              maxLength={32}
+              pattern="[A-Za-z0-9._-]{3,32}"
+            />
+          </label>
+          <label className="block">
             <span className="text-xs font-medium text-black/70">Email</span>
             <input
               type="email"
@@ -178,13 +241,39 @@ export function UserManagementSettingsSection() {
               required
             />
           </label>
-          <label className="block w-full sm:w-48">
+          <label className="block">
+            <span className="text-xs font-medium text-black/70">Password</span>
+            <input
+              type="password"
+              name="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              required
+              minLength={8}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-black/70">
+              Confirm password
+            </span>
+            <input
+              type="password"
+              name="passwordConfirm"
+              autoComplete="new-password"
+              value={passwordConfirm}
+              onChange={(e) => setPasswordConfirm(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              required
+              minLength={8}
+            />
+          </label>
+          <label className="block sm:col-span-2">
             <span className="text-xs font-medium text-black/70">Role</span>
             <select
-              value={inviteRole}
-              onChange={(e) =>
-                setInviteRole(e.target.value as AssignableRole)
-              }
+              value={createRole}
+              onChange={(e) => setCreateRole(e.target.value as AssignableRole)}
               className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
             >
               {ASSIGNABLE_ROLES.map((r) => (
@@ -193,15 +282,80 @@ export function UserManagementSettingsSection() {
                 </option>
               ))}
             </select>
+            <p className="mt-1.5 text-xs text-black/55">
+              {roleDescription(createRole)}
+            </p>
           </label>
-          <button
-            type="submit"
-            disabled={saving}
-            className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
-          >
-            {saving ? "Working…" : "Invite / update"}
-          </button>
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+            >
+              {saving ? "Working…" : "Create user"}
+            </button>
+          </div>
         </form>
+      </div>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowInvite((v) => !v)}
+          className="text-sm font-medium text-brand hover:underline"
+        >
+          {showInvite ? "Hide email invite" : "Invite by email instead"}
+        </button>
+        {showInvite ? (
+          <div className="mt-3">
+            <p className="max-w-2xl text-sm text-black/65">
+              Sends a Supabase invite email when the address is new. If the user
+              already exists, their role is updated instead. They set their own
+              password via the invite link.
+            </p>
+            <form
+              onSubmit={submitInvite}
+              className="mt-3 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+            >
+              <label className="block min-w-0 flex-1">
+                <span className="text-xs font-medium text-black/70">Email</span>
+                <input
+                  type="email"
+                  name="inviteEmail"
+                  autoComplete="off"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  placeholder="colleague@example.com"
+                  required
+                />
+              </label>
+              <label className="block w-full sm:w-48">
+                <span className="text-xs font-medium text-black/70">Role</span>
+                <select
+                  value={inviteRole}
+                  onChange={(e) =>
+                    setInviteRole(e.target.value as AssignableRole)
+                  }
+                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                >
+                  {ASSIGNABLE_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {roleLabel(r)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                disabled={saving}
+                className="font-heading rounded-lg border border-brand/40 bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-brand-hover transition-colors hover:bg-brand-muted disabled:opacity-50"
+              >
+                {saving ? "Working…" : "Invite / update"}
+              </button>
+            </form>
+          </div>
+        ) : null}
       </div>
 
       {error ? (
@@ -230,9 +384,10 @@ export function UserManagementSettingsSection() {
           Users
         </h2>
         <div className="mt-3 overflow-x-auto rounded-lg border border-black/10">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-black/10 bg-black/[0.03] text-left">
+                <th className="px-4 py-3 font-medium">Username</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Role</th>
                 <th className="px-4 py-3 font-medium">Last sign-in</th>
@@ -243,6 +398,11 @@ export function UserManagementSettingsSection() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-black/5">
+                  <td className="px-4 py-2.5 font-mono text-xs">
+                    {row.username ?? (
+                      <span className="text-black/40">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5">{row.email}</td>
                   <td className="px-4 py-2.5 text-black/80">
                     {roleLabel(row.role)}

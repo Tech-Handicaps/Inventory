@@ -11,6 +11,18 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+function createPrismaClient(): PrismaClient {
+  return new PrismaClient({
+    ...(databaseUrl
+      ? { datasources: { db: { url: databaseUrl } } }
+      : {}),
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
+  });
+}
+
 /**
  * Single Prisma instance per serverless isolate (Vercel Lambda).
  * Caching on `globalThis` in production avoids connection churn and matches Prisma’s serverless guidance.
@@ -20,16 +32,21 @@ const globalForPrisma = globalThis as unknown as {
  * `?sslmode=require&pgbouncer=true&connection_limit=1` — see `.env.example`. `normalizeDatabaseUrlForPrisma`
  * appends `pgbouncer=true` when missing. Open `GET /api/health` for hints.
  */
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    ...(databaseUrl
-      ? { datasources: { db: { url: databaseUrl } } }
-      : {}),
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-  });
+function resolvePrisma(): PrismaClient {
+  let client = globalForPrisma.prisma ?? createPrismaClient();
 
-globalForPrisma.prisma = prisma;
+  // After `prisma generate` adds models, a stale `next dev` singleton can omit new
+  // delegates (e.g. userProfile → "Cannot read properties of undefined (reading 'findMany')").
+  if (
+    process.env.NODE_ENV !== "production" &&
+    typeof (client as { userProfile?: unknown }).userProfile === "undefined"
+  ) {
+    void client.$disconnect().catch(() => undefined);
+    client = createPrismaClient();
+  }
+
+  globalForPrisma.prisma = client;
+  return client;
+}
+
+export const prisma = resolvePrisma();

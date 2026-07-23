@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { isPublicApiPath } from "@/lib/auth/public-api-paths";
 
 describe("isPublicApiPath", () => {
-  it("allows health and cron", () => {
+  it("allows health, cron, and login", () => {
     expect(isPublicApiPath("/api/health")).toBe(true);
     expect(isPublicApiPath("/api/cron/sync-assist-public-ip")).toBe(true);
+    expect(isPublicApiPath("/api/auth/login")).toBe(true);
   });
 
   it("requires session for other APIs", () => {

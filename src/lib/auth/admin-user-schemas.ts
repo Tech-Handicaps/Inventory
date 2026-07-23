@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ASSIGNABLE_ROLES } from "@/lib/auth/assignable-roles";
+import { usernameSchema } from "@/lib/auth/username";
 
 const assignableRoleSchema = z.enum(ASSIGNABLE_ROLES);
 
@@ -13,6 +14,21 @@ export const inviteUserSchema = z.object({
   role: assignableRoleSchema,
 });
 
+export const createUserSchema = z.object({
+  username: usernameSchema,
+  email: z
+    .string()
+    .trim()
+    .min(1, "Valid email is required")
+    .email("Valid email is required")
+    .transform((v) => v.toLowerCase()),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password is too long"),
+  role: assignableRoleSchema,
+});
+
 export const patchUserSchema = z
   .object({
     role: assignableRoleSchema.optional(),
@@ -21,3 +37,12 @@ export const patchUserSchema = z
   .refine((v) => v.role !== undefined || v.disabled !== undefined, {
     message: "Provide role and/or disabled flag",
   });
+
+export const loginBodySchema = z.object({
+  identifier: z
+    .string()
+    .trim()
+    .min(1, "Username or email is required")
+    .max(254),
+  password: z.string().min(1, "Password is required").max(128),
+});
