@@ -19,9 +19,20 @@ import { useAppRole } from "@/components/RoleProvider";
 import { useToast } from "@/components/ToastProvider";
 import { isNavLinkVisible, type NavKey } from "@/lib/auth/nav-access";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export type AppShellCurrent = NavKey;
+
+function navKeyFromPath(pathname: string): AppShellCurrent | undefined {
+  if (pathname === "/") return "home";
+  if (pathname.startsWith("/dashboard")) return "dashboard";
+  if (pathname.startsWith("/inventory")) return "inventory";
+  if (pathname.startsWith("/assets")) return "assets";
+  if (pathname.startsWith("/reports")) return "reports";
+  if (pathname.startsWith("/acknowledgements")) return "acknowledgements";
+  if (pathname.startsWith("/settings")) return "settings";
+  return undefined;
+}
 
 const NAV_ITEMS: {
   href: string;
@@ -54,7 +65,6 @@ const NAV_ITEMS: {
 ];
 
 type Props = {
-  current?: AppShellCurrent;
   children: React.ReactNode;
 };
 
@@ -68,7 +78,9 @@ function SidebarNav({
   const { role, loading, loadError } = useAppRole();
 
   const visible = (key: NavKey) => {
-    if (loading || loadError || role === null) return true;
+    // Fail closed: hide privileged links until role is known.
+    if (loading) return key === "home";
+    if (loadError || role === null) return key === "home";
     return isNavLinkVisible(role, key);
   };
 
@@ -219,9 +231,11 @@ function SidebarPanel({
 }
 
 /**
- * App chrome: icon sidebar (desktop) + drawer (mobile). Replaces the old top nav header.
+ * App chrome: icon sidebar (desktop) + drawer (mobile). Active item from pathname.
  */
-export function AppShell({ current, children }: Props) {
+export function AppShell({ children }: Props) {
+  const pathname = usePathname();
+  const current = navKeyFromPath(pathname);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
-import { AppShell } from "@/components/AppShell";
 import { useToast } from "@/components/ToastProvider";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
@@ -187,9 +186,7 @@ export default function AssetsPage() {
   }
 
   return (
-    <AppShell current="assets">
-
-      <main className="mx-auto max-w-6xl space-y-8 p-6">
+    <main className="mx-auto max-w-6xl space-y-8 p-6">
         <HardwareCaptureForm
           statuses={effectiveStatuses}
           onCreated={() => void load()}
@@ -508,6 +505,6 @@ export default function AssetsPage() {
           </ul>
         </div>
       </main>
-    </AppShell>
+    
   );
 }

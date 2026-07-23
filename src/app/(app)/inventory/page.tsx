@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
-import { AppShell } from "@/components/AppShell";
 import { LogRepairModal } from "@/components/LogRepairModal";
 import { StartAssessmentModal } from "@/components/StartAssessmentModal";
 import { useToast } from "@/components/ToastProvider";
@@ -357,9 +356,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <AppShell current="inventory">
-
-      <main className="mx-auto max-w-7xl space-y-8 p-6">
+    <main className="mx-auto max-w-7xl space-y-8 p-6">
         <HardwareCaptureForm
           statuses={effectiveStatuses}
           onCreated={() => void load()}
@@ -756,7 +753,7 @@ export default function InventoryPage() {
           />
         ) : null}
       </main>
-    </AppShell>
+    
   );
 }
 

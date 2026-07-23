@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/AppShell";
 import { ReportsLifecycleSlot } from "./reports-lifecycle-slot";
 
 type ReportDef = {
@@ -134,8 +133,7 @@ function ReportTile({ report }: { report: ReportDef }) {
 
 export default function ReportsPage() {
   return (
-    <AppShell current="reports">
-      <main className="mx-auto max-w-7xl space-y-10 p-6 pb-16">
+    <main className="mx-auto max-w-7xl space-y-10 p-6 pb-16">
         {/* Page intro */}
         <section className="relative overflow-hidden rounded-2xl border border-brand/20 bg-gradient-to-br from-brand-muted via-white to-surface p-6 sm:p-8">
           <div
@@ -212,6 +210,6 @@ export default function ReportsPage() {
         {/* Lifecycle */}
         <ReportsLifecycleSlot />
       </main>
-    </AppShell>
+    
   );
 }

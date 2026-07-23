@@ -71,10 +71,7 @@ export async function GET(request: NextRequest) {
       count,
     });
   } catch (e) {
-    console.error("GET /api/zoho/assist/devices", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Assist list failed" },
-      { status: 500 }
-    );
+    const { catchToJsonError } = await import("@/lib/api/error-response");
+    return catchToJsonError("GET /api/zoho/assist/devices", e, "Assist list failed");
   }
 }

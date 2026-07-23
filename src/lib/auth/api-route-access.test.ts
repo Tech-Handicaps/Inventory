@@ -25,12 +25,15 @@ describe("apiAccessAllowedForRole", () => {
     ).toBe(false);
   });
 
-  it("blocks accountant from zoho settings and audit", () => {
+  it("blocks accountant from zoho settings, audit, and admin", () => {
     expect(apiAccessAllowedForRole("/api/assets", "accountant")).toBe(true);
     expect(
       apiAccessAllowedForRole("/api/settings/zoho", "accountant")
     ).toBe(false);
     expect(apiAccessAllowedForRole("/api/audit-logs", "accountant")).toBe(
+      false
+    );
+    expect(apiAccessAllowedForRole("/api/admin/users", "accountant")).toBe(
       false
     );
   });

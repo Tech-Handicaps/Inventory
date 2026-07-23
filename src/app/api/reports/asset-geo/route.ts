@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { regionNameForCode } from "@/lib/geo/region-display";
 import { nextResponseIfPrismaSchemaDrift } from "@/lib/prisma-error-response";
 import { prisma } from "@/lib/prisma";
+import { REPORT_ASSET_LIST_LIMIT } from "@/lib/reports/limits";
 
 /** GET /api/reports/asset-geo — distribution by country / region for dashboard & reporting */
 export async function GET(request: NextRequest) {
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
           geoRegionName: true,
           geoCity: true,
         },
+        take: REPORT_ASSET_LIST_LIMIT,
       }),
     ]);
 

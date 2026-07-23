@@ -42,6 +42,7 @@ export function apiAccessAllowedForRole(
   }
 
   if (role === "accountant") {
+    if (pathname.startsWith(ADMIN_PREFIX)) return false;
     if (pathname.startsWith(ZOHO_SETTINGS_PREFIX)) return false;
     if (pathname.startsWith(ZOHO_DESK_SETTINGS_PREFIX)) return false;
     if (pathname === AUDIT_LOGS_PATH) return false;

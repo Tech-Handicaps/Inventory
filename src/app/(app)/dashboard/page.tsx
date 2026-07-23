@@ -12,7 +12,6 @@ import { RefurbishedLineChart } from "@/components/charts/RefurbishedLineChart";
 import { RepairsBarChart } from "@/components/charts/RepairsBarChart";
 import { StockPieChart } from "@/components/charts/StockPieChart";
 import { WriteoffsDonutChart } from "@/components/charts/WriteoffsDonutChart";
-import { AppShell } from "@/components/AppShell";
 
 type StockRow = { status: string; count: number; code: string };
 type StockData = { stock: StockRow[]; total: number };
@@ -147,45 +146,60 @@ export default function DashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadJson<T>(url: string): Promise<T | null> {
-      const r = await fetch(url);
-      const j = await r.json().catch(() => null);
-      if (!r.ok) {
-        const msg =
-          j && typeof j === "object" && "error" in j && typeof (j as { error: unknown }).error === "string"
-            ? (j as { error: string }).error
-            : `Failed to load ${url}`;
-        throw new Error(msg);
+    async function softLoad<T>(url: string): Promise<{ data: T | null; error: string | null }> {
+      try {
+        const r = await fetch(url);
+        const j = await r.json().catch(() => null);
+        if (!r.ok) {
+          const msg =
+            j && typeof j === "object" && "error" in j && typeof (j as { error: unknown }).error === "string"
+              ? (j as { error: string }).error
+              : `Failed to load ${url}`;
+          return { data: null, error: msg };
+        }
+        return { data: j as T, error: null };
+      } catch (e) {
+        return {
+          data: null,
+          error: e instanceof Error ? e.message : `Failed to load ${url}`,
+        };
       }
-      return j as T;
     }
 
-    Promise.all([
-      loadJson<StockData>("/api/reports/stock"),
-      loadJson<RepairsData>("/api/reports/repairs"),
-      loadJson<RefurbishedData>("/api/reports/refurbished"),
-      loadJson<WriteoffsData>("/api/reports/writeoffs"),
-      loadJson<DashboardSummary>("/api/reports/dashboard-summary"),
-      loadJson<XeroHealth>("/api/xero/health"),
-      loadJson<FleetProcurement>("/api/reports/hardware-procurement"),
-      loadJson<AssetGeoReport>("/api/reports/asset-geo"),
-    ])
-      .then(([s, r, ref, w, sum, x, fl, geo]) => {
+    void (async () => {
+      const results = await Promise.all([
+        softLoad<StockData>("/api/reports/stock"),
+        softLoad<RepairsData>("/api/reports/repairs"),
+        softLoad<RefurbishedData>("/api/reports/refurbished"),
+        softLoad<WriteoffsData>("/api/reports/writeoffs"),
+        softLoad<DashboardSummary>("/api/reports/dashboard-summary"),
+        softLoad<XeroHealth>("/api/xero/health"),
+        softLoad<FleetProcurement>("/api/reports/hardware-procurement"),
+        softLoad<AssetGeoReport>("/api/reports/asset-geo"),
+      ]);
+
+      const [s, r, ref, w, sum, x, fl, geo] = results;
+      setStock(s.data);
+      setRepairs(r.data);
+      setRefurbished(ref.data);
+      setWriteoffs(w.data);
+      setSummary(sum.data);
+      setXeroHealth(x.data);
+      setFleet(fl.data);
+      setAssetGeo(geo.data);
+
+      const failures = results.filter((row) => row.error);
+      if (failures.length === results.length) {
+        setLoadError(failures[0]?.error ?? "Failed to load dashboard");
+      } else if (failures.length > 0) {
+        setLoadError(
+          `Some dashboard sections failed to load (${failures.length} of ${results.length}). Showing available data.`
+        );
+      } else {
         setLoadError(null);
-        setStock(s);
-        setRepairs(r);
-        setRefurbished(ref);
-        setWriteoffs(w);
-        setSummary(sum);
-        setXeroHealth(x);
-        setFleet(fl);
-        setAssetGeo(geo);
-      })
-      .catch((e) => {
-        console.error("dashboard load", e);
-        setLoadError(e instanceof Error ? e.message : "Failed to load dashboard");
-      })
-      .finally(() => setLoading(false));
+      }
+      setLoading(false);
+    })();
   }, []);
 
   const kpis = useMemo(() => {
@@ -245,31 +259,54 @@ export default function DashboardPage() {
     );
   }
 
-  if (loadError) {
+  const hardFail =
+    Boolean(loadError) &&
+    !stock &&
+    !repairs &&
+    !refurbished &&
+    !writeoffs &&
+    !summary &&
+    !xeroHealth &&
+    !fleet &&
+    !assetGeo;
+
+  if (hardFail) {
     return (
-      <AppShell current="dashboard">
-        <main className="mx-auto max-w-lg p-6">
-          <h1 className="font-heading text-lg font-bold text-black">
-            Dashboard unavailable
-          </h1>
-          <p className="mt-2 text-sm text-red-800" role="alert">
-            {loadError}
-          </p>
-          <button
-            type="button"
-            className="mt-4 rounded bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
-        </main>
-      </AppShell>
+      <main className="mx-auto max-w-lg p-6">
+        <h1 className="font-heading text-lg font-bold text-black">
+          Dashboard unavailable
+        </h1>
+        <p className="mt-2 text-sm text-red-800" role="alert">
+          {loadError}
+        </p>
+        <button
+          type="button"
+          className="mt-4 rounded bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </main>
     );
   }
 
   return (
-    <AppShell current="dashboard">
-      <main className="mx-auto max-w-7xl space-y-8 p-6">
+    <main className="mx-auto max-w-7xl space-y-8 p-6">
+        {loadError ? (
+          <div
+            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="status"
+          >
+            {loadError}{" "}
+            <button
+              type="button"
+              className="font-semibold underline"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
         <section className="rounded-xl border border-brand/25 bg-brand-muted/30 p-5 shadow-sm">
           <h1 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
             Operations overview
@@ -980,6 +1017,6 @@ export default function DashboardPage() {
           ) : null}
         </section>
       </main>
-    </AppShell>
+    
   );
 }

@@ -41,7 +41,7 @@ export async function GET(
   } catch (e) {
     console.error("GET /api/assets/[id]/write-off-certificate", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Could not generate certificate PDF" },
+      { error: "Could not generate certificate PDF" },
       { status: 500 }
     );
   }

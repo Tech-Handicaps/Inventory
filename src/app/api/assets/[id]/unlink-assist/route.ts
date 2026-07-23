@@ -57,10 +57,11 @@ export async function POST(
 
     return NextResponse.json({ asset });
   } catch (e) {
-    console.error("POST /api/assets/[id]/unlink-assist", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Unlink failed" },
-      { status: 500 }
+    const { catchToJsonError } = await import("@/lib/api/error-response");
+    return catchToJsonError(
+      "POST /api/assets/[id]/unlink-assist",
+      e,
+      "Unlink failed"
     );
   }
 }

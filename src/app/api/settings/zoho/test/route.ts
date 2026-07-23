@@ -10,9 +10,10 @@ export async function POST(request: NextRequest) {
     const result = await testZohoAssistConnection();
     return NextResponse.json(result);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Zoho Assist API test failed";
     console.error("POST /api/settings/zoho/test", error);
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Zoho Assist API test failed" },
+      { status: 400 }
+    );
   }
 }

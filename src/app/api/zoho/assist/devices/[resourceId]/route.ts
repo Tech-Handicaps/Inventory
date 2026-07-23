@@ -64,10 +64,11 @@ export async function GET(
       usedOrgId: orgId ?? null,
     });
   } catch (e) {
-    console.error("GET /api/zoho/assist/devices/[resourceId]", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Assist device fetch failed" },
-      { status: 500 }
+    const { catchToJsonError } = await import("@/lib/api/error-response");
+    return catchToJsonError(
+      "GET /api/zoho/assist/devices/[resourceId]",
+      e,
+      "Assist device fetch failed"
     );
   }
 }

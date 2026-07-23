@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message || "Failed to list users" },
+        { error: "Failed to list users" },
         { status: 500 }
       );
     }
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     });
     if (listErr) {
       return NextResponse.json(
-        { error: listErr.message || "Failed to look up users" },
+        { error: "Failed to look up users" },
         { status: 500 }
       );
     }
@@ -209,30 +209,37 @@ export async function POST(request: NextRequest) {
 
     const { data: invited, error: invErr } =
       await admin.auth.admin.inviteUserByEmail(email, {
-        data: { role: toStoredRole(assignRole) },
         redirectTo,
       });
 
     if (invErr) {
-      return NextResponse.json(
-        { error: invErr.message || "Invite failed" },
-        { status: 400 }
-      );
+      console.error("POST /api/admin/users inviteUserByEmail", invErr);
+      return NextResponse.json({ error: "Invite failed" }, { status: 400 });
     }
 
     const newUser = invited.user;
-    if (newUser?.id) {
-      await prisma.userRole.upsert({
-        where: { userId: newUser.id },
-        create: { userId: newUser.id, role: toStoredRole(assignRole) },
-        update: { role: toStoredRole(assignRole) },
-      });
+    if (!newUser?.id) {
+      console.error("POST /api/admin/users invite returned no user id", invited);
+      return NextResponse.json(
+        { error: "Invite did not return a user id; role was not assigned." },
+        { status: 502 }
+      );
+    }
+
+    try {
+      await syncUserRole(admin, newUser.id, assignRole, null);
+    } catch (syncErr) {
+      console.error("POST /api/admin/users invite syncUserRole", syncErr);
+      return NextResponse.json(
+        { error: "User invited but role sync failed; assign a role manually." },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({
       ok: true,
       action: "invited",
-      userId: newUser?.id ?? null,
+      userId: newUser.id,
       message: "Invitation email sent (if SMTP is configured in Supabase).",
     });
   } catch (e) {
@@ -248,7 +255,10 @@ export async function POST(request: NextRequest) {
     }
     console.error("POST /api/admin/users", e);
     if (message === "Failed to sync role to Auth") {
-      return NextResponse.json({ error: message }, { status: 502 });
+      return NextResponse.json(
+        { error: "Failed to sync role to Auth" },
+        { status: 502 }
+      );
     }
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
@@ -266,10 +276,9 @@ async function syncUserRole(
     create: { userId, role: stored },
     update: { role: stored },
   });
-  // Prefer app_metadata (Admin API only); keep user_metadata in sync for dashboard display only.
+  // Prefer app_metadata only (Admin API); do not write user_metadata.role.
   const { error } = await admin.auth.admin.updateUserById(userId, {
     app_metadata: { role: stored },
-    user_metadata: { role: stored },
   });
   if (error) {
     console.error("POST /api/admin/users syncUserRole updateUserById", error);

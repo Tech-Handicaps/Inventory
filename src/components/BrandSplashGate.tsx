@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const SPLASH_KEY = "hna-splash-seen";
-const SPLASH_MS = 8000;
+/** Brand pulse duration for first visit in a session (~2s). */
+const SPLASH_MS = 2000;
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -31,12 +32,14 @@ type Props = {
   children: React.ReactNode;
 };
 
+type Phase = "checking" | "splash" | "done";
+
 /**
  * Once per browser session: brand pulse + loader, then children.
- * Pulse is disabled via CSS when `prefers-reduced-motion: reduce`.
+ * Returning visitors skip without a splash flash. Pulse respects reduced-motion CSS.
  */
 export function BrandSplashGate({ children }: Props) {
-  const [phase, setPhase] = useState<"splash" | "done">("splash");
+  const [phase, setPhase] = useState<Phase>("checking");
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +51,7 @@ export function BrandSplashGate({ children }: Props) {
         setPhase("done");
         return;
       }
+      setPhase("splash");
       const ms = prefersReducedMotion() ? 400 : SPLASH_MS;
       timeoutId = window.setTimeout(() => {
         if (cancelled) return;
@@ -62,6 +66,14 @@ export function BrandSplashGate({ children }: Props) {
       window.clearTimeout(timeoutId);
     };
   }, []);
+
+  if (phase === "checking") {
+    return (
+      <div className="min-h-screen bg-surface" aria-hidden>
+        <span className="sr-only">Loading</span>
+      </div>
+    );
+  }
 
   if (phase === "splash") {
     return (

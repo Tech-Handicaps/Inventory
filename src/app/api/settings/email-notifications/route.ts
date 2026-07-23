@@ -190,9 +190,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (e) {
     console.error("POST /api/settings/email-notifications", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Test send failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Test send failed" }, { status: 500 });
   }
 }

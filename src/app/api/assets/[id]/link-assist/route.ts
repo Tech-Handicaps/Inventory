@@ -55,10 +55,11 @@ export async function POST(
       serialMismatchWarning: result.serialMismatchWarning,
     });
   } catch (e) {
-    console.error("POST /api/assets/[id]/link-assist", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Link failed" },
-      { status: 500 }
+    const { catchToJsonError } = await import("@/lib/api/error-response");
+    return catchToJsonError(
+      "POST /api/assets/[id]/link-assist",
+      e,
+      "Link failed"
     );
   }
 }

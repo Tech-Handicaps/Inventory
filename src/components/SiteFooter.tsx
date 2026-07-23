@@ -1,4 +1,20 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
+/**
+ * Site footer for public/auth entry pages only — hidden inside the app shell.
+ */
 export function SiteFooter() {
+  const pathname = usePathname();
+  const show =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/no-access" ||
+    pathname.startsWith("/login");
+
+  if (!show) return null;
+
   return (
     <footer
       className="mt-auto border-t border-black/10 bg-white"

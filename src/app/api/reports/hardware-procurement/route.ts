@@ -6,6 +6,7 @@ import {
   type FleetProcurementMetrics,
 } from "@/lib/reports/fleet-procurement-insights";
 import { prisma } from "@/lib/prisma";
+import { REPORT_ASSET_LIST_LIMIT } from "@/lib/reports/limits";
 
 const MS_24_MO = 730 * 24 * 60 * 60 * 1000;
 const MS_90_D = 90 * 24 * 60 * 60 * 1000;
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
           warrantyEndDate: true,
           deviceTemplate: { select: { label: true, manufacturer: true } },
         },
+        take: REPORT_ASSET_LIST_LIMIT,
       }),
     ]);
 
