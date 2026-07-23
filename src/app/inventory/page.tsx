@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
-import { InventoryHeader } from "@/components/InventoryHeader";
+import { AppShell } from "@/components/AppShell";
 import { LogRepairModal } from "@/components/LogRepairModal";
 import { StartAssessmentModal } from "@/components/StartAssessmentModal";
 import { useToast } from "@/components/ToastProvider";
@@ -357,8 +357,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <InventoryHeader current="inventory" />
+    <AppShell current="inventory">
 
       <main className="mx-auto max-w-7xl space-y-8 p-6">
         <HardwareCaptureForm
@@ -757,7 +756,7 @@ export default function InventoryPage() {
           />
         ) : null}
       </main>
-    </div>
+    </AppShell>
   );
 }
 

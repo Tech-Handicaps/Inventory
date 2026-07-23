@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
-import { InventoryHeader } from "@/components/InventoryHeader";
+import { AppShell } from "@/components/AppShell";
 import { useToast } from "@/components/ToastProvider";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
@@ -187,8 +187,7 @@ export default function AssetsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <InventoryHeader current="assets" />
+    <AppShell current="assets">
 
       <main className="mx-auto max-w-6xl space-y-8 p-6">
         <HardwareCaptureForm
@@ -509,6 +508,6 @@ export default function AssetsPage() {
           </ul>
         </div>
       </main>
-    </div>
+    </AppShell>
   );
 }

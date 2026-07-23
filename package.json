@@ -24,6 +24,7 @@
     "@supabase/ssr": "^0.5",
     "@supabase/supabase-js": "^2.100.1",
     "chart.js": "^4",
+    "lucide-react": "^1.25.0",
     "next": "16.2.0",
     "nodemailer": "^8.0.5",
     "puppeteer-core": "^24.43.1",

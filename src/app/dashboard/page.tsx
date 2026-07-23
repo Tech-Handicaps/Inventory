@@ -12,7 +12,7 @@ import { RefurbishedLineChart } from "@/components/charts/RefurbishedLineChart";
 import { RepairsBarChart } from "@/components/charts/RepairsBarChart";
 import { StockPieChart } from "@/components/charts/StockPieChart";
 import { WriteoffsDonutChart } from "@/components/charts/WriteoffsDonutChart";
-import { InventoryHeader } from "@/components/InventoryHeader";
+import { AppShell } from "@/components/AppShell";
 
 type StockRow = { status: string; count: number; code: string };
 type StockData = { stock: StockRow[]; total: number };
@@ -247,8 +247,7 @@ export default function DashboardPage() {
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-surface">
-        <InventoryHeader current="dashboard" />
+      <AppShell current="dashboard">
         <main className="mx-auto max-w-lg p-6">
           <h1 className="font-heading text-lg font-bold text-black">
             Dashboard unavailable
@@ -264,14 +263,12 @@ export default function DashboardPage() {
             Retry
           </button>
         </main>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <InventoryHeader current="dashboard" />
-
+    <AppShell current="dashboard">
       <main className="mx-auto max-w-7xl space-y-8 p-6">
         <section className="rounded-xl border border-brand/25 bg-brand-muted/30 p-5 shadow-sm">
           <h1 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
@@ -983,6 +980,6 @@ export default function DashboardPage() {
           ) : null}
         </section>
       </main>
-    </div>
+    </AppShell>
   );
 }

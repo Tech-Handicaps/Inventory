@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPublicApiPath } from "@/lib/auth/public-api-paths";
+import { safeRedirectPath } from "@/lib/http/safe-redirect";
 
 function getSupabaseUrl(): string | undefined {
   return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || undefined;
@@ -121,7 +122,7 @@ export async function proxy(request: NextRequest) {
   if (!isPublicPage && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
+    url.searchParams.set("redirect", safeRedirectPath(pathname, "/inventory"));
     return NextResponse.redirect(url);
   }
 

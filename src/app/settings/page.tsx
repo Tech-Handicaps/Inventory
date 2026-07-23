@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { InventoryHeader } from "@/components/InventoryHeader";
+import { AppShell } from "@/components/AppShell";
 import { SettingsTabsContent } from "./settings-tabs-content";
 
 function SettingsLoading() {
@@ -14,14 +14,12 @@ function SettingsLoading() {
 
 export default function SettingsPage() {
   return (
-    <div className="min-h-screen bg-surface">
-      <InventoryHeader current="settings" />
-
+    <AppShell current="settings">
       <main className="mx-auto max-w-5xl p-6">
         <Suspense fallback={<SettingsLoading />}>
           <SettingsTabsContent />
         </Suspense>
       </main>
-    </div>
+    </AppShell>
   );
 }

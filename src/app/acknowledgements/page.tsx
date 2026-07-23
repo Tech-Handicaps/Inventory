@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { InventoryHeader } from "@/components/InventoryHeader";
+import { AppShell } from "@/components/AppShell";
 
 function makeModelLine(manufacturer: string | null, model: string | null): string | null {
   const parts = [manufacturer?.trim(), model?.trim()].filter(Boolean);
@@ -90,9 +90,7 @@ export default function AcknowledgementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <InventoryHeader current="acknowledgements" />
-
+    <AppShell current="acknowledgements">
       <main className="mx-auto max-w-5xl space-y-6 p-6">
         <div>
           <h1 className="font-heading text-xl font-bold uppercase tracking-wide text-black">
@@ -245,6 +243,6 @@ export default function AcknowledgementsPage() {
           </table>
         </div>
       </main>
-    </div>
+    </AppShell>
   );
 }
