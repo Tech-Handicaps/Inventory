@@ -1,7 +1,10 @@
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { catchToJsonError } from "@/lib/api/error-response";
+import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import {
   appendDeskInternalCommentForTicket,
   createDeskTicketForRepair,
@@ -10,6 +13,16 @@ import {
 } from "@/lib/zoho/desk";
 import { createRepairAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
 import { prisma } from "@/lib/prisma";
+
+const createRepairSchema = z.object({
+  assetId: z.string().trim().min(1, "assetId is required"),
+  assessmentId: z.string().trim().optional(),
+  technicianNotes: z.string().optional(),
+  repairStatus: z.string().trim().min(1).optional(),
+  createDeskTicket: z.boolean().optional(),
+  moveAssetToRepairStage: z.boolean().optional(),
+  existingDeskTicket: z.string().optional(),
+});
 
 function newRepairReference(): string {
   const y = new Date().getFullYear();
@@ -22,26 +35,17 @@ export async function POST(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
   const { user } = auth;
   try {
-    const body = (await request.json()) as Record<string, unknown>;
-    const assetId = typeof body.assetId === "string" ? body.assetId.trim() : "";
-    const assessmentIdRaw =
-      typeof body.assessmentId === "string" ? body.assessmentId.trim() : "";
-    const technicianNotes =
-      typeof body.technicianNotes === "string" ? body.technicianNotes : undefined;
-    const repairStatus =
-      typeof body.repairStatus === "string" ? body.repairStatus : "pending";
-    const createDeskTicket = body.createDeskTicket === true;
-    const moveAssetToRepairStage = body.moveAssetToRepairStage !== false;
-    const existingDeskTicketRaw =
-      typeof body.existingDeskTicket === "string" ? body.existingDeskTicket : "";
-    const existingDeskLookup = normalizeDeskTicketLookup(existingDeskTicketRaw);
+    const parsed = await parseJsonBody(request, createRepairSchema);
+    if (isNextResponse(parsed)) return parsed;
 
-    if (!assetId) {
-      return NextResponse.json(
-        { error: "assetId is required" },
-        { status: 400 }
-      );
-    }
+    const assetId = parsed.assetId;
+    const assessmentIdRaw = parsed.assessmentId ?? "";
+    const technicianNotes = parsed.technicianNotes;
+    const repairStatus = parsed.repairStatus ?? "pending";
+    const createDeskTicket = parsed.createDeskTicket === true;
+    const moveAssetToRepairStage = parsed.moveAssetToRepairStage !== false;
+    const existingDeskTicketRaw = parsed.existingDeskTicket ?? "";
+    const existingDeskLookup = normalizeDeskTicketLookup(existingDeskTicketRaw);
 
     const asset = await prisma.asset.findUnique({
       where: { id: assetId },
@@ -320,11 +324,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(repair);
   } catch (error) {
-    console.error("POST /api/repairs", error);
-    return NextResponse.json(
-      { error: "Failed to create repair" },
-      { status: 500 }
-    );
+    return catchToJsonError("POST /api/repairs", error, "Failed to create repair");
   }
 }
 

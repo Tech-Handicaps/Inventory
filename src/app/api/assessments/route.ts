@@ -1,7 +1,10 @@
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { catchToJsonError } from "@/lib/api/error-response";
+import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import { createAssessmentAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
 import { prisma } from "@/lib/prisma";
 import {
@@ -9,6 +12,13 @@ import {
   normalizeDeskTicketLookup,
   postDeskInternalCommentByLookup,
 } from "@/lib/zoho/desk";
+
+const createAssessmentSchema = z.object({
+  assetId: z.string().trim().min(1, "assetId is required"),
+  intakeNotes: z.string().optional(),
+  createDeskTicket: z.boolean().optional(),
+  existingDeskTicket: z.string().optional(),
+});
 
 function newAssessmentReference(): string {
   const y = new Date().getFullYear();
@@ -44,8 +54,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(items);
   } catch (e) {
-    console.error("GET /api/assessments", e);
-    return NextResponse.json({ error: "Failed to fetch assessments" }, { status: 500 });
+    return catchToJsonError("GET /api/assessments", e, "Failed to fetch assessments");
   }
 }
 
@@ -55,19 +64,14 @@ export async function POST(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
   const { user } = auth;
   try {
-    const body = (await request.json()) as Record<string, unknown>;
-    const assetId =
-      typeof body.assetId === "string" ? body.assetId.trim() : "";
-    const intakeNotes =
-      typeof body.intakeNotes === "string" ? body.intakeNotes.trim() || null : null;
-    const createDeskTicket = body.createDeskTicket === true;
-    const existingDeskRaw =
-      typeof body.existingDeskTicket === "string" ? body.existingDeskTicket : "";
-    const existingDeskLookup = normalizeDeskTicketLookup(existingDeskRaw);
+    const parsed = await parseJsonBody(request, createAssessmentSchema);
+    if (isNextResponse(parsed)) return parsed;
 
-    if (!assetId) {
-      return NextResponse.json({ error: "assetId is required" }, { status: 400 });
-    }
+    const assetId = parsed.assetId;
+    const intakeNotes = parsed.intakeNotes?.trim() || null;
+    const createDeskTicket = parsed.createDeskTicket === true;
+    const existingDeskRaw = parsed.existingDeskTicket ?? "";
+    const existingDeskLookup = normalizeDeskTicketLookup(existingDeskRaw);
 
     const asset = await prisma.asset.findUnique({
       where: { id: assetId },
@@ -212,7 +216,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(assessment);
   } catch (e) {
-    console.error("POST /api/assessments", e);
-    return NextResponse.json({ error: "Failed to create assessment" }, { status: 500 });
+    return catchToJsonError("POST /api/assessments", e, "Failed to create assessment");
   }
 }

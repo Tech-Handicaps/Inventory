@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  parseAssignableRole,
-} from "@/lib/auth/assignable-roles";
+import { patchUserSchema } from "@/lib/auth/admin-user-schemas";
 import { appRoleForAuthUser } from "@/lib/auth/app-role-for-user";
 import { isProtectedAdminEmail, isSuperAdminEmail, toStoredRole } from "@/lib/auth/roles";
 import { requireUserAdmin } from "@/lib/auth/require-user-admin";
+import { catchToJsonError, jsonError } from "@/lib/api/error-response";
+import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -40,61 +40,34 @@ export async function PATCH(
 
   const { userId } = await params;
   if (!userId?.trim()) {
-    return NextResponse.json({ error: "Missing user id" }, { status: 400 });
+    return jsonError("Missing user id", 400);
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, patchUserSchema);
+  if (isNextResponse(parsed)) return parsed;
 
-  const roleRaw =
-    typeof body === "object" && body !== null && "role" in body
-      ? (body as { role: unknown }).role
-      : null;
-  const disabledRaw =
-    typeof body === "object" && body !== null && "disabled" in body
-      ? (body as { disabled: unknown }).disabled
-      : undefined;
-
-  const assignRole = roleRaw === null ? null : parseAssignableRole(roleRaw);
-  const disableRequested =
-    disabledRaw === undefined ? undefined : disabledRaw === true;
-
-  if (assignRole === null && disableRequested === undefined) {
-    return NextResponse.json(
-      { error: "Provide role and/or disabled flag" },
-      { status: 400 }
-    );
-  }
-  if (assignRole === null && roleRaw !== null) {
-    return NextResponse.json(
-      { error: "role must be admin, operations, reports_only, or accountant" },
-      { status: 400 }
-    );
-  }
+  const assignRole = parsed.role;
+  const disableRequested = parsed.disabled;
 
   try {
     const admin = createSupabaseAdmin();
     const { data: userData, error: getErr } =
       await admin.auth.admin.getUserById(userId);
     if (getErr || !userData.user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return jsonError("User not found", 404);
     }
 
     const u = userData.user;
     if (isSuperAdminEmail(u.email ?? null)) {
-      return NextResponse.json(
-        { error: "Cannot change role for a super admin (env allowlist)." },
-        { status: 400 }
+      return jsonError(
+        "Cannot change role for a super admin (env allowlist).",
+        400
       );
     }
     if (isProtectedAdminEmail(u.email ?? null)) {
-      return NextResponse.json(
-        { error: "This admin account is protected and cannot be changed." },
-        { status: 400 }
+      return jsonError(
+        "This admin account is protected and cannot be changed.",
+        400
       );
     }
 
@@ -103,17 +76,14 @@ export async function PATCH(
     });
     const current = appRoleForAuthUser(u, stored?.role);
     if (current === "super_admin") {
-      return NextResponse.json({ error: "Cannot change this user’s role." }, { status: 400 });
+      return jsonError("Cannot change this user’s role.", 400);
     }
 
     // Safeguard: do not allow removing the last remaining admin.
     if (assignRole && current === "admin" && assignRole !== "admin") {
       const adminCount = await countResolvedAdmins(admin);
       if (adminCount <= 1) {
-        return NextResponse.json(
-          { error: "Cannot demote the last admin user." },
-          { status: 400 }
-        );
+        return jsonError("Cannot demote the last admin user.", 400);
       }
     }
 
@@ -127,12 +97,10 @@ export async function PATCH(
       });
     }
 
-    const nextAppMeta: Record<string, unknown> = {};
-    if (assignRole) nextAppMeta.role = toStoredRole(assignRole);
     const update: Record<string, unknown> = {};
-    if (Object.keys(nextAppMeta).length) {
-      update.app_metadata = nextAppMeta;
-      update.user_metadata = nextAppMeta;
+    // Prefer app_metadata only (Admin API); do not write user_metadata.role.
+    if (assignRole) {
+      update.app_metadata = { role: toStoredRole(assignRole) };
     }
     if (disableRequested !== undefined) {
       // Supabase supports ban_duration strings, e.g. "1h". Use a long duration to represent "disabled".
@@ -167,9 +135,9 @@ export async function PATCH(
           );
         }
       }
-      return NextResponse.json(
-        { error: "Failed to update auth user; changes were not applied." },
-        { status: 502 }
+      return jsonError(
+        "Failed to update auth user; changes were not applied.",
+        502
       );
     }
 
@@ -179,17 +147,13 @@ export async function PATCH(
       disabled: disableRequested,
     });
   } catch (e) {
-    console.error("PATCH /api/admin/users/[userId]", e);
     const message = e instanceof Error ? e.message : "Server error";
     if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-      return NextResponse.json(
-        {
-          error:
-            "Server misconfiguration: set SUPABASE_SERVICE_ROLE_KEY for user management.",
-        },
-        { status: 503 }
+      return jsonError(
+        "Server misconfiguration: set SUPABASE_SERVICE_ROLE_KEY for user management.",
+        503
       );
     }
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return catchToJsonError("PATCH /api/admin/users/[userId]", e, "Server error");
   }
 }

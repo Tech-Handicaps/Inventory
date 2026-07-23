@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { catchToJsonError, jsonError } from "@/lib/api/error-response";
+import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import { prisma } from "@/lib/prisma";
+
+const patchAssessmentSchema = z.object({
+  action: z.literal("cancel"),
+});
 
 /** PATCH /api/assessments/:id — cancel open assessment → return asset to Deployed */
 export async function PATCH(
@@ -13,9 +20,8 @@ export async function PATCH(
   const { user } = auth;
   try {
     const { id } = await params;
-    const body = (await request.json()) as Record<string, unknown>;
-    const action =
-      typeof body.action === "string" ? body.action.trim() : "";
+    const parsed = await parseJsonBody(request, patchAssessmentSchema);
+    if (isNextResponse(parsed)) return parsed;
 
     const row = await prisma.assessment.findUnique({
       where: { id },
@@ -23,28 +29,18 @@ export async function PATCH(
     });
 
     if (!row) {
-      return NextResponse.json({ error: "Assessment/Maintenance intake not found" }, { status: 404 });
-    }
-
-    if (action !== "cancel") {
-      return NextResponse.json(
-        { error: 'Unsupported action (use {"action":"cancel"}).' },
-        { status: 400 }
-      );
+      return jsonError("Assessment/Maintenance intake not found", 404);
     }
 
     if (row.workflowStatus !== "open") {
-      return NextResponse.json(
-        { error: "Only open intakes can be cancelled." },
-        { status: 400 }
-      );
+      return jsonError("Only open intakes can be cancelled.", 400);
     }
 
     const deployed = await prisma.assetStatus.findFirst({
       where: { code: "deployed" },
     });
     if (!deployed) {
-      return NextResponse.json({ error: "Deployed status missing" }, { status: 500 });
+      return jsonError("Deployed status missing", 500);
     }
 
     await prisma.$transaction(async (tx) => {
@@ -77,7 +73,10 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (e) {
-    console.error("PATCH /api/assessments/[id]", e);
-    return NextResponse.json({ error: "Failed to update assessment" }, { status: 500 });
+    return catchToJsonError(
+      "PATCH /api/assessments/[id]",
+      e,
+      "Failed to update assessment"
+    );
   }
 }

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { inviteUserSchema } from "@/lib/auth/admin-user-schemas";
 import {
-  parseAssignableRole,
   type AssignableRole,
 } from "@/lib/auth/assignable-roles";
 import { appRoleForAuthUser } from "@/lib/auth/app-role-for-user";
 import { isProtectedAdminEmail, isSuperAdminEmail, toStoredRole } from "@/lib/auth/roles";
 import { requireUserAdmin } from "@/lib/auth/require-user-admin";
+import { catchToJsonError, jsonError } from "@/lib/api/error-response";
+import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -93,52 +95,27 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST — invite by email or update role if the user already exists (super admin only).
- * Body: `{ "email": string, "role": "admin" | "reports_only" | "accountant" }`
+ * Body: `{ "email": string, "role": "admin" | "operations" | "reports_only" | "accountant" }`
  */
 export async function POST(request: NextRequest) {
   const auth = await requireUserAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request, inviteUserSchema);
+  if (isNextResponse(parsed)) return parsed;
 
-  const emailRaw =
-    typeof body === "object" && body !== null && "email" in body
-      ? (body as { email: unknown }).email
-      : null;
-  const roleRaw =
-    typeof body === "object" && body !== null && "role" in body
-      ? (body as { role: unknown }).role
-      : null;
-
-  const email =
-    typeof emailRaw === "string" ? emailRaw.trim().toLowerCase() : "";
-  const assignRole = parseAssignableRole(roleRaw);
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
-  }
-  if (!assignRole) {
-    return NextResponse.json(
-      { error: "role must be admin, reports_only, or accountant" },
-      { status: 400 }
-    );
-  }
+  const { email, role: assignRole } = parsed;
 
   if (isSuperAdminEmail(email)) {
-    return NextResponse.json(
-      { error: "Super admin access is controlled via SUPER_ADMIN_EMAILS, not invites." },
-      { status: 400 }
+    return jsonError(
+      "Super admin access is controlled via SUPER_ADMIN_EMAILS, not invites.",
+      400
     );
   }
   if (isProtectedAdminEmail(email)) {
-    return NextResponse.json(
-      { error: "This admin account is protected and cannot be invited/changed via the UI." },
-      { status: 400 }
+    return jsonError(
+      "This admin account is protected and cannot be invited/changed via the UI.",
+      400
     );
   }
 
@@ -151,10 +128,7 @@ export async function POST(request: NextRequest) {
       perPage: 1000,
     });
     if (listErr) {
-      return NextResponse.json(
-        { error: "Failed to look up users" },
-        { status: 500 }
-      );
+      return jsonError("Failed to look up users", 500);
     }
 
     const existing = listData.users.find(
@@ -163,9 +137,9 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       if (isProtectedAdminEmail(existing.email ?? null)) {
-        return NextResponse.json(
-          { error: "This admin account is protected and cannot be changed." },
-          { status: 400 }
+        return jsonError(
+          "This admin account is protected and cannot be changed.",
+          400
         );
       }
 
@@ -186,10 +160,7 @@ export async function POST(request: NextRequest) {
           return r === "admin" ? count + 1 : count;
         }, 0);
         if (adminCount <= 1) {
-          return NextResponse.json(
-            { error: "Cannot demote the last admin user." },
-            { status: 400 }
-          );
+          return jsonError("Cannot demote the last admin user.", 400);
         }
       }
 
@@ -214,15 +185,15 @@ export async function POST(request: NextRequest) {
 
     if (invErr) {
       console.error("POST /api/admin/users inviteUserByEmail", invErr);
-      return NextResponse.json({ error: "Invite failed" }, { status: 400 });
+      return jsonError("Invite failed", 400);
     }
 
     const newUser = invited.user;
     if (!newUser?.id) {
       console.error("POST /api/admin/users invite returned no user id", invited);
-      return NextResponse.json(
-        { error: "Invite did not return a user id; role was not assigned." },
-        { status: 502 }
+      return jsonError(
+        "Invite did not return a user id; role was not assigned.",
+        502
       );
     }
 
@@ -230,9 +201,9 @@ export async function POST(request: NextRequest) {
       await syncUserRole(admin, newUser.id, assignRole, null);
     } catch (syncErr) {
       console.error("POST /api/admin/users invite syncUserRole", syncErr);
-      return NextResponse.json(
-        { error: "User invited but role sync failed; assign a role manually." },
-        { status: 502 }
+      return jsonError(
+        "User invited but role sync failed; assign a role manually.",
+        502
       );
     }
 
@@ -245,22 +216,15 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "Server error";
     if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-      return NextResponse.json(
-        {
-          error:
-            "Server misconfiguration: set SUPABASE_SERVICE_ROLE_KEY for user management.",
-        },
-        { status: 503 }
+      return jsonError(
+        "Server misconfiguration: set SUPABASE_SERVICE_ROLE_KEY for user management.",
+        503
       );
     }
-    console.error("POST /api/admin/users", e);
     if (message === "Failed to sync role to Auth") {
-      return NextResponse.json(
-        { error: "Failed to sync role to Auth" },
-        { status: 502 }
-      );
+      return jsonError("Failed to sync role to Auth", 502);
     }
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return catchToJsonError("POST /api/admin/users", e, "Server error");
   }
 }
 

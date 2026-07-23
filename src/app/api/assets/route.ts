@@ -1,10 +1,42 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { catchToJsonError, jsonError } from "@/lib/api/error-response";
+import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
 import { nextResponseIfPrismaSchemaDrift } from "@/lib/prisma-error-response";
 import { prisma } from "@/lib/prisma";
+
+const optionalTrimmed = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v && v.length > 0 ? v : undefined));
+
+const createAssetSchema = z.object({
+  assetName: z.string().optional(),
+  category: z.string().optional(),
+  statusId: z.string().trim().min(1).optional(),
+  reason: z.string().nullable().optional(),
+  serialNumber: z.string().nullable().optional(),
+  manufacturer: z.string().nullable().optional(),
+  model: z.string().nullable().optional(),
+  deviceTemplateId: optionalTrimmed,
+  clubId: optionalTrimmed,
+  dataSource: z.enum(["manual", "zoho_assist"]).optional(),
+  zohoAssistDeviceId: optionalTrimmed,
+  zohoAssistOrgId: optionalTrimmed,
+  zohoAssistDepartmentId: optionalTrimmed,
+  deviceLocation: optionalTrimmed,
+  processorName: optionalTrimmed,
+  systemRam: optionalTrimmed,
+  systemGpu: optionalTrimmed,
+  lastSyncedFromAssistAt: optionalTrimmed,
+  purchaseDate: z.string().nullable().optional(),
+  warrantyEndDate: z.string().nullable().optional(),
+});
 
 // GET /api/assets - List assets with filters
 export async function GET(request: NextRequest) {
@@ -122,7 +154,9 @@ export async function POST(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
   const { user } = auth;
   try {
-    const body = await request.json();
+    const parsed = await parseJsonBody(request, createAssetSchema);
+    if (isNextResponse(parsed)) return parsed;
+
     const {
       assetName,
       category,
@@ -144,7 +178,7 @@ export async function POST(request: NextRequest) {
       lastSyncedFromAssistAt,
       purchaseDate,
       warrantyEndDate,
-    } = body;
+    } = parsed;
 
     let resolvedName =
       typeof assetName === "string" ? assetName.trim() : "";
@@ -156,19 +190,15 @@ export async function POST(request: NextRequest) {
         : undefined;
     let resolvedModel =
       typeof model === "string" && model.trim() ? model.trim() : undefined;
-    const templateId: string | undefined =
-      typeof deviceTemplateId === "string" && deviceTemplateId.trim()
-        ? deviceTemplateId.trim()
-        : undefined;
+    const templateId = deviceTemplateId;
 
-    const resolvedClubId: string | undefined =
-      typeof clubId === "string" && clubId.trim() ? clubId.trim() : undefined;
+    const resolvedClubId = clubId;
     if (resolvedClubId) {
       const clubRow = await prisma.club.findUnique({
         where: { id: resolvedClubId },
       });
       if (!clubRow) {
-        return NextResponse.json({ error: "clubId not found" }, { status: 400 });
+        return jsonError("clubId not found", 400);
       }
     }
 
@@ -177,10 +207,7 @@ export async function POST(request: NextRequest) {
         where: { id: templateId },
       });
       if (!tpl) {
-        return NextResponse.json(
-          { error: "deviceTemplateId not found" },
-          { status: 400 }
-        );
+        return jsonError("deviceTemplateId not found", 400);
       }
       if (!resolvedCategory) resolvedCategory = tpl.category;
       if (!resolvedManufacturer) resolvedManufacturer = tpl.manufacturer;
@@ -189,24 +216,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (!resolvedName || !resolvedCategory || !statusId) {
-      return NextResponse.json(
-        {
-          error:
-            "assetName (or a device template), category, and statusId are required",
-        },
-        { status: 400 }
+      return jsonError(
+        "assetName (or a device template), category, and statusId are required",
+        400
       );
     }
 
-    const resolvedDataSource =
-      typeof dataSource === "string" && (dataSource === "manual" || dataSource === "zoho_assist")
-        ? dataSource
-        : "manual";
+    const resolvedDataSource = dataSource ?? "manual";
 
-    const resolvedAssistId =
-      typeof zohoAssistDeviceId === "string" && zohoAssistDeviceId.trim()
-        ? zohoAssistDeviceId.trim()
-        : undefined;
+    const resolvedAssistId = zohoAssistDeviceId;
 
     const purchaseD = optionalIsoDateFromBody(purchaseDate);
     const warrantyD = optionalIsoDateFromBody(warrantyEndDate);
@@ -227,33 +245,15 @@ export async function POST(request: NextRequest) {
         model: resolvedModel,
         dataSource: resolvedDataSource,
         zohoAssistDeviceId: resolvedAssistId,
-        zohoAssistOrgId:
-          typeof zohoAssistOrgId === "string" && zohoAssistOrgId.trim()
-            ? zohoAssistOrgId.trim()
-            : undefined,
-        zohoAssistDepartmentId:
-          typeof zohoAssistDepartmentId === "string" && zohoAssistDepartmentId.trim()
-            ? zohoAssistDepartmentId.trim()
-            : undefined,
-        deviceLocation:
-          typeof deviceLocation === "string" && deviceLocation.trim()
-            ? deviceLocation.trim()
-            : undefined,
-        processorName:
-          typeof processorName === "string" && processorName.trim()
-            ? processorName.trim()
-            : undefined,
-        systemRam:
-          typeof systemRam === "string" && systemRam.trim()
-            ? systemRam.trim()
-            : undefined,
-        systemGpu:
-          typeof systemGpu === "string" && systemGpu.trim()
-            ? systemGpu.trim()
-            : undefined,
+        zohoAssistOrgId,
+        zohoAssistDepartmentId,
+        deviceLocation,
+        processorName,
+        systemRam,
+        systemGpu,
         lastSyncedFromAssistAt:
-          typeof lastSyncedFromAssistAt === "string" && lastSyncedFromAssistAt.trim()
-            ? new Date(lastSyncedFromAssistAt.trim())
+          lastSyncedFromAssistAt
+            ? new Date(lastSyncedFromAssistAt)
             : undefined,
         ...(purchaseD !== undefined ? { purchaseDate: purchaseD } : {}),
         ...(warrantyD !== undefined ? { warrantyEndDate: warrantyD } : {}),
@@ -302,9 +302,6 @@ export async function POST(request: NextRequest) {
       );
     }
     console.error("POST /api/assets", error);
-    return NextResponse.json(
-      { error: "Failed to create asset" },
-      { status: 500 }
-    );
+    return catchToJsonError("POST /api/assets", error, "Failed to create asset");
   }
 }
