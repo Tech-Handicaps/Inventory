@@ -84,9 +84,20 @@ export type ChromiumPdfOptions = {
  * Render HTML to PDF via Chromium print (page.pdf).
  * Prefer this for all inventory download/print PDFs.
  */
-export async function htmlToPdfBuffer(
+function isBrowserConnectionError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const name = err instanceof Error ? err.name : "";
+  return (
+    name === "ConnectionClosedError" ||
+    /Connection closed|Target closed|Browser has been closed|Protocol error/i.test(
+      msg
+    )
+  );
+}
+
+async function renderPdfOnce(
   html: string,
-  options: ChromiumPdfOptions = {}
+  options: ChromiumPdfOptions
 ): Promise<Buffer> {
   const browser = await getBrowser();
   const page = await browser.newPage();
@@ -111,6 +122,29 @@ export async function htmlToPdfBuffer(
     return Buffer.from(pdf);
   } finally {
     await page.close().catch(() => undefined);
+  }
+}
+
+export async function htmlToPdfBuffer(
+  html: string,
+  options: ChromiumPdfOptions = {}
+): Promise<Buffer> {
+  try {
+    return await renderPdfOnce(html, options);
+  } catch (err) {
+    if (!isBrowserConnectionError(err)) throw err;
+    // Dev hot-reload / idle Chrome can drop the shared browser — relaunch once.
+    const stale = browserPromise;
+    browserPromise = null;
+    if (stale) {
+      try {
+        const b = await stale;
+        await b.close();
+      } catch {
+        /* ignore */
+      }
+    }
+    return renderPdfOnce(html, options);
   }
 }
 

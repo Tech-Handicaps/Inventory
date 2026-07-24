@@ -23,6 +23,42 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
+function runtimeFieldNames(
+  client: PrismaClient,
+  modelName: string
+): string[] {
+  try {
+    const models = (
+      client as unknown as {
+        _runtimeDataModel?: {
+          models?: Record<string, { fields?: Record<string, { name?: string }> }>;
+        };
+      }
+    )._runtimeDataModel?.models;
+    const model = models?.[modelName];
+    if (!model?.fields) return [];
+    return Object.values(model.fields)
+      .map((f) => f.name)
+      .filter((n): n is string => Boolean(n));
+  } catch {
+    return [];
+  }
+}
+
+function prismaClientNeedsRefresh(client: PrismaClient): boolean {
+  if (typeof (client as { userProfile?: unknown }).userProfile === "undefined") {
+    return true;
+  }
+  const wocFields = runtimeFieldNames(client, "WriteOffCertificate");
+  // Empty means we couldn't introspect — don't force recreate.
+  if (wocFields.length === 0) return false;
+  return (
+    !wocFields.includes("xeroFixedAssetNumber") ||
+    !wocFields.includes("replacementMakeModel") ||
+    !wocFields.includes("replacementSerialNumber")
+  );
+}
+
 /**
  * Single Prisma instance per serverless isolate (Vercel Lambda).
  * Caching on `globalThis` in production avoids connection churn and matches Prisma’s serverless guidance.
@@ -35,12 +71,8 @@ function createPrismaClient(): PrismaClient {
 function resolvePrisma(): PrismaClient {
   let client = globalForPrisma.prisma ?? createPrismaClient();
 
-  // After `prisma generate` adds models, a stale `next dev` singleton can omit new
-  // delegates (e.g. userProfile → "Cannot read properties of undefined (reading 'findMany')").
-  if (
-    process.env.NODE_ENV !== "production" &&
-    typeof (client as { userProfile?: unknown }).userProfile === "undefined"
-  ) {
+  // After `prisma generate`, a stale `next dev` singleton can omit new models/fields.
+  if (process.env.NODE_ENV !== "production" && prismaClientNeedsRefresh(client)) {
     void client.$disconnect().catch(() => undefined);
     client = createPrismaClient();
   }

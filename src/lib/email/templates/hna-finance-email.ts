@@ -214,7 +214,13 @@ export function buildWrittenOffEmail(params: {
   reason: string | null;
   assessmentReference?: string | null;
   writeOffCertificateReference?: string | null;
+  xeroFixedAssetNumber?: string | null;
   replacementRequested?: boolean;
+  replacementAssetName?: string | null;
+  replacementAssetType?: string | null;
+  replacementMakeModel?: string | null;
+  replacementSerialNumber?: string | null;
+  replacementXeroFixedAssetNumber?: string | null;
   replacementNotes?: string | null;
   appUrl: string;
 }): { subject: string; html: string } {
@@ -228,6 +234,21 @@ export function buildWrittenOffEmail(params: {
     clubTrimmed !== ""
       ? `<strong>${esc(clubTrimmed)}</strong>`
       : escOptional(params.clubName);
+  const replacementBlock =
+    params.replacementRequested === true
+      ? `
+      <tr><td style="padding:6px 0;color:${MUTED};">Replacement asset name</td><td style="padding:6px 0;">${escOptional(params.replacementAssetName ?? null)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Replacement asset type</td><td style="padding:6px 0;">${escOptional(params.replacementAssetType ?? null)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Replacement make / model</td><td style="padding:6px 0;">${escOptional(params.replacementMakeModel ?? null)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Replacement serial number</td><td style="padding:6px 0;">${escOptional(params.replacementSerialNumber ?? null)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Replacement Xero FA #</td><td style="padding:6px 0;">${escOptional(params.replacementXeroFixedAssetNumber ?? null)}</td></tr>
+      ${
+        params.replacementNotes
+          ? `<tr><td style="padding:6px 0;color:${MUTED};vertical-align:top;">Replacement notes</td><td style="padding:6px 0;">${esc(params.replacementNotes)}</td></tr>`
+          : ""
+      }
+    `
+      : "";
   const body = `
     <p style="margin:0 0 12px 0;">${esc(params.greeting)}</p>
     <p style="margin:0 0 12px 0;">An asset has been marked <strong>Written off</strong>. Please update your financial records and acknowledge in the system.</p>
@@ -240,9 +261,81 @@ export function buildWrittenOffEmail(params: {
       <tr><td style="padding:6px 0;color:${MUTED};">Manufacturer</td><td style="padding:6px 0;">${escOptional(params.manufacturer)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Model</td><td style="padding:6px 0;">${escOptional(params.model)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Serial</td><td style="padding:6px 0;">${params.serial ? esc(params.serial) : "—"}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Xero fixed asset number</td><td style="padding:6px 0;">${escOptional(params.xeroFixedAssetNumber ?? null)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};vertical-align:top;">Reason / notes</td><td style="padding:6px 0;">${params.reason ? esc(params.reason) : "—"}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Replacement requested</td><td style="padding:6px 0;">${params.replacementRequested ? "Yes" : "No"}</td></tr>
-      ${params.replacementRequested && params.replacementNotes ? `<tr><td style="padding:6px 0;color:${MUTED};vertical-align:top;">Replacement notes</td><td style="padding:6px 0;">${esc(params.replacementNotes)}</td></tr>` : ""}
+      ${replacementBlock}
+    </table>
+    <p style="margin:16px 0 0 0;">
+      <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
+    </p>
+  `;
+  return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
+}
+
+export function buildRefurbishedEmail(params: {
+  greeting: string;
+  assetName: string;
+  clubName: string | null;
+  serial: string | null;
+  category: string;
+  manufacturer: string | null;
+  model: string | null;
+  deviceLocation: string | null;
+  templateLabel: string | null;
+  processorName: string | null;
+  systemRam: string | null;
+  systemGpu: string | null;
+  publicIp: string | null;
+  geoLabel: string | null;
+  zohoAssistDeviceId: string | null;
+  dataSource: string;
+  assessmentReference: string | null;
+  bookedAt: string;
+  appUrl: string;
+}): { subject: string; html: string } {
+  const clubTrimmed =
+    typeof params.clubName === "string" ? params.clubName.trim() : "";
+  const subject =
+    clubTrimmed !== ""
+      ? `Refurbished · ${params.assetName} · ${clubTrimmed}`
+      : `Refurbished · ${params.assetName}`;
+  const clubBodyCell =
+    clubTrimmed !== ""
+      ? `<strong>${esc(clubTrimmed)}</strong>`
+      : escOptional(params.clubName);
+  const hw = [params.processorName, params.systemRam, params.systemGpu]
+    .filter((x): x is string => typeof x === "string" && Boolean(x.trim()))
+    .map((x) => esc(x.trim()))
+    .join(" · ");
+  const sourceLabel =
+    params.dataSource === "zoho_assist" ? "Zoho Assist" : "Manual";
+  const body = `
+    <p style="margin:0 0 12px 0;">${esc(params.greeting)}</p>
+    <p style="margin:0 0 12px 0;">This unit has been <strong>booked into refurbishment</strong> and is <strong>ready for redistribution</strong> (moved from <strong>Assessment/Maintenance</strong> to <strong>Refurbished</strong>).</p>
+    <p style="margin:0 0 16px 0;padding:12px 14px;background:#f0fdf4;border-left:4px solid ${BRAND};font-size:14px;line-height:1.45;">
+      Please update your records. The club of origin and full asset details are listed below.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <tr><td style="padding:6px 0;color:${MUTED};width:160px;"><strong>Club coming from</strong></td><td style="padding:6px 0;">${clubBodyCell}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Booked into refurbished</td><td style="padding:6px 0;">${esc(params.bookedAt)}</td></tr>
+      ${
+        params.assessmentReference
+          ? `<tr><td style="padding:6px 0;color:${MUTED};">Assessment intake</td><td style="padding:6px 0;">${esc(params.assessmentReference)}</td></tr>`
+          : ""
+      }
+      <tr><td style="padding:6px 0;color:${MUTED};">Asset</td><td style="padding:6px 0;"><strong>${esc(params.assetName)}</strong></td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Category</td><td style="padding:6px 0;">${esc(params.category)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Manufacturer</td><td style="padding:6px 0;">${escOptional(params.manufacturer)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Model</td><td style="padding:6px 0;">${escOptional(params.model)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Device template</td><td style="padding:6px 0;">${escOptional(params.templateLabel)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Serial</td><td style="padding:6px 0;">${params.serial ? esc(params.serial) : "—"}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Location</td><td style="padding:6px 0;">${escOptional(params.deviceLocation)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">CPU / RAM / GPU</td><td style="padding:6px 0;">${hw || "—"}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Public IP</td><td style="padding:6px 0;">${escOptional(params.publicIp)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Region</td><td style="padding:6px 0;">${escOptional(params.geoLabel)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Assist device id</td><td style="padding:6px 0;">${escOptional(params.zohoAssistDeviceId)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Source</td><td style="padding:6px 0;">${esc(sourceLabel)}</td></tr>
     </table>
     <p style="margin:16px 0 0 0;">
       <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>

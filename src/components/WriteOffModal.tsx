@@ -26,7 +26,14 @@ export function WriteOffModal({
 }: Props) {
   const [reason, setReason] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
+  const [xeroFixedAssetNumber, setXeroFixedAssetNumber] = useState("");
   const [replacementRequested, setReplacementRequested] = useState(false);
+  const [replacementAssetName, setReplacementAssetName] = useState("");
+  const [replacementAssetType, setReplacementAssetType] = useState("");
+  const [replacementMakeModel, setReplacementMakeModel] = useState("");
+  const [replacementSerialNumber, setReplacementSerialNumber] = useState("");
+  const [replacementXeroFixedAssetNumber, setReplacementXeroFixedAssetNumber] =
+    useState("");
   const [replacementNotes, setReplacementNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +42,13 @@ export function WriteOffModal({
     if (asset) {
       setReason("");
       setSerialNumber(asset.serialNumber ?? "");
+      setXeroFixedAssetNumber("");
       setReplacementRequested(false);
+      setReplacementAssetName("");
+      setReplacementAssetType("");
+      setReplacementMakeModel("");
+      setReplacementSerialNumber("");
+      setReplacementXeroFixedAssetNumber("");
       setReplacementNotes("");
       setError(null);
     }
@@ -55,6 +68,25 @@ export function WriteOffModal({
       return;
     }
 
+    if (replacementRequested) {
+      if (!replacementAssetName.trim()) {
+        setError("Enter the replacement asset name (from finance / procurement).");
+        return;
+      }
+      if (!replacementAssetType.trim()) {
+        setError("Enter the replacement asset type (e.g. AIO, POS).");
+        return;
+      }
+      if (!replacementMakeModel.trim()) {
+        setError("Enter the replacement make / model.");
+        return;
+      }
+      if (!replacementSerialNumber.trim()) {
+        setError("Enter the replacement serial number.");
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -64,11 +96,29 @@ export function WriteOffModal({
         body: JSON.stringify({
           reason: reasonTrimmed,
           serialNumber: serialNumber.trim() || null,
+          xeroFixedAssetNumber: xeroFixedAssetNumber.trim() || undefined,
           replacementRequested,
+          replacementAssetName: replacementRequested
+            ? replacementAssetName.trim()
+            : undefined,
+          replacementAssetType: replacementRequested
+            ? replacementAssetType.trim()
+            : undefined,
+          replacementMakeModel: replacementRequested
+            ? replacementMakeModel.trim()
+            : undefined,
+          replacementSerialNumber: replacementRequested
+            ? replacementSerialNumber.trim()
+            : undefined,
+          replacementXeroFixedAssetNumber: replacementRequested
+            ? replacementXeroFixedAssetNumber.trim() || undefined
+            : undefined,
           replacementNotes: replacementRequested
             ? replacementNotes.trim() || undefined
             : undefined,
-          assessmentId: fromAssessment ? assessmentId?.trim() || undefined : undefined,
+          assessmentId: fromAssessment
+            ? assessmentId?.trim() || undefined
+            : undefined,
         }),
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
@@ -153,6 +203,24 @@ export function WriteOffModal({
 
           <label className="block">
             <span className="text-xs font-medium text-black/70">
+              Xero fixed asset number
+            </span>
+            <input
+              type="text"
+              value={xeroFixedAssetNumber}
+              onChange={(e) => setXeroFixedAssetNumber(e.target.value)}
+              autoComplete="off"
+              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+              placeholder="From finance (written-off unit)"
+            />
+            <p className="mt-1 text-[11px] text-black/50">
+              Enter the Xero fixed asset number for this unit when finance
+              provides it.
+            </p>
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-medium text-black/70">
               Write-off reason <span className="text-red-600">*</span>
             </span>
             <textarea
@@ -178,18 +246,95 @@ export function WriteOffModal({
           </label>
 
           {replacementRequested ? (
-            <label className="block">
-              <span className="text-xs font-medium text-black/70">
-                Replacement notes (optional)
-              </span>
-              <textarea
-                value={replacementNotes}
-                onChange={(e) => setReplacementNotes(e.target.value)}
-                rows={2}
-                className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-                placeholder="Urgency, same model vs upgrade, club context…"
-              />
-            </label>
+            <div className="space-y-3 rounded-lg border border-black/10 bg-black/[0.02] p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-black/55">
+                Replacement unit
+              </p>
+              <label className="block">
+                <span className="text-xs font-medium text-black/70">
+                  Asset name <span className="text-red-600">*</span>
+                </span>
+                <input
+                  type="text"
+                  value={replacementAssetName}
+                  onChange={(e) => setReplacementAssetName(e.target.value)}
+                  required={replacementRequested}
+                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  placeholder="e.g. Posiflex PS-3000 PS3316-E"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-black/70">
+                  Asset type <span className="text-red-600">*</span>
+                </span>
+                <input
+                  type="text"
+                  value={replacementAssetType}
+                  onChange={(e) => setReplacementAssetType(e.target.value)}
+                  required={replacementRequested}
+                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  placeholder="e.g. AIO, POS, Laptop"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-black/70">
+                  Make / model <span className="text-red-600">*</span>
+                </span>
+                <input
+                  type="text"
+                  value={replacementMakeModel}
+                  onChange={(e) => setReplacementMakeModel(e.target.value)}
+                  required={replacementRequested}
+                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  placeholder="e.g. Posiflex · PS3316-E"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-black/70">
+                  Serial number <span className="text-red-600">*</span>
+                </span>
+                <input
+                  type="text"
+                  value={replacementSerialNumber}
+                  onChange={(e) => setReplacementSerialNumber(e.target.value)}
+                  required={replacementRequested}
+                  autoComplete="off"
+                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 font-mono text-sm"
+                  placeholder="Replacement unit serial"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-black/70">
+                  Xero fixed asset number
+                </span>
+                <input
+                  type="text"
+                  value={replacementXeroFixedAssetNumber}
+                  onChange={(e) =>
+                    setReplacementXeroFixedAssetNumber(e.target.value)
+                  }
+                  autoComplete="off"
+                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 font-mono text-sm"
+                  placeholder="From finance (replacement unit)"
+                />
+                <p className="mt-1 text-[11px] text-black/50">
+                  Enter when finance provides the replacement unit’s Xero fixed
+                  asset number.
+                </p>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-black/70">
+                  Replacement notes (optional)
+                </span>
+                <textarea
+                  value={replacementNotes}
+                  onChange={(e) => setReplacementNotes(e.target.value)}
+                  rows={2}
+                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  placeholder="Urgency, same model vs upgrade, club context…"
+                />
+              </label>
+            </div>
           ) : null}
 
           {error ? (

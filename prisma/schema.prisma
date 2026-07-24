@@ -149,9 +149,21 @@ model WriteOffCertificate {
   manufacturer           String?
   model                  String?
   serialNumber           String?
+  /// Xero Fixed Asset number for the unit being written off (from finance).
+  xeroFixedAssetNumber   String?
   reason                 String?
   replacementRequested   Boolean  @default(false)
   replacementNotes       String?
+  /// Intended replacement unit name (when replacementRequested).
+  replacementAssetName   String?
+  /// Intended replacement asset type / category (when replacementRequested).
+  replacementAssetType   String?
+  /// Intended replacement make / model (when replacementRequested).
+  replacementMakeModel   String?
+  /// Intended replacement serial number (when replacementRequested).
+  replacementSerialNumber String?
+  /// Xero Fixed Asset number for the replacement unit (from finance).
+  replacementXeroFixedAssetNumber String?
   fromStatusCode         String
   writtenOffAt           DateTime @default(now())
   createdAt              DateTime @default(now())
@@ -279,6 +291,8 @@ model EmailNotificationSettings {
   notifyOnWrittenOff   Boolean  @default(true)
   /// Email finance with dispatch voucher when hardware moves to Deployed from Assessment or Repairs.
   notifyOnDispatch     Boolean  @default(true)
+  /// Email finance when hardware is booked into Refurbished from Assessment/Maintenance.
+  notifyOnRefurbished  Boolean  @default(true)
   /// Comma-separated recipient emails for finance notifications.
   financeEmails        String   @default("")
   /// Optional greeting name, e.g. "Lerisha" → "Hi Lerisha," in emails.
@@ -294,7 +308,7 @@ model FinanceAcknowledgement {
   id                     String    @id @default(cuid())
   assetId                String
   asset                  Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  /// in_repair | in_assessment | written_off | dispatched
+  /// in_repair | in_assessment | written_off | dispatched | refurbished
   eventType              String
   /// pending | acknowledged
   status                 String      @default("pending")

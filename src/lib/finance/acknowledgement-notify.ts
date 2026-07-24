@@ -7,6 +7,7 @@ import { sendHtmlEmailUnified } from "@/lib/email/send-html-email";
 import {
   buildInAssessmentEmail,
   buildInRepairEmail,
+  buildRefurbishedEmail,
   buildWrittenOffEmail,
   greetingLine,
 } from "@/lib/email/templates/hna-finance-email";
@@ -268,8 +269,14 @@ export async function createAssessmentAcknowledgementAndNotify(params: {
 export async function createWrittenOffAcknowledgementAndNotify(params: {
   assetId: string;
   reason: string | null;
+  xeroFixedAssetNumber?: string | null;
   replacementRequested?: boolean;
   replacementNotes?: string | null;
+  replacementAssetName?: string | null;
+  replacementAssetType?: string | null;
+  replacementMakeModel?: string | null;
+  replacementSerialNumber?: string | null;
+  replacementXeroFixedAssetNumber?: string | null;
   assessmentReference?: string | null;
   writeOffCertificateId?: string | null;
   writeOffCertificateReference?: string | null;
@@ -361,7 +368,14 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     reason: params.reason?.trim() ?? null,
     assessmentReference: params.assessmentReference?.trim() ?? null,
     writeOffCertificateReference: certRef,
+    xeroFixedAssetNumber: params.xeroFixedAssetNumber?.trim() ?? null,
     replacementRequested: params.replacementRequested === true,
+    replacementAssetName: params.replacementAssetName?.trim() ?? null,
+    replacementAssetType: params.replacementAssetType?.trim() ?? null,
+    replacementMakeModel: params.replacementMakeModel?.trim() ?? null,
+    replacementSerialNumber: params.replacementSerialNumber?.trim() ?? null,
+    replacementXeroFixedAssetNumber:
+      params.replacementXeroFixedAssetNumber?.trim() ?? null,
     replacementNotes: params.replacementNotes?.trim() ?? null,
     appUrl: appBaseUrl(),
   });
@@ -399,6 +413,153 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     from: settings.fromAddress,
     replyTo: settings.replyTo,
     attachments,
+  });
+
+  if (result.ok) {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailSentAt: new Date(), emailError: null },
+    });
+  } else {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailError: result.error.slice(0, 500) },
+    });
+  }
+}
+
+function formatBookedAt(d: Date): string {
+  return d.toLocaleString("en-ZA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatGeoLabel(parts: {
+  geoRegionName: string | null;
+  geoCity: string | null;
+  geoCountryCode: string | null;
+}): string | null {
+  const label = [parts.geoRegionName, parts.geoCity, parts.geoCountryCode]
+    .map((x) => (typeof x === "string" ? x.trim() : ""))
+    .filter(Boolean)
+    .join(" · ");
+  return label || null;
+}
+
+/**
+ * Finance acknowledgement + email when Assessment/Maintenance → Refurbished
+ * (booked into refurbishment, ready for redistribution).
+ */
+export async function createRefurbishedAcknowledgementAndNotify(params: {
+  assetId: string;
+  assessmentReference?: string | null;
+}): Promise<void> {
+  const settings = await getEmailNotificationSettings();
+
+  const asset = await prisma.asset.findUnique({
+    where: { id: params.assetId },
+    include: {
+      club: { select: { name: true } },
+      deviceTemplate: { select: { label: true } },
+    },
+  });
+  if (!asset) return;
+
+  const assessmentRef = params.assessmentReference?.trim() || null;
+  const clubName = asset.club?.name?.trim() || null;
+  const refParts = [
+    assessmentRef,
+    clubName ? `From ${clubName}` : null,
+    "Booked into refurbished — ready for redistribution",
+  ].filter(Boolean);
+  const ref =
+    refParts.join(" · ").slice(0, 500) ||
+    `Refurbished — ${asset.assetName}`;
+
+  const ack = await prisma.financeAcknowledgement.create({
+    data: {
+      assetId: params.assetId,
+      eventType: "refurbished",
+      status: "pending",
+      referenceText: ref.slice(0, 500),
+    },
+  });
+
+  if (!settings.notifyOnRefurbished) {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailSkippedReason: "notify_on_refurbished_disabled" },
+    });
+    return;
+  }
+
+  if (!settings.sendEnabled) {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailSkippedReason: "send_disabled_in_settings" },
+    });
+    return;
+  }
+
+  const recipients = financeRecipientEmails(settings);
+  if (recipients.length === 0) {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailSkippedReason: "no_finance_emails_configured" },
+    });
+    return;
+  }
+
+  const sender = isSenderConfiguredForTransport(settings);
+  if (!sender.ok) {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailSkippedReason: sender.reason },
+    });
+    return;
+  }
+
+  if (!settings.fromAddress.includes("@")) {
+    await prisma.financeAcknowledgement.update({
+      where: { id: ack.id },
+      data: { emailSkippedReason: "from_email_not_configured" },
+    });
+    return;
+  }
+
+  const greeting = greetingLine(settings.financeGreetingName);
+  const { subject, html } = buildRefurbishedEmail({
+    greeting,
+    assetName: asset.assetName,
+    clubName,
+    serial: asset.serialNumber,
+    category: asset.category,
+    manufacturer: asset.manufacturer,
+    model: asset.model,
+    deviceLocation: asset.deviceLocation,
+    templateLabel: asset.deviceTemplate?.label ?? null,
+    processorName: asset.processorName,
+    systemRam: asset.systemRam,
+    systemGpu: asset.systemGpu,
+    publicIp: asset.publicIp,
+    geoLabel: formatGeoLabel(asset),
+    zohoAssistDeviceId: asset.zohoAssistDeviceId,
+    dataSource: asset.dataSource,
+    assessmentReference: assessmentRef,
+    bookedAt: formatBookedAt(new Date()),
+    appUrl: appBaseUrl(),
+  });
+
+  const result = await sendHtmlEmailUnified(settings, {
+    to: recipients,
+    subject,
+    html,
+    from: settings.fromAddress,
+    replyTo: settings.replyTo,
   });
 
   if (result.ok) {

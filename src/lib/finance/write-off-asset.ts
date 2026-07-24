@@ -9,8 +9,14 @@ export type WriteOffAssetInput = {
   userId: string;
   reason: string;
   serialNumber?: string | null;
+  xeroFixedAssetNumber?: string | null;
   replacementRequested?: boolean;
   replacementNotes?: string | null;
+  replacementAssetName?: string | null;
+  replacementAssetType?: string | null;
+  replacementMakeModel?: string | null;
+  replacementSerialNumber?: string | null;
+  replacementXeroFixedAssetNumber?: string | null;
   assessmentId?: string;
 };
 
@@ -142,6 +148,56 @@ export async function writeOffAsset(
   const replacementNotes = replacementRequested
     ? input.replacementNotes?.trim() || null
     : null;
+  const replacementAssetName = replacementRequested
+    ? input.replacementAssetName?.trim() || null
+    : null;
+  const replacementAssetType = replacementRequested
+    ? input.replacementAssetType?.trim() || null
+    : null;
+  const replacementMakeModel = replacementRequested
+    ? input.replacementMakeModel?.trim() || null
+    : null;
+  const replacementSerialNumber = replacementRequested
+    ? input.replacementSerialNumber?.trim() || null
+    : null;
+  const replacementXeroFixedAssetNumber = replacementRequested
+    ? input.replacementXeroFixedAssetNumber?.trim() || null
+    : null;
+  const xeroFixedAssetNumber = input.xeroFixedAssetNumber?.trim() || null;
+
+  if (replacementRequested) {
+    if (!replacementAssetName) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Replacement asset name is required when requesting a replacement.",
+      };
+    }
+    if (!replacementAssetType) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Replacement asset type is required when requesting a replacement.",
+      };
+    }
+    if (!replacementMakeModel) {
+      return {
+        ok: false,
+        status: 400,
+        error:
+          "Replacement make / model is required when requesting a replacement.",
+      };
+    }
+    if (!replacementSerialNumber) {
+      return {
+        ok: false,
+        status: 400,
+        error:
+          "Replacement serial number is required when requesting a replacement.",
+      };
+    }
+  }
+
   const fromStatusCode = asset.status.code;
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -171,8 +227,14 @@ export async function writeOffAsset(
     fromStatusCode,
     assessmentReference: assessmentRow?.referenceNumber ?? null,
     reason,
+    xeroFixedAssetNumber,
     replacementRequested,
     replacementNotes,
+    replacementAssetName,
+    replacementAssetType,
+    replacementMakeModel,
+    replacementSerialNumber,
+    replacementXeroFixedAssetNumber,
   });
 
   if (assessmentRow) {
@@ -199,8 +261,14 @@ export async function writeOffAsset(
     metadata: {
       assetId: asset.id,
       writeOffReason: reason,
+      xeroFixedAssetNumber,
       replacementRequested,
       replacementNotes,
+      replacementAssetName,
+      replacementAssetType,
+      replacementMakeModel,
+      replacementSerialNumber,
+      replacementXeroFixedAssetNumber,
       fromStatusCode,
       writeOffCertificate: certificate.referenceNumber,
       ...(assessmentRow
@@ -217,8 +285,14 @@ export async function writeOffAsset(
     await createWrittenOffAcknowledgementAndNotify({
       assetId: asset.id,
       reason,
+      xeroFixedAssetNumber,
       replacementRequested,
       replacementNotes,
+      replacementAssetName,
+      replacementAssetType,
+      replacementMakeModel,
+      replacementSerialNumber,
+      replacementXeroFixedAssetNumber,
       assessmentReference: assessmentRow?.referenceNumber ?? null,
       writeOffCertificateId: certificate.id,
       writeOffCertificateReference: certificate.referenceNumber,

@@ -15,9 +15,15 @@ export type WriteOffCertificatePdfFields = {
   manufacturer: string | null;
   model: string | null;
   serialNumber: string | null;
+  xeroFixedAssetNumber: string | null;
   reason: string | null;
   assessmentReference: string | null;
   replacementRequested: boolean;
+  replacementAssetName: string | null;
+  replacementAssetType: string | null;
+  replacementMakeModel: string | null;
+  replacementSerialNumber: string | null;
+  replacementXeroFixedAssetNumber: string | null;
   replacementNotes: string | null;
   fromStatusLabel: string;
 };
@@ -34,6 +40,21 @@ export function buildWriteOffCertificateHtml(
   const makeModel = [fields.manufacturer, fields.model]
     .filter(Boolean)
     .join(" · ");
+
+  const replacementRows = fields.replacementRequested
+    ? `
+      <tr><th>Replacement asset name</th><td>${escOptional(fields.replacementAssetName)}</td></tr>
+      <tr><th>Replacement asset type</th><td>${escOptional(fields.replacementAssetType)}</td></tr>
+      <tr><th>Replacement make / model</th><td>${escOptional(fields.replacementMakeModel)}</td></tr>
+      <tr><th>Replacement serial number</th><td>${escOptional(fields.replacementSerialNumber)}</td></tr>
+      <tr><th>Replacement Xero fixed asset number</th><td>${escOptional(fields.replacementXeroFixedAssetNumber)}</td></tr>
+      ${
+        fields.replacementNotes
+          ? `<tr><th>Replacement notes</th><td>${escHtml(fields.replacementNotes)}</td></tr>`
+          : ""
+      }
+    `
+    : "";
 
   const bodyHtml = `
     <h1>Write-off certificate</h1>
@@ -66,13 +87,10 @@ export function buildWriteOffCertificateHtml(
       <tr><th>Make / model</th><td>${escHtml(makeModel || "—")}</td></tr>
       <tr><th>Serial number</th><td>${escOptional(fields.serialNumber)}</td></tr>
       <tr><th>Assessment intake</th><td>${escOptional(fields.assessmentReference)}</td></tr>
+      <tr><th>Xero fixed asset number</th><td>${escOptional(fields.xeroFixedAssetNumber)}</td></tr>
       <tr><th>Write-off reason</th><td>${escOptional(fields.reason)}</td></tr>
       <tr><th>Replacement requested</th><td>${fields.replacementRequested ? "Yes" : "No"}</td></tr>
-      ${
-        fields.replacementRequested && fields.replacementNotes
-          ? `<tr><th>Replacement notes</th><td>${escHtml(fields.replacementNotes)}</td></tr>`
-          : ""
-      }
+      ${replacementRows}
     </table>
 
     <p class="footer">

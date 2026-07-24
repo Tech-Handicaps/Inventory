@@ -16,6 +16,7 @@ type EmailSettingsRow = {
   notifyOnAssessment: boolean;
   notifyOnWrittenOff: boolean;
   notifyOnDispatch: boolean;
+  notifyOnRefurbished: boolean;
   financeEmails: string;
   financeGreetingName: string;
   fromName: string;
@@ -39,6 +40,7 @@ function mapApiToRow(j: EmailSettingsRow & { error?: string }): EmailSettingsRow
     notifyOnAssessment: j.notifyOnAssessment ?? true,
     notifyOnWrittenOff: j.notifyOnWrittenOff,
     notifyOnDispatch: j.notifyOnDispatch ?? true,
+    notifyOnRefurbished: j.notifyOnRefurbished ?? true,
     financeEmails: j.financeEmails,
     financeGreetingName: j.financeGreetingName,
     fromName: j.fromName,
@@ -93,6 +95,7 @@ export function EmailNotificationsSettingsSection() {
           notifyOnAssessment: data.notifyOnAssessment,
           notifyOnWrittenOff: data.notifyOnWrittenOff,
           notifyOnDispatch: data.notifyOnDispatch,
+          notifyOnRefurbished: data.notifyOnRefurbished,
           financeEmails: data.financeEmails,
           financeGreetingName: data.financeGreetingName,
           fromName: data.fromName,
@@ -293,6 +296,24 @@ export function EmailNotificationsSettingsSection() {
             Notify finance with a <strong>dispatch voucher</strong> (PDF attached)
             when hardware moves from <strong>Assessment/Maintenance</strong> or{" "}
             <strong>In repairs</strong> to <strong>Deployed</strong>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={data.notifyOnRefurbished}
+            onChange={(e) =>
+              setData((d) =>
+                d ? { ...d, notifyOnRefurbished: e.target.checked } : d
+              )
+            }
+            className="mt-1"
+          />
+          <span className="text-sm text-black/80">
+            Notify finance when hardware moves from{" "}
+            <strong>Assessment/Maintenance</strong> to <strong>Refurbished</strong>{" "}
+            (booked into refurbishment, ready for redistribution)
           </span>
         </label>
 

@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
-import { createWrittenOffAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
+import {
+  createRefurbishedAcknowledgementAndNotify,
+  createWrittenOffAcknowledgementAndNotify,
+} from "@/lib/finance/acknowledgement-notify";
 import {
   createDispatchVoucherAndNotify,
   shouldIssueDispatchVoucher,
@@ -340,7 +343,40 @@ export async function PUT(
       asset.status.code
     );
 
+    const transitionAssessmentToRefurbished =
+      before.status.code === "assessment" &&
+      asset.status.code === "refurbished";
+
     const notifyWarnings: string[] = [];
+
+    let completedAssessmentReference: string | null = null;
+    if (transitionAssessmentToRefurbished) {
+      const openAssessment = await prisma.assessment.findFirst({
+        where: { assetId: id, workflowStatus: "open" },
+        orderBy: { createdAt: "desc" },
+      });
+      if (openAssessment) {
+        await prisma.assessment.update({
+          where: { id: openAssessment.id },
+          data: {
+            workflowStatus: "completed",
+            completedAt: new Date(),
+          },
+        });
+        completedAssessmentReference = openAssessment.referenceNumber;
+        await createAuditLog({
+          userId: user.id,
+          actionType: "assessment.completed",
+          notes: `Assessment/Maintenance intake ${openAssessment.referenceNumber} completed — refurbished: ${asset.assetName}`,
+          metadata: {
+            assessmentId: openAssessment.id,
+            referenceNumber: openAssessment.referenceNumber,
+            assetId: id,
+            outcome: "refurbished",
+          },
+        });
+      }
+    }
 
     await createAuditLog({
       userId: user.id,
@@ -348,16 +384,26 @@ export async function PUT(
         ? "asset.write_off"
         : transitionToDeployed
           ? "dispatch.created"
-          : "asset.updated",
+          : transitionAssessmentToRefurbished
+            ? "asset.refurbished"
+            : "asset.updated",
       notes: transitionToWrittenOff
         ? `Written off: ${asset.assetName}${asset.reason ? ` — ${asset.reason}` : ""}`
         : transitionToDeployed
           ? `Dispatched: ${asset.assetName} (${before.status.code} → deployed)`
-          : `Updated: ${asset.assetName}`,
+          : transitionAssessmentToRefurbished
+            ? `Refurbished: ${asset.assetName} (assessment → refurbished)`
+            : `Updated: ${asset.assetName}`,
       metadata: {
         assetId: id,
         changes,
         ...(transitionToWrittenOff ? { writeOffReason: asset.reason } : {}),
+        ...(transitionAssessmentToRefurbished
+          ? {
+              assessmentReference: completedAssessmentReference,
+              fromStatusCode: before.status.code,
+            }
+          : {}),
       },
     });
 
@@ -382,6 +428,21 @@ export async function PUT(
       } catch (e) {
         console.error("PUT /api/assets/[id] createDispatchVoucherAndNotify", e);
         notifyWarnings.push("dispatch_notify_failed");
+      }
+    }
+
+    if (transitionAssessmentToRefurbished) {
+      try {
+        await createRefurbishedAcknowledgementAndNotify({
+          assetId: id,
+          assessmentReference: completedAssessmentReference,
+        });
+      } catch (e) {
+        console.error(
+          "PUT /api/assets/[id] createRefurbishedAcknowledgementAndNotify",
+          e
+        );
+        notifyWarnings.push("refurbished_notify_failed");
       }
     }
 

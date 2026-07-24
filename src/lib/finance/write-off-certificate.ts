@@ -15,9 +15,15 @@ export type WriteOffCertificateRecord = {
   manufacturer: string | null;
   model: string | null;
   serialNumber: string | null;
+  xeroFixedAssetNumber: string | null;
   reason: string | null;
   replacementRequested: boolean;
   replacementNotes: string | null;
+  replacementAssetName: string | null;
+  replacementAssetType: string | null;
+  replacementMakeModel: string | null;
+  replacementSerialNumber: string | null;
+  replacementXeroFixedAssetNumber: string | null;
   fromStatusCode: string;
   writtenOffAt: Date;
 };
@@ -32,12 +38,23 @@ function formatWrittenOffAt(d: Date): string {
   });
 }
 
+function trimOrNull(v: string | null | undefined): string | null {
+  const t = typeof v === "string" ? v.trim() : "";
+  return t ? t : null;
+}
+
 type WriteOffAuditMeta = {
   replacementRequested?: unknown;
   replacementNotes?: unknown;
   assessmentReference?: unknown;
   fromStatusCode?: unknown;
   writeOffReason?: unknown;
+  xeroFixedAssetNumber?: unknown;
+  replacementAssetName?: unknown;
+  replacementAssetType?: unknown;
+  replacementMakeModel?: unknown;
+  replacementSerialNumber?: unknown;
+  replacementXeroFixedAssetNumber?: unknown;
 };
 
 async function writeOffAuditHints(assetId: string): Promise<{
@@ -46,6 +63,12 @@ async function writeOffAuditHints(assetId: string): Promise<{
   assessmentReference: string | null;
   fromStatusCode: string | null;
   reason: string | null;
+  xeroFixedAssetNumber: string | null;
+  replacementAssetName: string | null;
+  replacementAssetType: string | null;
+  replacementMakeModel: string | null;
+  replacementSerialNumber: string | null;
+  replacementXeroFixedAssetNumber: string | null;
 }> {
   const logs = await prisma.auditLog.findMany({
     where: { actionType: "asset.write_off" },
@@ -77,6 +100,30 @@ async function writeOffAuditHints(assetId: string): Promise<{
         typeof meta.writeOffReason === "string"
           ? meta.writeOffReason.trim() || null
           : null,
+      xeroFixedAssetNumber:
+        typeof meta.xeroFixedAssetNumber === "string"
+          ? meta.xeroFixedAssetNumber.trim() || null
+          : null,
+      replacementAssetName:
+        typeof meta.replacementAssetName === "string"
+          ? meta.replacementAssetName.trim() || null
+          : null,
+      replacementAssetType:
+        typeof meta.replacementAssetType === "string"
+          ? meta.replacementAssetType.trim() || null
+          : null,
+      replacementMakeModel:
+        typeof meta.replacementMakeModel === "string"
+          ? meta.replacementMakeModel.trim() || null
+          : null,
+      replacementSerialNumber:
+        typeof meta.replacementSerialNumber === "string"
+          ? meta.replacementSerialNumber.trim() || null
+          : null,
+      replacementXeroFixedAssetNumber:
+        typeof meta.replacementXeroFixedAssetNumber === "string"
+          ? meta.replacementXeroFixedAssetNumber.trim() || null
+          : null,
     };
   }
 
@@ -92,6 +139,12 @@ async function writeOffAuditHints(assetId: string): Promise<{
     assessmentReference: null,
     fromStatusCode: null,
     reason: null,
+    xeroFixedAssetNumber: null,
+    replacementAssetName: null,
+    replacementAssetType: null,
+    replacementMakeModel: null,
+    replacementSerialNumber: null,
+    replacementXeroFixedAssetNumber: null,
   };
 }
 
@@ -102,7 +155,8 @@ async function reconcileCertificateFromAudit(
   if (
     cert.replacementRequested &&
     cert.assessmentReference &&
-    cert.fromStatusCode !== "written_off"
+    cert.fromStatusCode !== "written_off" &&
+    cert.xeroFixedAssetNumber
   ) {
     return cert;
   }
@@ -120,27 +174,87 @@ async function reconcileCertificateFromAudit(
       ? cert.fromStatusCode
       : hints.fromStatusCode || cert.fromStatusCode;
   const nextReason = cert.reason || hints.reason;
+  const nextXero = cert.xeroFixedAssetNumber || hints.xeroFixedAssetNumber;
+  const nextRepName =
+    cert.replacementAssetName ||
+    (nextReplacement ? hints.replacementAssetName : null);
+  const nextRepType =
+    cert.replacementAssetType ||
+    (nextReplacement ? hints.replacementAssetType : null);
+  const nextRepMakeModel =
+    cert.replacementMakeModel ||
+    (nextReplacement ? hints.replacementMakeModel : null);
+  const nextRepSerial =
+    cert.replacementSerialNumber ||
+    (nextReplacement ? hints.replacementSerialNumber : null);
+  const nextRepXero =
+    cert.replacementXeroFixedAssetNumber ||
+    (nextReplacement ? hints.replacementXeroFixedAssetNumber : null);
 
   if (
     nextReplacement === cert.replacementRequested &&
     nextNotes === cert.replacementNotes &&
     nextAssessment === cert.assessmentReference &&
     nextFrom === cert.fromStatusCode &&
-    nextReason === cert.reason
+    nextReason === cert.reason &&
+    nextXero === cert.xeroFixedAssetNumber &&
+    nextRepName === cert.replacementAssetName &&
+    nextRepType === cert.replacementAssetType &&
+    nextRepMakeModel === cert.replacementMakeModel &&
+    nextRepSerial === cert.replacementSerialNumber &&
+    nextRepXero === cert.replacementXeroFixedAssetNumber
   ) {
     return cert;
   }
 
-  return prisma.writeOffCertificate.update({
-    where: { id: cert.id },
-    data: {
+  try {
+    return await prisma.writeOffCertificate.update({
+      where: { id: cert.id },
+      data: {
+        replacementRequested: nextReplacement,
+        replacementNotes: nextReplacement ? nextNotes : null,
+        assessmentReference: nextAssessment,
+        fromStatusCode: nextFrom,
+        reason: nextReason,
+        xeroFixedAssetNumber: nextXero,
+        replacementAssetName: nextReplacement ? nextRepName : null,
+        replacementAssetType: nextReplacement ? nextRepType : null,
+        replacementMakeModel: nextReplacement ? nextRepMakeModel : null,
+        replacementSerialNumber: nextReplacement ? nextRepSerial : null,
+        replacementXeroFixedAssetNumber: nextReplacement ? nextRepXero : null,
+      },
+    });
+  } catch (e) {
+    // Stale Prisma client / missing columns must not block PDF download.
+    console.warn(
+      "reconcileCertificateFromAudit update skipped; returning existing certificate",
+      e
+    );
+    return {
+      ...cert,
       replacementRequested: nextReplacement,
-      replacementNotes: nextReplacement ? nextNotes : null,
+      replacementNotes: nextReplacement ? nextNotes : cert.replacementNotes,
       assessmentReference: nextAssessment,
       fromStatusCode: nextFrom,
       reason: nextReason,
-    },
-  });
+      xeroFixedAssetNumber: nextXero ?? cert.xeroFixedAssetNumber ?? null,
+      replacementAssetName: nextReplacement
+        ? nextRepName
+        : cert.replacementAssetName,
+      replacementAssetType: nextReplacement
+        ? nextRepType
+        : cert.replacementAssetType,
+      replacementMakeModel: nextReplacement
+        ? nextRepMakeModel
+        : cert.replacementMakeModel,
+      replacementSerialNumber: nextReplacement
+        ? nextRepSerial
+        : cert.replacementSerialNumber,
+      replacementXeroFixedAssetNumber: nextReplacement
+        ? nextRepXero
+        : cert.replacementXeroFixedAssetNumber,
+    };
+  }
 }
 
 export async function createWriteOffCertificate(params: {
@@ -148,8 +262,14 @@ export async function createWriteOffCertificate(params: {
   fromStatusCode: string;
   assessmentReference?: string | null;
   reason: string | null;
+  xeroFixedAssetNumber?: string | null;
   replacementRequested?: boolean;
   replacementNotes?: string | null;
+  replacementAssetName?: string | null;
+  replacementAssetType?: string | null;
+  replacementMakeModel?: string | null;
+  replacementSerialNumber?: string | null;
+  replacementXeroFixedAssetNumber?: string | null;
 }): Promise<WriteOffCertificateRecord> {
   const asset = await prisma.asset.findUnique({
     where: { id: params.assetId },
@@ -161,17 +281,32 @@ export async function createWriteOffCertificate(params: {
 
   const replacementRequested = params.replacementRequested === true;
   const replacementNotes = replacementRequested
-    ? params.replacementNotes?.trim() || null
+    ? trimOrNull(params.replacementNotes)
     : null;
-  const assessmentReference = params.assessmentReference?.trim() || null;
-  const reason = params.reason?.trim() || null;
+  const replacementAssetName = replacementRequested
+    ? trimOrNull(params.replacementAssetName)
+    : null;
+  const replacementAssetType = replacementRequested
+    ? trimOrNull(params.replacementAssetType)
+    : null;
+  const replacementMakeModel = replacementRequested
+    ? trimOrNull(params.replacementMakeModel)
+    : null;
+  const replacementSerialNumber = replacementRequested
+    ? trimOrNull(params.replacementSerialNumber)
+    : null;
+  const replacementXeroFixedAssetNumber = replacementRequested
+    ? trimOrNull(params.replacementXeroFixedAssetNumber)
+    : null;
+  const assessmentReference = trimOrNull(params.assessmentReference);
+  const reason = trimOrNull(params.reason);
+  const xeroFixedAssetNumber = trimOrNull(params.xeroFixedAssetNumber);
 
   const existing = await prisma.writeOffCertificate.findFirst({
     where: { assetId: params.assetId },
     orderBy: { writtenOffAt: "desc" },
   });
   if (existing) {
-    // Always refresh snapshot fields from this write-off (fixes stale No / missing intake).
     return prisma.writeOffCertificate.update({
       where: { id: existing.id },
       data: {
@@ -183,15 +318,41 @@ export async function createWriteOffCertificate(params: {
         manufacturer: asset.manufacturer,
         model: asset.model,
         serialNumber: asset.serialNumber,
+        xeroFixedAssetNumber:
+          xeroFixedAssetNumber ?? existing.xeroFixedAssetNumber,
         reason: reason ?? existing.reason,
         replacementRequested:
           replacementRequested || existing.replacementRequested,
-        replacementNotes:
-          replacementRequested
-            ? replacementNotes
-            : existing.replacementRequested
-              ? existing.replacementNotes
-              : null,
+        replacementNotes: replacementRequested
+          ? replacementNotes
+          : existing.replacementRequested
+            ? existing.replacementNotes
+            : null,
+        replacementAssetName: replacementRequested
+          ? replacementAssetName
+          : existing.replacementRequested
+            ? existing.replacementAssetName
+            : null,
+        replacementAssetType: replacementRequested
+          ? replacementAssetType
+          : existing.replacementRequested
+            ? existing.replacementAssetType
+            : null,
+        replacementMakeModel: replacementRequested
+          ? replacementMakeModel
+          : existing.replacementRequested
+            ? existing.replacementMakeModel
+            : null,
+        replacementSerialNumber: replacementRequested
+          ? replacementSerialNumber
+          : existing.replacementRequested
+            ? existing.replacementSerialNumber
+            : null,
+        replacementXeroFixedAssetNumber: replacementRequested
+          ? replacementXeroFixedAssetNumber
+          : existing.replacementRequested
+            ? existing.replacementXeroFixedAssetNumber
+            : null,
         fromStatusCode:
           params.fromStatusCode !== "written_off"
             ? params.fromStatusCode
@@ -214,9 +375,15 @@ export async function createWriteOffCertificate(params: {
       manufacturer: asset.manufacturer,
       model: asset.model,
       serialNumber: asset.serialNumber,
+      xeroFixedAssetNumber,
       reason,
       replacementRequested,
       replacementNotes,
+      replacementAssetName,
+      replacementAssetType,
+      replacementMakeModel,
+      replacementSerialNumber,
+      replacementXeroFixedAssetNumber,
       fromStatusCode: params.fromStatusCode,
       writtenOffAt,
     },
@@ -247,8 +414,14 @@ export async function ensureWriteOffCertificateForAsset(
     fromStatusCode: hints.fromStatusCode || "written_off",
     assessmentReference: hints.assessmentReference,
     reason: asset.reason ?? hints.reason,
+    xeroFixedAssetNumber: hints.xeroFixedAssetNumber,
     replacementRequested: hints.replacementRequested,
     replacementNotes: hints.replacementNotes,
+    replacementAssetName: hints.replacementAssetName,
+    replacementAssetType: hints.replacementAssetType,
+    replacementMakeModel: hints.replacementMakeModel,
+    replacementSerialNumber: hints.replacementSerialNumber,
+    replacementXeroFixedAssetNumber: hints.replacementXeroFixedAssetNumber,
   });
 }
 
@@ -266,9 +439,16 @@ export async function renderWriteOffCertificatePdfForRecord(
       manufacturer: cert.manufacturer,
       model: cert.model,
       serialNumber: cert.serialNumber,
+      xeroFixedAssetNumber: cert.xeroFixedAssetNumber ?? null,
       reason: cert.reason,
       assessmentReference: cert.assessmentReference,
       replacementRequested: Boolean(cert.replacementRequested),
+      replacementAssetName: cert.replacementAssetName ?? null,
+      replacementAssetType: cert.replacementAssetType ?? null,
+      replacementMakeModel: cert.replacementMakeModel ?? null,
+      replacementSerialNumber: cert.replacementSerialNumber ?? null,
+      replacementXeroFixedAssetNumber:
+        cert.replacementXeroFixedAssetNumber ?? null,
       replacementNotes: cert.replacementNotes,
       fromStatusLabel: dispatchFromStatusLabel(cert.fromStatusCode),
     },
