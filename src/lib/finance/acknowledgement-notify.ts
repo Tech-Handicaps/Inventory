@@ -457,6 +457,8 @@ function formatGeoLabel(parts: {
 export async function createRefurbishedAcknowledgementAndNotify(params: {
   assetId: string;
   assessmentReference?: string | null;
+  /** Club of origin — pass explicitly because clubId is cleared on the asset. */
+  fromClubName?: string | null;
 }): Promise<void> {
   const settings = await getEmailNotificationSettings();
 
@@ -470,7 +472,10 @@ export async function createRefurbishedAcknowledgementAndNotify(params: {
   if (!asset) return;
 
   const assessmentRef = params.assessmentReference?.trim() || null;
-  const clubName = asset.club?.name?.trim() || null;
+  const clubName =
+    params.fromClubName?.trim() ||
+    asset.club?.name?.trim() ||
+    null;
   const refParts = [
     assessmentRef,
     clubName ? `From ${clubName}` : null,

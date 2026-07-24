@@ -51,7 +51,7 @@ export async function PUT(
     const { id } = await params;
     const before = await prisma.asset.findUnique({
       where: { id },
-      include: { status: true },
+      include: { status: true, club: { select: { id: true, name: true } } },
     });
     if (!before) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
@@ -206,6 +206,9 @@ export async function PUT(
       return NextResponse.json(unchanged);
     }
 
+    /** Origin club for Assessment → Refurbished notify (captured before club is cleared). */
+    let fromClubNameForRefurb: string | null = null;
+
     if (typeof updateData.statusId === "string") {
       const nextStatus = await prisma.assetStatus.findUnique({
         where: { id: updateData.statusId },
@@ -243,6 +246,16 @@ export async function PUT(
           },
           { status: 400 }
         );
+      }
+
+      // Refurbished pool is unassigned stock — drop club ownership on the asset.
+      // Notification still receives the origin club via fromClubNameForRefurb.
+      if (
+        before.status.code === "assessment" &&
+        nextStatus.code === "refurbished"
+      ) {
+        fromClubNameForRefurb = before.club?.name?.trim() || null;
+        updateData.clubId = null;
       }
     }
 
@@ -402,6 +415,8 @@ export async function PUT(
           ? {
               assessmentReference: completedAssessmentReference,
               fromStatusCode: before.status.code,
+              fromClubName: fromClubNameForRefurb,
+              clubCleared: true,
             }
           : {}),
       },
@@ -436,6 +451,7 @@ export async function PUT(
         await createRefurbishedAcknowledgementAndNotify({
           assetId: id,
           assessmentReference: completedAssessmentReference,
+          fromClubName: fromClubNameForRefurb,
         });
       } catch (e) {
         console.error(
