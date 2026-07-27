@@ -111,11 +111,20 @@ export function connectionHintFromUrlHints(
 }
 
 let loggedAutoPgbouncerAppend = false;
+let loggedDevSessionPoolerSwitch = false;
+
+function wantsTransactionPoolerInDev(): boolean {
+  const v = process.env.PRISMA_USE_TRANSACTION_POOLER?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
 
 /**
  * Supabase **transaction** pooler (port 6543) requires `pgbouncer=true` for Prisma.
  * Without it, Postgres may return SQLSTATE **26000** (“prepared statement … does not exist”)
  * or **42P05** (“prepared statement already exists”) as connections rotate.
+ *
+ * In local development, port 6543 with `connection_limit=1` causes Prisma P2024 timeouts
+ * when Next.js serves many API routes concurrently — use session pooler (5432) instead.
  */
 export function normalizeDatabaseUrlForPrisma(
   raw: string | undefined
@@ -127,8 +136,29 @@ export function normalizeDatabaseUrlForPrisma(
       : raw;
     const u = new URL(normalized);
     const port = u.port || "5432";
-    const isSupabaseTxnPooler =
-      u.hostname.includes("pooler.supabase.com") && port === "6543";
+    const isSupabasePooler = u.hostname.includes("pooler.supabase.com");
+    const isSupabaseTxnPooler = isSupabasePooler && port === "6543";
+
+    if (
+      process.env.NODE_ENV === "development" &&
+      isSupabaseTxnPooler &&
+      !wantsTransactionPoolerInDev()
+    ) {
+      u.port = "5432";
+      u.searchParams.delete("pgbouncer");
+      u.searchParams.delete("connection_limit");
+      if (!u.searchParams.get("sslmode")) u.searchParams.set("sslmode", "require");
+      if (!loggedDevSessionPoolerSwitch) {
+        loggedDevSessionPoolerSwitch = true;
+        console.info(
+          "[prisma] Development: using Supabase session pooler (5432) instead of " +
+            "transaction pooler (6543) to avoid connection pool timeouts (P2024). " +
+            "Set PRISMA_USE_TRANSACTION_POOLER=1 to keep port 6543 locally."
+        );
+      }
+      return u.toString();
+    }
+
     if (!isSupabaseTxnPooler) return raw.trim();
 
     if (u.searchParams.get("pgbouncer") === "true") return raw.trim();
@@ -158,7 +188,7 @@ export function warnIfLikelyMisconfiguredDatabaseUrl(
   const hints = getDatabaseUrlHints(effectiveDatabaseUrl);
   if (!hints.parseOk) return;
 
-  if (hints.isSupabaseSessionPooler) {
+  if (hints.isSupabaseSessionPooler && process.env.NODE_ENV !== "development") {
     console.warn(
       "[prisma] DATABASE_URL uses Supabase Session pooler (port 5432). " +
         "Vercel will exceed the ~15 connection cap (EMAXCONNSESSION). " +

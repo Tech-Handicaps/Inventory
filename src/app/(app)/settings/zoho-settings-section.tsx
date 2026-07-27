@@ -20,6 +20,7 @@ type ZohoGetResponse = {
 export function ZohoAssistSettingsSection() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -78,8 +79,14 @@ export function ZohoAssistSettingsSection() {
   }, []);
 
   useEffect(() => {
+    setLoadError(null);
     load()
-      .catch(console.error)
+      .catch((err) => {
+        const message =
+          err instanceof Error ? err.message : "Failed to load Zoho settings";
+        setLoadError(message);
+        console.error(err);
+      })
       .finally(() => setLoading(false));
   }, [load]);
 
@@ -259,6 +266,36 @@ export function ZohoAssistSettingsSection() {
     return (
       <div className="py-4">
         <p className="text-sm text-black/55">Loading Zoho Assist settings…</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+        <p className="text-sm font-medium text-red-900">
+          Could not load Zoho Assist settings
+        </p>
+        <p className="mt-1 text-sm text-red-800/90">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setLoading(true);
+            setLoadError(null);
+            void load()
+              .catch((err) => {
+                const message =
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to load Zoho settings";
+                setLoadError(message);
+              })
+              .finally(() => setLoading(false));
+          }}
+          className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-900 hover:bg-red-100/60"
+        >
+          Retry
+        </button>
       </div>
     );
   }
