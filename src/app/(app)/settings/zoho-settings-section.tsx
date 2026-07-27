@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PasswordInput } from "@/components/PasswordInput";
 import { useToast } from "@/components/ToastProvider";
 import { ZOHO_DATA_CENTERS } from "@/lib/zoho/constants";
 
@@ -515,8 +516,7 @@ export function ZohoAssistSettingsSection() {
               Stored: <span className="font-mono">{meta.clientSecretMasked}</span>
             </p>
           ) : null}
-          <input
-            type="password"
+          <PasswordInput
             value={clientSecret}
             onChange={(e) => setClientSecret(e.target.value)}
             autoComplete="new-password"

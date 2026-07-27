@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PasswordInput } from "@/components/PasswordInput";
 import {
   ASSIGNABLE_ROLES,
   roleDescription,
@@ -309,8 +310,7 @@ export function UserManagementSettingsSection() {
           </label>
           <label className="block">
             <span className="text-xs font-medium text-black/70">Password</span>
-            <input
-              type="password"
+            <PasswordInput
               name="password"
               autoComplete="new-password"
               value={password}
@@ -324,8 +324,7 @@ export function UserManagementSettingsSection() {
             <span className="text-xs font-medium text-black/70">
               Confirm password
             </span>
-            <input
-              type="password"
+            <PasswordInput
               name="passwordConfirm"
               autoComplete="new-password"
               value={passwordConfirm}

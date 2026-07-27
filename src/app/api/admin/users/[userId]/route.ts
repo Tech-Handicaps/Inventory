@@ -78,9 +78,9 @@ export async function PATCH(
       );
     }
 
-    if (protectedAccount && (nextUsername !== undefined || nextEmail !== undefined)) {
+    if (protectedAccount && nextEmail !== undefined) {
       return jsonError(
-        "This admin account is protected and cannot be changed.",
+        "This admin account is protected and its email cannot be changed.",
         400
       );
     }

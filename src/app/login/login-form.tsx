@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BrandSplashGate } from "@/components/BrandSplashGate";
+import { PasswordInput } from "@/components/PasswordInput";
 import { safeRedirectPath } from "@/lib/http/safe-redirect";
 
 export function LoginForm() {
@@ -118,10 +119,9 @@ export function LoginForm() {
               >
                 Password
               </label>
-              <input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 required
                 value={password}
