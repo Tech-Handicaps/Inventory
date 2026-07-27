@@ -65,12 +65,18 @@ describe("createUserSchema", () => {
 });
 
 describe("patchUserSchema", () => {
-  it("requires role and/or disabled", () => {
+  it("requires at least one field", () => {
     expect(patchUserSchema.safeParse({}).success).toBe(false);
     expect(patchUserSchema.safeParse({ role: "accountant" }).success).toBe(
       true
     );
     expect(patchUserSchema.safeParse({ disabled: true }).success).toBe(true);
+    expect(
+      patchUserSchema.safeParse({ username: "jsmith" }).success
+    ).toBe(true);
+    expect(
+      patchUserSchema.safeParse({ email: "a@b.co" }).success
+    ).toBe(true);
   });
 });
 

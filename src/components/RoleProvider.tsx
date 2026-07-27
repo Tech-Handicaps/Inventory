@@ -21,13 +21,22 @@ type RoleState = {
 
 const RoleContext = createContext<RoleState | null>(null);
 
-export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<AppRole | null>(null);
-  const [loading, setLoading] = useState(true);
+export function RoleProvider({
+  children,
+  initialRole = null,
+}: {
+  children: React.ReactNode;
+  /** Resolved on the server (incl. protected admin / super_admin allowlists). */
+  initialRole?: AppRole | null;
+}) {
+  const [role, setRole] = useState<AppRole | null>(initialRole);
+  const [loading, setLoading] = useState(initialRole === null);
   const [loadError, setLoadError] = useState(false);
 
-  const load = useCallback(() => {
-    setLoading(true);
+  const load = useCallback((options?: { background?: boolean }) => {
+    if (!options?.background) {
+      setLoading(true);
+    }
     setLoadError(false);
     void fetch("/api/me", { cache: "no-store" })
       .then(async (r) => {
@@ -37,15 +46,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         if (!r.ok) {
-          setRole(null);
           setLoadError(true);
           return;
         }
         const j = (await r.json()) as { role?: AppRole };
         setRole(j.role ?? null);
+        setLoadError(false);
       })
       .catch(() => {
-        setRole(null);
         setLoadError(true);
       })
       .finally(() => setLoading(false));
@@ -60,7 +68,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       console.error("RoleProvider: supabase client", e);
       const t = window.setTimeout(() => {
         if (cancelled) return;
-        setRole(null);
+        if (!initialRole) setRole(null);
         setLoadError(true);
         setLoading(false);
       }, 0);
@@ -77,7 +85,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      void load();
+      void load({ background: initialRole !== null });
     });
 
     const {
@@ -89,17 +97,17 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      void load();
+      void load({ background: false });
     });
 
     return () => {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [load]);
+  }, [initialRole, load]);
 
   const value = useMemo(
-    () => ({ role, loading, loadError, refresh: load }),
+    () => ({ role, loading, loadError, refresh: () => load() }),
     [role, loading, loadError, load]
   );
 

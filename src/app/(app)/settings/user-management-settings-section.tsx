@@ -47,6 +47,10 @@ export function UserManagementSettingsSection() {
   const [inviteRole, setInviteRole] = useState<AssignableRole>("operations");
   const [showInvite, setShowInvite] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/users", { cache: "no-store" });
     if (!res.ok) {
@@ -189,6 +193,66 @@ export function UserManagementSettingsSection() {
     }
   }
 
+  function startEditProfile(row: Row) {
+    setEditingId(row.id);
+    setEditUsername(row.username ?? "");
+    setEditEmail(row.email);
+    setError(null);
+    setMessage(null);
+  }
+
+  function cancelEditProfile() {
+    setEditingId(null);
+    setEditUsername("");
+    setEditEmail("");
+  }
+
+  async function saveProfile(userId: string, row: Row) {
+    const usernameTrimmed = editUsername.trim().toLowerCase();
+    const emailTrimmed = editEmail.trim().toLowerCase();
+    if (!usernameTrimmed) {
+      setError("Username is required.");
+      return;
+    }
+    if (!emailTrimmed) {
+      setError("Email is required.");
+      return;
+    }
+
+    const payload: { username?: string; email?: string } = {};
+    if (usernameTrimmed !== (row.username ?? "").toLowerCase()) {
+      payload.username = usernameTrimmed;
+    }
+    if (emailTrimmed !== row.email.trim().toLowerCase()) {
+      payload.email = emailTrimmed;
+    }
+    if (Object.keys(payload).length === 0) {
+      cancelEditProfile();
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        throw new Error(await readError(res));
+      }
+      setMessage("Profile updated.");
+      cancelEditProfile();
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return <p className="text-sm text-black/55">Loading users…</p>;
   }
@@ -201,7 +265,9 @@ export function UserManagementSettingsSection() {
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-black/65">
           Create an account with username, email, and password. Users can sign in
-          with either username or email. Super admin is controlled via{" "}
+          with either username or email. Use <strong>Edit profile</strong> on
+          existing users (e.g. after an email invite) to add or change their
+          username. Super admin is controlled via{" "}
           <code className="rounded bg-black/[0.06] px-1 text-xs">
             SUPER_ADMIN_EMAILS
           </code>
@@ -391,6 +457,7 @@ export function UserManagementSettingsSection() {
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Role</th>
                 <th className="px-4 py-3 font-medium">Last sign-in</th>
+                <th className="px-4 py-3 font-medium">Profile</th>
                 <th className="px-4 py-3 font-medium">Change role</th>
                 <th className="px-4 py-3 font-medium">Access</th>
               </tr>
@@ -399,11 +466,40 @@ export function UserManagementSettingsSection() {
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-black/5">
                   <td className="px-4 py-2.5 font-mono text-xs">
-                    {row.username ?? (
+                    {editingId === row.id ? (
+                      <input
+                        type="text"
+                        value={editUsername}
+                        onChange={(e) => setEditUsername(e.target.value)}
+                        className="w-full min-w-[7rem] rounded border border-black/15 px-2 py-1.5 font-mono text-xs"
+                        placeholder="username"
+                        autoComplete="off"
+                        minLength={3}
+                        maxLength={32}
+                        pattern="[A-Za-z0-9._-]{3,32}"
+                        aria-label={`Username for ${row.email}`}
+                      />
+                    ) : row.username ? (
+                      row.username
+                    ) : (
                       <span className="text-black/40">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5">{row.email}</td>
+                  <td className="px-4 py-2.5">
+                    {editingId === row.id ? (
+                      <input
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        className="w-full min-w-[10rem] rounded border border-black/15 px-2 py-1.5 text-xs"
+                        placeholder="email@example.com"
+                        autoComplete="off"
+                        aria-label={`Email for ${row.username ?? row.id}`}
+                      />
+                    ) : (
+                      row.email
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 text-black/80">
                     {roleLabel(row.role)}
                   </td>
@@ -411,6 +507,39 @@ export function UserManagementSettingsSection() {
                     {row.lastSignInAt
                       ? new Date(row.lastSignInAt).toLocaleString()
                       : "—"}
+                  </td>
+                  <td className="px-4 py-2">
+                    {row.readOnly ? (
+                      <span className="text-xs text-black/45">Protected</span>
+                    ) : editingId === row.id ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => void saveProfile(row.id, row)}
+                          className="rounded bg-brand px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-hover disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={cancelEditProfile}
+                          className="rounded border border-black/15 bg-white px-2.5 py-1 text-xs font-medium text-black/70 hover:bg-black/[0.04] disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={saving || editingId !== null}
+                        onClick={() => startEditProfile(row)}
+                        className="rounded border border-black/15 bg-white px-2.5 py-1 text-xs font-medium text-black/70 hover:bg-black/[0.04] disabled:opacity-50"
+                      >
+                        Edit profile
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-2">
                     {row.readOnly ? (

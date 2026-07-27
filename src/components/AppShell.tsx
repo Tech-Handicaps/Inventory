@@ -17,7 +17,7 @@ import {
 import { BrandLogo } from "@/components/BrandLogo";
 import { useAppRole } from "@/components/RoleProvider";
 import { useToast } from "@/components/ToastProvider";
-import { isNavLinkVisible, type NavKey } from "@/lib/auth/nav-access";
+import { isNavLinkVisible, hasFullNavAccess, type NavKey } from "@/lib/auth/nav-access";
 import { createClient } from "@/lib/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -78,9 +78,10 @@ function SidebarNav({
   const { role, loading, loadError } = useAppRole();
 
   const visible = (key: NavKey) => {
-    // Fail closed: hide privileged links until role is known.
-    if (loading) return key === "home";
-    if (loadError || role === null) return key === "home";
+    if (hasFullNavAccess(role)) return true;
+    if (loading || loadError || role === null) {
+      return key !== "settings" && key !== "acknowledgements";
+    }
     return isNavLinkVisible(role, key);
   };
 

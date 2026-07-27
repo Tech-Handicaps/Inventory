@@ -3,6 +3,7 @@ import { Geist_Mono } from "next/font/google";
 import { RoleProvider } from "@/components/RoleProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ToastProvider } from "@/components/ToastProvider";
+import { getSessionRole } from "@/lib/auth/get-session-role";
 import { fontBody, fontHeading } from "@/lib/fonts";
 import "./globals.css";
 
@@ -17,11 +18,14 @@ export const metadata: Metadata = {
     "Hardware lifecycle tracking for Handicaps Network Africa — stock, repairs, and refurbishment.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSessionRole();
+  const initialRole = session?.role ?? null;
+
   return (
     <html
       lang="en"
@@ -29,7 +33,7 @@ export default function RootLayout({
     >
       <body className={`${fontBody.className} min-h-full flex flex-col`}>
         <ToastProvider>
-          <RoleProvider>
+          <RoleProvider initialRole={initialRole}>
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </RoleProvider>
           <SiteFooter />

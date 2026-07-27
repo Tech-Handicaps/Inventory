@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppRole } from "@/components/RoleProvider";
 import type { AppRole } from "@/lib/auth/roles";
+import { hasFullNavAccess } from "@/lib/auth/nav-access";
 import { AuditLogSettingsSection } from "./audit-log-settings-section";
 import { ClubsSettingsSection } from "./clubs-settings-section";
 import { DeviceTemplatesSettingsSection } from "./device-templates-settings-section";
@@ -25,14 +26,14 @@ const ALL_TABS = [
 type SettingsTabId = (typeof ALL_TABS)[number]["id"];
 
 function tabsForRole(role: AppRole | null, loading: boolean) {
+  if (hasFullNavAccess(role)) {
+    return [...ALL_TABS];
+  }
   if (loading || !role) {
     return ALL_TABS.filter((t) => t.id !== "users" && t.id !== "email");
   }
   if (role === "accountant") {
     return ALL_TABS.filter((t) => t.id === "templates" || t.id === "clubs");
-  }
-  if (role === "super_admin" || role === "admin") {
-    return [...ALL_TABS];
   }
   return ALL_TABS.filter((t) => t.id !== "users" && t.id !== "email");
 }

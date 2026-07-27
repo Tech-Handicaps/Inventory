@@ -28,8 +28,8 @@ async function countResolvedAdmins(admin: ReturnType<typeof createSupabaseAdmin>
 }
 
 /**
- * PATCH — change assignable role / disable user (admin/super admin only).
- * Body: `{ "role"?: "admin" | "operations" | "reports_only" | "accountant", "disabled"?: boolean }`
+ * PATCH — change role, disable user, username, and/or email (admin/super admin only).
+ * Body: `{ role?, disabled?, username?, email? }`
  */
 export async function PATCH(
   request: NextRequest,
@@ -48,6 +48,8 @@ export async function PATCH(
 
   const assignRole = parsed.role;
   const disableRequested = parsed.disabled;
+  const nextUsername = parsed.username;
+  const nextEmail = parsed.email;
 
   try {
     const admin = createSupabaseAdmin();
@@ -58,24 +60,73 @@ export async function PATCH(
     }
 
     const u = userData.user;
-    if (isSuperAdminEmail(u.email ?? null)) {
-      return jsonError(
-        "Cannot change role for a super admin (env allowlist).",
-        400
-      );
-    }
-    if (isProtectedAdminEmail(u.email ?? null)) {
+    const currentEmail = (u.email ?? "").trim().toLowerCase();
+    const protectedAccount =
+      isSuperAdminEmail(u.email ?? null) ||
+      isProtectedAdminEmail(u.email ?? null);
+
+    if (protectedAccount && (assignRole || disableRequested !== undefined)) {
+      if (isSuperAdminEmail(u.email ?? null)) {
+        return jsonError(
+          "Cannot change role for a super admin (env allowlist).",
+          400
+        );
+      }
       return jsonError(
         "This admin account is protected and cannot be changed.",
         400
       );
     }
 
+    if (protectedAccount && (nextUsername !== undefined || nextEmail !== undefined)) {
+      return jsonError(
+        "This admin account is protected and cannot be changed.",
+        400
+      );
+    }
+
+    if (nextEmail !== undefined && nextEmail !== currentEmail) {
+      if (isSuperAdminEmail(nextEmail) || isProtectedAdminEmail(nextEmail)) {
+        return jsonError(
+          "That email is reserved for a protected admin account.",
+          400
+        );
+      }
+      const { data: listData, error: listErr } = await admin.auth.admin.listUsers(
+        { page: 1, perPage: 1000 }
+      );
+      if (listErr) {
+        return jsonError("Failed to look up users", 500);
+      }
+      const taken = listData.users.some(
+        (other) =>
+          other.id !== userId &&
+          (other.email ?? "").trim().toLowerCase() === nextEmail
+      );
+      if (taken) {
+        return jsonError("A user with that email already exists.", 409, {
+          code: "EMAIL_TAKEN",
+        });
+      }
+    }
+
+    if (nextUsername !== undefined) {
+      const taken = await prisma.userProfile.findFirst({
+        where: { username: nextUsername, userId: { not: userId } },
+        select: { userId: true },
+      });
+      if (taken) {
+        return jsonError("That username is already taken.", 409, {
+          code: "USERNAME_TAKEN",
+        });
+      }
+    }
+
     const stored = await prisma.userRole.findUnique({
       where: { userId },
     });
     const current = appRoleForAuthUser(u, stored?.role);
-    if (current === "super_admin") {
+    if (current === "super_admin" && (assignRole || disableRequested !== undefined)) {
       return jsonError("Cannot change this user’s role.", 400);
     }
 
@@ -88,6 +139,23 @@ export async function PATCH(
     }
 
     const previousStoredRole: string | null = stored?.role ?? null;
+    let resolvedUsername: string | null = null;
+
+    if (nextUsername !== undefined) {
+      const profile = await prisma.userProfile.upsert({
+        where: { userId },
+        create: { userId, username: nextUsername },
+        update: { username: nextUsername },
+        select: { username: true },
+      });
+      resolvedUsername = profile.username;
+    } else {
+      const profile = await prisma.userProfile.findUnique({
+        where: { userId },
+        select: { username: true },
+      });
+      resolvedUsername = profile?.username ?? null;
+    }
 
     if (assignRole) {
       await prisma.userRole.upsert({
@@ -98,53 +166,59 @@ export async function PATCH(
     }
 
     const update: Record<string, unknown> = {};
-    // Prefer app_metadata only (Admin API); do not write user_metadata.role.
     if (assignRole) {
       update.app_metadata = { role: toStoredRole(assignRole) };
     }
     if (disableRequested !== undefined) {
-      // Supabase supports ban_duration strings, e.g. "1h". Use a long duration to represent "disabled".
       update.ban_duration = disableRequested ? "876000h" : "none";
     }
-
-    if (Object.keys(update).length === 0) {
-      return NextResponse.json({
-        ok: true,
-        role: assignRole ?? current,
-        disabled: disableRequested,
-      });
+    if (nextEmail !== undefined && nextEmail !== currentEmail) {
+      update.email = nextEmail;
+      update.email_confirm = true;
     }
 
-    const { error: updErr } = await admin.auth.admin.updateUserById(userId, update);
-    if (updErr) {
-      console.error("PATCH /api/admin/users/[userId] updateUserById", updErr);
-      if (assignRole) {
-        try {
-          if (previousStoredRole) {
-            await prisma.userRole.update({
-              where: { userId },
-              data: { role: previousStoredRole },
-            });
-          } else {
-            await prisma.userRole.delete({ where: { userId } }).catch(() => undefined);
-          }
-        } catch (rollbackErr) {
-          console.error(
-            "PATCH /api/admin/users/[userId] role rollback failed",
-            rollbackErr
-          );
-        }
-      }
-      return jsonError(
-        "Failed to update auth user; changes were not applied.",
-        502
+    if (Object.keys(update).length > 0) {
+      const { error: updErr } = await admin.auth.admin.updateUserById(
+        userId,
+        update
       );
+      if (updErr) {
+        console.error("PATCH /api/admin/users/[userId] updateUserById", updErr);
+        if (assignRole) {
+          try {
+            if (previousStoredRole) {
+              await prisma.userRole.update({
+                where: { userId },
+                data: { role: previousStoredRole },
+              });
+            } else {
+              await prisma.userRole.delete({ where: { userId } }).catch(() => undefined);
+            }
+          } catch (rollbackErr) {
+            console.error(
+              "PATCH /api/admin/users/[userId] role rollback failed",
+              rollbackErr
+            );
+          }
+        }
+        return jsonError(
+          "Failed to update auth user; changes were not applied.",
+          502
+        );
+      }
     }
+
+    const resolvedEmail =
+      nextEmail !== undefined && nextEmail !== currentEmail
+        ? nextEmail
+        : currentEmail;
 
     return NextResponse.json({
       ok: true,
       role: assignRole ?? current,
       disabled: disableRequested,
+      username: resolvedUsername,
+      email: resolvedEmail,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Server error";
@@ -153,6 +227,11 @@ export async function PATCH(
         "Server misconfiguration: set SUPABASE_SERVICE_ROLE_KEY for user management.",
         503
       );
+    }
+    if (message.includes("Unique constraint") || message.includes("P2002")) {
+      return jsonError("That username is already taken.", 409, {
+        code: "USERNAME_TAKEN",
+      });
     }
     return catchToJsonError("PATCH /api/admin/users/[userId]", e, "Server error");
   }

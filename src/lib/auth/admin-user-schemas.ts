@@ -33,10 +33,23 @@ export const patchUserSchema = z
   .object({
     role: assignableRoleSchema.optional(),
     disabled: z.boolean().optional(),
+    username: usernameSchema.optional(),
+    email: z
+      .string()
+      .trim()
+      .min(1, "Valid email is required")
+      .email("Valid email is required")
+      .transform((v) => v.toLowerCase())
+      .optional(),
   })
-  .refine((v) => v.role !== undefined || v.disabled !== undefined, {
-    message: "Provide role and/or disabled flag",
-  });
+  .refine(
+    (v) =>
+      v.role !== undefined ||
+      v.disabled !== undefined ||
+      v.username !== undefined ||
+      v.email !== undefined,
+    { message: "Provide at least one field to update" }
+  );
 
 export const loginBodySchema = z.object({
   identifier: z
