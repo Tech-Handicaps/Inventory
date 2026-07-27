@@ -13,7 +13,7 @@ function SettingsLoading() {
 
 export default function SettingsPage() {
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <main className="mx-auto max-w-6xl p-6">
         <Suspense fallback={<SettingsLoading />}>
           <SettingsTabsContent />
         </Suspense>

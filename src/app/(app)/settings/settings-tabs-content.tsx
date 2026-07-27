@@ -2,6 +2,15 @@
 
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  Building2,
+  Headset,
+  History,
+  Layers,
+  Mail,
+  Plug,
+  Users,
+} from "lucide-react";
 import { useAppRole } from "@/components/RoleProvider";
 import type { AppRole } from "@/lib/auth/roles";
 import { hasFullNavAccess } from "@/lib/auth/nav-access";
@@ -14,13 +23,13 @@ import { ZohoDeskSettingsSection } from "./zoho-desk-settings-section";
 import { ZohoAssistSettingsSection } from "./zoho-settings-section";
 
 const ALL_TABS = [
-  { id: "zoho" as const, label: "Zoho Assist API" },
-  { id: "zoho-desk" as const, label: "Zoho Desk API" },
-  { id: "templates" as const, label: "Device templates" },
-  { id: "clubs" as const, label: "Clubs" },
-  { id: "audit" as const, label: "Audit log" },
-  { id: "email" as const, label: "Email & finance" },
-  { id: "users" as const, label: "Users" },
+  { id: "zoho" as const, label: "Zoho Assist", icon: Plug },
+  { id: "zoho-desk" as const, label: "Zoho Desk", icon: Headset },
+  { id: "templates" as const, label: "Device templates", icon: Layers },
+  { id: "clubs" as const, label: "Clubs", icon: Building2 },
+  { id: "audit" as const, label: "Audit log", icon: History },
+  { id: "email" as const, label: "Email & finance", icon: Mail },
+  { id: "users" as const, label: "Users", icon: Users },
 ] as const;
 
 type SettingsTabId = (typeof ALL_TABS)[number]["id"];
@@ -85,9 +94,33 @@ export function SettingsTabsContent() {
   const subtitle =
     role === "accountant" && !loading
       ? "Device templates and clubs — reusable presets for hardware and site names."
-      : (role === "super_admin" || role === "admin") && !loading
-        ? "Zoho Assist, Zoho Desk, device templates, audit log, email notifications, and user invites."
-        : "Zoho Assist and Desk APIs, device templates, and the audit log live here.";
+      : hasFullNavAccess(role) && !loading
+        ? "Integrations, templates, audit trail, finance email, and user access."
+        : "Integrations, templates, and audit history.";
+
+  const activeLabel =
+    visibleTabs.find((t) => t.id === tab)?.label ?? "Settings";
+
+  function renderActivePanel() {
+    switch (tab) {
+      case "zoho":
+        return <ZohoAssistSettingsSection />;
+      case "zoho-desk":
+        return <ZohoDeskSettingsSection />;
+      case "templates":
+        return <DeviceTemplatesSettingsSection />;
+      case "clubs":
+        return <ClubsSettingsSection />;
+      case "audit":
+        return <AuditLogSettingsSection />;
+      case "email":
+        return <EmailNotificationsSettingsSection />;
+      case "users":
+        return <UserManagementSettingsSection />;
+      default:
+        return null;
+    }
+  }
 
   return (
     <>
@@ -98,102 +131,65 @@ export function SettingsTabsContent() {
         <p className="mt-2 max-w-2xl text-sm text-black/65">{subtitle}</p>
       </header>
 
-      <div
-        role="tablist"
-        aria-label="Settings sections"
-        className="flex flex-wrap gap-0 border-b border-black/10"
-      >
-        {visibleTabs.map((t) => {
-          const selected = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`settings-tab-${t.id}`}
-              aria-selected={selected}
-              aria-controls={`settings-panel-${t.id}`}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => selectTab(t.id)}
-              className={`font-heading -mb-px border-b-2 px-5 py-3 text-sm font-bold uppercase tracking-wide transition-colors ${
-                selected
-                  ? "border-brand bg-white text-black"
-                  : "border-transparent text-black/45 hover:border-black/15 hover:text-black/75"
-              } `}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <nav
+          role="tablist"
+          aria-label="Settings sections"
+          className="flex gap-2 overflow-x-auto pb-1 lg:w-56 lg:shrink-0 lg:flex-col lg:overflow-visible lg:pb-0"
+        >
+          {visibleTabs.map((t) => {
+            const selected = tab === t.id;
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                id={`settings-tab-${t.id}`}
+                aria-selected={selected}
+                aria-controls={`settings-panel-${t.id}`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => selectTab(t.id)}
+                className={`font-heading group flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide transition ${
+                  selected
+                    ? "bg-brand-muted text-brand-hover"
+                    : "text-black/65 hover:bg-black/[0.04] hover:text-black"
+                }`}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    selected
+                      ? "bg-brand text-white"
+                      : "bg-black/[0.04] text-black/55 group-hover:text-brand"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                </span>
+                <span className="truncate">{t.label}</span>
+                {selected ? (
+                  <span
+                    className="ml-auto hidden h-1.5 w-1.5 shrink-0 rounded-full bg-brand lg:block"
+                    aria-hidden
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </nav>
 
-      <div className="border border-t-0 border-black/10 bg-white p-6 shadow-sm">
-        {visibleTabs.some((t) => t.id === "zoho") ? (
+        <div className="min-w-0 flex-1">
+          <p className="font-heading mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-black/45 lg:hidden">
+            {activeLabel}
+          </p>
           <div
-            id="settings-panel-zoho"
+            className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6"
             role="tabpanel"
-            aria-labelledby="settings-tab-zoho"
-            hidden={tab !== "zoho"}
+            id={`settings-panel-${tab}`}
+            aria-labelledby={`settings-tab-${tab}`}
           >
-            <ZohoAssistSettingsSection />
+            {renderActivePanel()}
           </div>
-        ) : null}
-        {visibleTabs.some((t) => t.id === "zoho-desk") ? (
-          <div
-            id="settings-panel-zoho-desk"
-            role="tabpanel"
-            aria-labelledby="settings-tab-zoho-desk"
-            hidden={tab !== "zoho-desk"}
-          >
-            <ZohoDeskSettingsSection />
-          </div>
-        ) : null}
-        <div
-          id="settings-panel-templates"
-          role="tabpanel"
-          aria-labelledby="settings-tab-templates"
-          hidden={tab !== "templates"}
-        >
-          <DeviceTemplatesSettingsSection />
         </div>
-        <div
-          id="settings-panel-clubs"
-          role="tabpanel"
-          aria-labelledby="settings-tab-clubs"
-          hidden={tab !== "clubs"}
-        >
-          <ClubsSettingsSection />
-        </div>
-        {visibleTabs.some((t) => t.id === "audit") ? (
-          <div
-            id="settings-panel-audit"
-            role="tabpanel"
-            aria-labelledby="settings-tab-audit"
-            hidden={tab !== "audit"}
-          >
-            <AuditLogSettingsSection />
-          </div>
-        ) : null}
-        {visibleTabs.some((t) => t.id === "email") ? (
-          <div
-            id="settings-panel-email"
-            role="tabpanel"
-            aria-labelledby="settings-tab-email"
-            hidden={tab !== "email"}
-          >
-            <EmailNotificationsSettingsSection />
-          </div>
-        ) : null}
-        {visibleTabs.some((t) => t.id === "users") ? (
-          <div
-            id="settings-panel-users"
-            role="tabpanel"
-            aria-labelledby="settings-tab-users"
-            hidden={tab !== "users"}
-          >
-            <UserManagementSettingsSection />
-          </div>
-        ) : null}
       </div>
     </>
   );
