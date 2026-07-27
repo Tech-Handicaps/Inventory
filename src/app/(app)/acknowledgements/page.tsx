@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 function makeModelLine(manufacturer: string | null, model: string | null): string | null {
   const parts = [manufacturer?.trim(), model?.trim()].filter(Boolean);
@@ -90,16 +91,11 @@ export default function AcknowledgementsPage() {
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6">
-        <div>
-          <h1 className="font-heading text-xl font-bold uppercase tracking-wide text-black">
-            Finance acknowledgements
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-black/65">
-            When a device is logged for repair or written off, a row appears here
-            for finance to confirm their records are updated. Email notifications
-            are optional (configure under Settings → Email &amp; finance).
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Finance"
+          title="Acknowledgements"
+          description="When a device is logged for repair or written off, a row appears here for finance to confirm their records are updated. Email notifications are optional (configure under Settings → Email & finance)."
+        />
 
         <div className="flex flex-wrap gap-2">
           {(
@@ -113,10 +109,8 @@ export default function AcknowledgementsPage() {
               key={v}
               type="button"
               onClick={() => setFilter(v)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                filter === v
-                  ? "bg-brand text-white"
-                  : "border border-black/15 bg-white text-black/75 hover:bg-black/[0.04]"
+              className={`filter-pill ${
+                filter === v ? "filter-pill-active" : "filter-pill-inactive"
               }`}
             >
               {label}
@@ -130,7 +124,7 @@ export default function AcknowledgementsPage() {
           </p>
         ) : null}
 
-        <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+        <div className="data-table-wrap">
           <table className="w-full min-w-[800px] text-left text-sm">
             <thead>
               <tr className="border-b border-black/10 bg-black/[0.03]">
@@ -226,7 +220,7 @@ export default function AcknowledgementsPage() {
                             type="button"
                             disabled={savingId === r.id}
                             onClick={() => void acknowledge(r.id)}
-                            className="font-heading rounded-lg bg-brand px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-brand-hover disabled:opacity-50"
+                            className="btn-primary px-4 py-2 text-xs disabled:opacity-50"
                           >
                             {savingId === r.id ? "Saving…" : "Acknowledge"}
                           </button>

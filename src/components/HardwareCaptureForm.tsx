@@ -195,9 +195,13 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     (id: string) => {
       setTemplateId(id);
       setFormError(null);
-      if (!id) return;
+      if (!id) {
+        setTemplateFilter("");
+        return;
+      }
       const t = templates.find((x) => x.id === id);
       if (!t) return;
+      setTemplateFilter(`${t.label} · ${t.manufacturer} ${t.model}`);
       setAssetName(t.label);
       setCategory(t.category);
       setManufacturer(t.manufacturer);
@@ -208,6 +212,27 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     },
     [templates]
   );
+
+  function clearTemplateSelection() {
+    setTemplateId("");
+    setTemplateFilter("");
+    setFormError(null);
+  }
+
+  function pickTemplateFromSearch(id: string) {
+    applyTemplate(id);
+  }
+
+  function onTemplateFilterKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && filteredTemplates.length > 0) {
+      e.preventDefault();
+      pickTemplateFromSearch(filteredTemplates[0]!.id);
+    }
+    if (e.key === "Escape") {
+      if (templateId) clearTemplateSelection();
+      else setTemplateFilter("");
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -275,7 +300,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   return (
     <section
       id="register-hardware"
-      className="rounded-xl border-2 border-brand/40 bg-white shadow-md ring-1 ring-black/5"
+      className="glass-card overflow-hidden ring-1 ring-brand/10"
     >
       <div className="border-b border-black/10 bg-brand-muted/40 px-6 py-4">
         <p className="font-heading text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
@@ -344,7 +369,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                 1 · Device type
               </legend>
 
-              <div>
+              <div className="relative">
                 <label
                   htmlFor="hw-template-filter"
                   className="text-xs font-medium text-black/70"
@@ -354,13 +379,87 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                 <input
                   id="hw-template-filter"
                   type="search"
+                  role="combobox"
+                  aria-expanded={
+                    !templatesLoading &&
+                    templateFilter.trim().length > 0 &&
+                    !templateId
+                  }
+                  aria-controls="hw-template-results"
                   value={templateFilter}
-                  onChange={(e) => setTemplateFilter(e.target.value)}
-                  placeholder="Filter by name, make, model…"
+                  onChange={(e) => {
+                    setTemplateFilter(e.target.value);
+                    if (templateId) setTemplateId("");
+                  }}
+                  onKeyDown={onTemplateFilterKeyDown}
+                  placeholder="Type make or model — e.g. Posiflex, Dell…"
                   disabled={templatesLoading}
                   className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
                   autoComplete="off"
                 />
+                <p className="mt-1.5 text-[11px] text-black/45">
+                  Search saved templates, then click a match to fill make, model,
+                  and specs. Press Enter for the first result.
+                </p>
+                {templateId && selectedTemplate ? (
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-brand/25 bg-brand-muted/30 px-3 py-2">
+                    <p className="text-xs text-black/75">
+                      Selected:{" "}
+                      <strong>{selectedTemplate.label}</strong> ·{" "}
+                      {selectedTemplate.manufacturer} {selectedTemplate.model}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={clearTemplateSelection}
+                      className="shrink-0 text-xs font-medium text-brand hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                ) : null}
+                {!templatesLoading && templates.length === 0 ? (
+                  <p className="mt-2 text-xs text-amber-800">
+                    No templates yet — add them under{" "}
+                    <strong>Settings → Device templates</strong>, or enter make /
+                    model manually below.
+                  </p>
+                ) : null}
+                {!templatesLoading &&
+                templates.length > 0 &&
+                templateFilter.trim() &&
+                !templateId ? (
+                  <div
+                    id="hw-template-results"
+                    role="listbox"
+                    className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-black/15 bg-white py-1 shadow-lg"
+                  >
+                    {filteredTemplates.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-black/55">
+                        No templates match &ldquo;{templateFilter.trim()}&rdquo;.
+                        Check spelling or add one in Settings.
+                      </p>
+                    ) : (
+                      filteredTemplates.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          role="option"
+                          onClick={() => pickTemplateFromSearch(t.id)}
+                          className="block w-full px-3 py-2 text-left text-sm hover:bg-brand-muted/60"
+                        >
+                          <span className="font-medium">{t.label}</span>
+                          <span className="text-black/55">
+                            {" "}
+                            · {t.manufacturer} {t.model}
+                          </span>
+                          <span className="block text-[11px] text-black/45">
+                            {t.category}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               <div>
@@ -368,7 +467,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   htmlFor="hw-template"
                   className="text-xs font-medium text-black/70"
                 >
-                  Template
+                  Or pick from list
                 </label>
                 <select
                   id="hw-template"
@@ -382,25 +481,12 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                       ? "Loading templates…"
                       : "Custom — enter make / model below"}
                   </option>
-                  {filteredTemplates.map((t) => (
+                  {templates.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.label} · {t.manufacturer} {t.model}
                     </option>
                   ))}
                 </select>
-                {!templatesLoading && templates.length === 0 ? (
-                  <p className="mt-2 text-xs text-amber-800">
-                    No templates yet. Add some under Settings, or use Custom
-                    and type make/model manually.
-                  </p>
-                ) : null}
-                {!templatesLoading &&
-                templates.length > 0 &&
-                filteredTemplates.length === 0 ? (
-                  <p className="mt-2 text-xs text-black/55">
-                    No matches — clear the filter or choose Custom.
-                  </p>
-                ) : null}
               </div>
 
               {selectedTemplate ? (

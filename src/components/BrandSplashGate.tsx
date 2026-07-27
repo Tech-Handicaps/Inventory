@@ -77,9 +77,9 @@ export function BrandSplashGate({ children }: Props) {
 
   if (phase === "splash") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-surface px-6">
+      <div className="entry-canvas fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden px-6">
         <div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(19,157,75,0.18),transparent_55%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(19,157,75,0.2),transparent_55%)]"
           aria-hidden
         />
         <div className="relative flex flex-col items-center gap-8">
@@ -88,13 +88,13 @@ export function BrandSplashGate({ children }: Props) {
           </div>
           <div className="flex flex-col items-center gap-3" aria-live="polite">
             <div
-              className="h-1 w-40 overflow-hidden rounded-full bg-black/10"
+              className="h-1.5 w-44 overflow-hidden rounded-full bg-brand/15"
               role="progressbar"
               aria-label="Loading"
             >
-              <div className="h-full w-1/3 animate-brand-loader rounded-full bg-brand" />
+              <div className="h-full w-1/3 animate-brand-loader rounded-full bg-gradient-to-r from-brand to-brand-hover" />
             </div>
-            <p className="font-heading text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45">
+            <p className="font-heading text-[10px] font-bold uppercase tracking-[0.2em] text-brand-hover">
               Handicaps Network Africa
             </p>
           </div>

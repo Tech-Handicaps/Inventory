@@ -1,7 +1,6 @@
 import type { AppRole } from "@/lib/auth/roles";
 
 export type NavKey =
-  | "home"
   | "dashboard"
   | "inventory"
   | "assets"
@@ -25,7 +24,7 @@ export function isNavLinkVisible(role: AppRole, key: NavKey): boolean {
     return role === "admin" || role === "super_admin" || role === "accountant";
   }
   if (role === "reports_only") {
-    return key === "home" || key === "reports";
+    return key === "reports";
   }
   if (role === "operations") {
     return key !== "settings";

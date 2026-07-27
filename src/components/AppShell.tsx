@@ -10,7 +10,6 @@ import {
   Package,
   FileText,
   Settings,
-  Home,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -24,7 +23,6 @@ import { usePathname, useRouter } from "next/navigation";
 export type AppShellCurrent = NavKey;
 
 function navKeyFromPath(pathname: string): AppShellCurrent | undefined {
-  if (pathname === "/") return "home";
   if (pathname.startsWith("/dashboard")) return "dashboard";
   if (pathname.startsWith("/inventory")) return "inventory";
   if (pathname.startsWith("/assets")) return "assets";
@@ -40,7 +38,12 @@ const NAV_ITEMS: {
   label: string;
   icon: LucideIcon;
 }[] = [
-  { href: "/", key: "home", label: "Home", icon: Home },
+  {
+    href: "/inventory",
+    key: "inventory",
+    label: "Hardware board",
+    icon: LayoutGrid,
+  },
   {
     href: "/dashboard",
     key: "dashboard",
@@ -48,12 +51,11 @@ const NAV_ITEMS: {
     icon: LayoutDashboard,
   },
   {
-    href: "/inventory",
-    key: "inventory",
-    label: "Hardware board",
-    icon: LayoutGrid,
+    href: "/assets",
+    key: "assets",
+    label: "All assets",
+    icon: Package,
   },
-  { href: "/assets", key: "assets", label: "All assets", icon: Package },
   { href: "/reports", key: "reports", label: "Reports", icon: FileText },
   {
     href: "/acknowledgements",
@@ -86,7 +88,7 @@ function SidebarNav({
   };
 
   return (
-    <nav className="flex flex-1 flex-col gap-0.5 px-3" aria-label="Main">
+    <nav className="flex flex-1 flex-col gap-1 px-3" aria-label="Main">
       {NAV_ITEMS.map((item) => {
         if (!visible(item.key)) return null;
         const active = current === item.key;
@@ -96,25 +98,15 @@ function SidebarNav({
             key={item.key}
             href={item.href}
             onClick={onNavigate}
-            className={`font-heading group flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold uppercase tracking-wide transition ${
-              active
-                ? "bg-brand-muted text-brand-hover"
-                : "text-black/65 hover:bg-black/[0.04] hover:text-black"
-            }`}
+            className={`nav-link ${active ? "nav-link-active" : "nav-link-inactive"}`}
           >
-            <span
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                active
-                  ? "bg-brand text-white"
-                  : "bg-black/[0.04] text-black/55 group-hover:text-brand"
-              }`}
-            >
+            <span className="nav-icon-pill">
               <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
             </span>
             <span className="truncate">{item.label}</span>
             {active ? (
               <span
-                className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+                className="ml-auto h-2 w-2 shrink-0 rounded-full bg-brand shadow-[0_0_0_3px_rgba(19,157,75,0.25)]"
                 aria-hidden
               />
             ) : null}
@@ -173,14 +165,14 @@ function SidebarUser({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <div className="border-t border-black/10 px-4 py-4">
+    <div className="border-t border-brand/10 px-4 py-4">
       {loadError ? (
-        <p className="mb-2 text-[11px] text-amber-800">
+        <p className="mb-2 rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
           Could not load role — refresh or sign in again
         </p>
       ) : null}
       {email ? (
-        <p className="truncate text-xs text-black/55" title={email}>
+        <p className="truncate text-xs font-medium text-black/55" title={email}>
           {email}
         </p>
       ) : (
@@ -189,7 +181,7 @@ function SidebarUser({ onNavigate }: { onNavigate?: () => void }) {
       <button
         type="button"
         onClick={() => void signOut()}
-        className="font-heading mt-2 text-xs font-bold uppercase tracking-wide text-brand hover:underline"
+        className="font-heading mt-2.5 text-xs font-bold uppercase tracking-wide text-brand transition hover:text-brand-hover hover:underline"
       >
         Sign out
       </button>
@@ -211,17 +203,22 @@ function SidebarPanel({
       : "Stock · repairs · refurbishment";
 
   return (
-    <div className="flex h-full flex-col bg-white">
-      <div className="border-b border-black/8 px-4 py-5">
-        <Link href="/inventory" onClick={onNavigate} className="block">
+    <div className="sidebar-shell relative flex h-full flex-col">
+      <div className="sidebar-brand-stripe" aria-hidden />
+      <div className="border-b border-brand/10 px-4 py-5 pl-5">
+        <Link href="/inventory" onClick={onNavigate} className="block" title="Hardware board (home)">
           <BrandLogo className="h-9 w-auto" priority={current === "inventory"} />
         </Link>
-        <p className="font-heading mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-black">
-          Hardware inventory
-        </p>
-        <p className="mt-0.5 text-[11px] leading-snug text-black/50">
-          {subtitle}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <p className="font-heading text-[10px] font-bold uppercase tracking-[0.18em] text-black">
+            Hardware inventory
+          </p>
+          <span className="funky-badge">
+            <span className="funky-badge-dot" aria-hidden />
+            Live
+          </span>
+        </div>
+        <p className="mt-1 text-[11px] leading-snug text-black/50">{subtitle}</p>
       </div>
       <div className="flex-1 overflow-y-auto py-3">
         <SidebarNav current={current} onNavigate={onNavigate} />
@@ -249,9 +246,9 @@ export function AppShell({ children }: Props) {
   }, [open]);
 
   return (
-    <div className="min-h-screen bg-surface lg:flex">
+    <div className="min-h-screen lg:flex">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-black/10 lg:block">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-brand/10 lg:block">
         <SidebarPanel current={current} />
       </aside>
 
@@ -260,16 +257,16 @@ export function AppShell({ children }: Props) {
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal>
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="modal-overlay absolute inset-0"
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(100%,18rem)] flex-col shadow-xl">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(100%,18rem)] flex-col shadow-2xl">
             <div className="absolute right-3 top-3 z-10">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg bg-white/90 p-2 text-black/70 shadow-sm"
+                className="rounded-xl bg-white/95 p-2 text-black/70 shadow-md ring-1 ring-brand/10"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" />
@@ -284,11 +281,11 @@ export function AppShell({ children }: Props) {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-black/10 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-brand/10 bg-white/80 px-4 py-3 backdrop-blur-md lg:hidden">
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="rounded-lg border border-black/10 p-2 text-black/70"
+            className="rounded-xl border border-brand/15 bg-brand-muted/40 p-2 text-brand-hover"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
@@ -300,7 +297,7 @@ export function AppShell({ children }: Props) {
           </div>
           <BrandLogo className="h-7 w-auto" />
         </header>
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="app-canvas min-w-0 flex-1">{children}</div>
       </div>
     </div>
   );

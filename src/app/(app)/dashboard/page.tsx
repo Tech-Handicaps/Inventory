@@ -12,6 +12,7 @@ import { RefurbishedLineChart } from "@/components/charts/RefurbishedLineChart";
 import { RepairsBarChart } from "@/components/charts/RepairsBarChart";
 import { StockPieChart } from "@/components/charts/StockPieChart";
 import { WriteoffsDonutChart } from "@/components/charts/WriteoffsDonutChart";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 type StockRow = { status: string; count: number; code: string };
 type StockData = { stock: StockRow[]; total: number };
@@ -118,7 +119,7 @@ function KpiCard({
             ? "bg-rose-500"
             : "bg-black/80";
   return (
-    <div className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
+    <div className="kpi-card p-4">
       <div className={`mb-3 h-1 w-10 rounded-full ${bar}`} />
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-black/45">
         {label}
@@ -281,7 +282,7 @@ export default function DashboardPage() {
         </p>
         <button
           type="button"
-          className="mt-4 rounded bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
+          className="btn-primary mt-4"
           onClick={() => window.location.reload()}
         >
           Retry
@@ -307,37 +308,28 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : null}
-        <section className="rounded-xl border border-brand/25 bg-brand-muted/30 p-5 shadow-sm">
-          <h1 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
-            Operations overview
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-black/75">
-            Live roll-ups from your asset register: lifecycle mix, category
-            concentration, Assist vs manual sources, repairs, refurbishment, and
-            write-offs. Open{" "}
-            <a
-              href="/inventory"
-              className="font-semibold text-brand underline underline-offset-2"
-            >
-              Inventory
-            </a>{" "}
-            to move cards,{" "}
-            <a
-              href="/assets"
-              className="font-semibold text-brand underline underline-offset-2"
-            >
-              All assets
-            </a>{" "}
-            for the full table, or{" "}
-            <a
-              href="/reports#lifecycle"
-              className="font-semibold text-brand underline underline-offset-2"
-            >
-              Reports
-            </a>{" "}
-            for movement history.
-          </p>
-        </section>
+        <PageHeader
+          title="Operations overview"
+          description={
+            <>
+              Live roll-ups from your asset register: lifecycle mix, category
+              concentration, Assist vs manual sources, repairs, refurbishment, and
+              write-offs. Open{" "}
+              <a href="/inventory" className="font-semibold text-brand underline underline-offset-2">
+                Inventory
+              </a>{" "}
+              to move cards,{" "}
+              <a href="/assets" className="font-semibold text-brand underline underline-offset-2">
+                All assets
+              </a>{" "}
+              for the full table, or{" "}
+              <a href="/reports#lifecycle" className="font-semibold text-brand underline underline-offset-2">
+                Reports
+              </a>{" "}
+              for movement history.
+            </>
+          }
+        />
 
         {/* KPI strip */}
         <section>
@@ -378,7 +370,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Fleet composition & procurement (operational units only) */}
-        <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+        <section className="section-card p-6">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
             Fleet composition & procurement insight
           </h2>
@@ -638,7 +630,7 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+        <section className="section-card p-6">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
             Geographic distribution (GeoIP)
           </h2>
@@ -727,7 +719,7 @@ export default function DashboardPage() {
 
         {/* Primary charts grid */}
         <div className="grid gap-6 xl:grid-cols-2">
-          <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+          <section className="section-card p-6">
             <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
               Lifecycle mix
             </h2>
@@ -751,7 +743,7 @@ export default function DashboardPage() {
             ) : null}
           </section>
 
-          <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+          <section className="section-card p-6">
             <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
               By category
             </h2>
@@ -770,7 +762,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+          <section className="section-card p-6">
             <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
               Repair pipeline
             </h2>
@@ -789,7 +781,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+          <section className="section-card p-6">
             <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
               Data source
             </h2>
@@ -811,7 +803,7 @@ export default function DashboardPage() {
 
         {/* Trend + recent activity */}
         <div className="grid gap-6 xl:grid-cols-2">
-          <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+          <section className="section-card p-6">
             <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
               Refurbished trend
             </h2>
@@ -830,7 +822,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+          <section className="section-card p-6">
             <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
               Recent activity
             </h2>
@@ -876,7 +868,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Write-offs */}
-        <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+        <section className="section-card p-6">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
             Write-offs
           </h2>
@@ -932,7 +924,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Xero */}
-        <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+        <section className="section-card p-6">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
             Financial sync (Xero)
           </h2>

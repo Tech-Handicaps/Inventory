@@ -138,7 +138,7 @@ export function WriteOffModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="write-off-title"
@@ -148,7 +148,7 @@ export function WriteOffModal({
       }}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-black/10 bg-white p-6 shadow-xl"
+        className="modal-panel max-h-[90vh] w-full max-w-lg overflow-y-auto p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <h2

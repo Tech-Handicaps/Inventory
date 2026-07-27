@@ -23,7 +23,7 @@ export function PasswordInput({
         {...props}
         id={id}
         type={visible ? "text" : "password"}
-        className={`${className} pr-10`.trim()}
+        className={`${className} input-field pr-10`.trim()}
       />
       <button
         type="button"

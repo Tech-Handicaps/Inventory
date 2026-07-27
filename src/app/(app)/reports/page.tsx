@@ -1,6 +1,7 @@
 "use client";
 
 import { ReportsLifecycleSlot } from "./reports-lifecycle-slot";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 type ReportDef = {
   id: string;
@@ -89,9 +90,9 @@ function pdfUrl(type: string) {
 function ReportTile({ report }: { report: ReportDef }) {
   const href = pdfUrl(report.type);
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-md">
+    <article className="section-card section-card-interactive group relative flex flex-col overflow-hidden">
       <div
-        className="absolute inset-y-0 left-0 w-1 bg-brand/70 transition group-hover:bg-brand"
+        className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-brand to-brand-deep transition group-hover:from-brand-hover"
         aria-hidden
       />
       <div className="flex flex-1 flex-col gap-3 p-5 pl-6">
@@ -99,9 +100,7 @@ function ReportTile({ report }: { report: ReportDef }) {
           <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
             {report.title}
           </h3>
-          <span className="rounded-full bg-brand-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-hover">
-            PDF
-          </span>
+          <span className="funky-badge">PDF</span>
         </div>
         <p className="flex-1 text-sm leading-relaxed text-black/65">
           {report.description}
@@ -114,14 +113,14 @@ function ReportTile({ report }: { report: ReportDef }) {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-heading inline-flex flex-1 items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover sm:flex-none"
+            className="btn-primary flex-1 py-2.5 sm:flex-none"
           >
             Open PDF
           </a>
           <a
             href={href}
             download
-            className="font-heading inline-flex flex-1 items-center justify-center rounded-lg border border-black/20 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-black transition-colors hover:border-black hover:bg-black hover:text-white sm:flex-none"
+            className="btn-secondary flex-1 py-2.5 sm:flex-none"
           >
             Download
           </a>
@@ -134,44 +133,19 @@ function ReportTile({ report }: { report: ReportDef }) {
 export default function ReportsPage() {
   return (
     <main className="mx-auto max-w-7xl space-y-10 p-6 pb-16">
-        {/* Page intro */}
-        <section className="relative overflow-hidden rounded-2xl border border-brand/20 bg-gradient-to-br from-brand-muted via-white to-surface p-6 sm:p-8">
-          <div
-            className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-brand/10 blur-3xl"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-brand/5 blur-3xl"
-            aria-hidden
-          />
-          <p className="font-heading text-[10px] font-bold uppercase tracking-[0.2em] text-brand-hover">
-            Handicaps Network Africa
-          </p>
-          <h1 className="font-heading mt-2 text-2xl font-bold uppercase tracking-wide text-black sm:text-3xl">
-            Reports
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-black/70 sm:text-base">
-            Printable inventory PDFs for sharing, audits, and accounting — plus
-            a per-asset movement history from the board audit trail.
-          </p>
-          <nav
-            className="mt-6 flex flex-wrap gap-2"
-            aria-label="Reports sections"
-          >
-            <a
-              href="#pdf-library"
-              className="font-heading rounded-full border border-brand/30 bg-white/80 px-4 py-2 text-xs font-bold uppercase tracking-wide text-brand-hover transition hover:border-brand hover:bg-white"
-            >
+        <PageHeader
+          title="Reports"
+          description="Printable inventory PDFs for sharing, audits, and accounting — plus a per-asset movement history from the board audit trail."
+        >
+          <nav className="flex flex-wrap gap-2" aria-label="Reports sections">
+            <a href="#pdf-library" className="filter-pill filter-pill-active">
               PDF library
             </a>
-            <a
-              href="#lifecycle"
-              className="font-heading rounded-full border border-black/15 bg-white/60 px-4 py-2 text-xs font-bold uppercase tracking-wide text-black/70 transition hover:border-black/30 hover:bg-white"
-            >
+            <a href="#lifecycle" className="filter-pill filter-pill-inactive">
               Asset lifecycle
             </a>
           </nav>
-        </section>
+        </PageHeader>
 
         {/* PDF library */}
         <section id="pdf-library" className="scroll-mt-6 space-y-8">

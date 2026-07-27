@@ -136,6 +136,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/inventory", request.url));
   }
 
+  /** Logged-in users should not see the public marketing page — send them to the app home. */
+  if (pathname === "/" && user) {
+    return NextResponse.redirect(new URL("/inventory", request.url));
+  }
+
   return supabaseResponse;
 }
 

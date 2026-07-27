@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ToastProvider";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
@@ -187,6 +188,19 @@ export default function AssetsPage() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-8 p-6">
+        <PageHeader
+          eyebrow="Asset registry"
+          title="All assets"
+          description="Every unit in one searchable table — register hardware, assign templates and clubs, or import from Zoho Assist."
+        >
+          <button
+            type="button"
+            onClick={() => setAssistImportOpen(true)}
+            className="btn-secondary border-violet-300 text-violet-900 hover:border-violet-500 hover:bg-violet-50"
+          >
+            Import from Zoho Assist
+          </button>
+        </PageHeader>
         <HardwareCaptureForm
           statuses={effectiveStatuses}
           onCreated={() => void load()}
@@ -201,38 +215,7 @@ export default function AssetsPage() {
           </div>
         ) : null}
 
-        <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
-                All assets
-              </h2>
-              <div className="mt-2 h-0.5 w-14 rounded-full bg-brand" />
-            </div>
-            <button
-              type="button"
-              onClick={() => setAssistImportOpen(true)}
-              className="font-heading shrink-0 rounded-lg border-2 border-violet-600 bg-violet-50 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-violet-950 transition-colors hover:bg-violet-100"
-            >
-              Import from Zoho Assist
-            </button>
-          </div>
-          <p className="mt-4 max-w-3xl text-sm text-black/70">
-            The table lists every unit. Use <strong>Register hardware</strong>{" "}
-            above to add one <strong>physical unit</strong> at a time. Pick a{" "}
-            <strong>device template</strong> (from Settings) so you don’t retype
-            the same make/model; optionally assign a <strong>club</strong>{" "}
-            (Settings → Clubs) for consistent site names in the first column.
-            You still enter this unit’s <strong>serial</strong> and optional display
-            name so each row is unique. Rows synced from Zoho Assist show{" "}
-            <strong>Source: Assist</strong>
-            {" "}and hardware details when populated. Use{" "}
-            <strong>Import from Zoho Assist</strong> to pull an unattended device
-            by name or from the Assist device list (same department as in Settings).
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+        <div className="section-card p-6">
           {assets.length ? (
             <>
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:gap-4">

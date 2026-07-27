@@ -266,7 +266,7 @@ export function EditAssetModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-asset-title"
@@ -275,7 +275,7 @@ export function EditAssetModal({
       }}
     >
       <div
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-black/10 bg-white shadow-xl"
+        className="modal-panel max-h-[90vh] w-full max-w-xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-black/10 px-5 py-4">

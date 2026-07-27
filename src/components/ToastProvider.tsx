@@ -62,12 +62,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto rounded border px-3 py-2 text-sm shadow-md ${
+            className={`toast-item pointer-events-auto ${
               t.tone === "error"
-                ? "border-red-200 bg-red-50 text-red-900"
+                ? "toast-error"
                 : t.tone === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                  : "border-zinc-200 bg-white text-zinc-800"
+                  ? "toast-success"
+                  : "toast-info"
             }`}
             role={t.tone === "error" ? "alert" : "status"}
           >

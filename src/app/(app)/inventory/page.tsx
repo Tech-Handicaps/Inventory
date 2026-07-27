@@ -7,6 +7,7 @@ import { LogRepairModal } from "@/components/LogRepairModal";
 import { StartAssessmentModal } from "@/components/StartAssessmentModal";
 import { useToast } from "@/components/ToastProvider";
 import { WriteOffModal } from "@/components/WriteOffModal";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 
@@ -357,6 +358,11 @@ export default function InventoryPage() {
 
   return (
     <main className="mx-auto max-w-7xl space-y-8 p-6">
+        <PageHeader
+          eyebrow="Hardware board"
+          title="Lifecycle workflow"
+          description="Move hardware through each stage — from new stock and deployment to assessment, repairs, refurbishment, and write-off."
+        />
         <HardwareCaptureForm
           statuses={effectiveStatuses}
           onCreated={() => void load()}
@@ -376,7 +382,7 @@ export default function InventoryPage() {
           </div>
         ) : null}
 
-        <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+        <div className="section-card p-6">
           <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
             How this board is organized
           </h2>

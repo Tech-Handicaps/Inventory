@@ -124,12 +124,14 @@ export function SettingsTabsContent() {
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="font-heading text-xl font-bold uppercase tracking-wide text-black">
-          Settings
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-black/65">{subtitle}</p>
-      </header>
+      <section className="page-hero mb-6">
+        <div className="page-hero-blob page-hero-blob-a" aria-hidden />
+        <div className="relative">
+          <p className="page-eyebrow">Configuration</p>
+          <h1 className="page-title brand-gradient-text">Settings</h1>
+          <p className="page-description">{subtitle}</p>
+        </div>
+      </section>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <nav
@@ -150,19 +152,11 @@ export function SettingsTabsContent() {
                 aria-controls={`settings-panel-${t.id}`}
                 tabIndex={selected ? 0 : -1}
                 onClick={() => selectTab(t.id)}
-                className={`font-heading group flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide transition ${
-                  selected
-                    ? "bg-brand-muted text-brand-hover"
-                    : "text-black/65 hover:bg-black/[0.04] hover:text-black"
+                className={`nav-link w-full shrink-0 ${
+                  selected ? "nav-link-active" : "nav-link-inactive"
                 }`}
               >
-                <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                    selected
-                      ? "bg-brand text-white"
-                      : "bg-black/[0.04] text-black/55 group-hover:text-brand"
-                  }`}
-                >
+                <span className="nav-icon-pill">
                   <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
                 </span>
                 <span className="truncate">{t.label}</span>
@@ -182,7 +176,7 @@ export function SettingsTabsContent() {
             {activeLabel}
           </p>
           <div
-            className="rounded-xl border border-black/10 bg-white p-5 shadow-sm sm:p-6"
+            className="glass-card p-5 sm:p-6"
             role="tabpanel"
             id={`settings-panel-${tab}`}
             aria-labelledby={`settings-tab-${tab}`}
