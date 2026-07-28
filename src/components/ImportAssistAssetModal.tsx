@@ -426,10 +426,12 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
             </h3>
             <p className="mt-2 text-sm text-amber-950/95">
               This device is not covered by a{" "}
-              <strong className="font-semibold">Device template</strong> (make/model) in Settings.
-              Manufacturer:{" "}
-              <strong>{noTpl.mapped.manufacturer || "—"}</strong>, model:{" "}
-              <strong>{noTpl.mapped.model || "—"}</strong>.
+              <strong className="font-semibold">Device template</strong> in Settings.
+              Assist reported manufacturer{" "}
+              <strong>{noTpl.mapped.manufacturer || "—"}</strong> and model{" "}
+              <strong>{noTpl.mapped.model || "—"}</strong>. Imports match on
+              make + model when both are present, or on model alone when only the
+              model number is available (must match exactly one catalog template).
             </p>
             <div className="mt-4 space-y-2">
               <label className="text-xs font-medium text-black/70">

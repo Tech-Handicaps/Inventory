@@ -9,6 +9,10 @@ import { useToast } from "@/components/ToastProvider";
 import { WriteOffModal } from "@/components/WriteOffModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
+import {
+  displayAssetManufacturer,
+  displayAssetModel,
+} from "@/lib/inventory/asset-hardware-display";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 
 type Status = {
@@ -47,7 +51,12 @@ type Asset = {
   geoRegionName: string | null;
   geoCity: string | null;
   status: Status;
-  deviceTemplate?: { id: string; label: string } | null;
+  deviceTemplate?: {
+    id: string;
+    label: string;
+    manufacturer?: string | null;
+    model?: string | null;
+  } | null;
   club?: { id: string; name: string } | null;
   /** Open assessments for this asset (API returns at most one when workflowStatus is open). */
   assessments?: OpenAssessmentBrief[];
@@ -633,9 +642,9 @@ export default function InventoryPage() {
                         <td className="px-4 py-2">{asset.assetName}</td>
                         <td className="px-4 py-2">{asset.category}</td>
                         <td className="px-4 py-2">
-                          {asset.manufacturer ?? "—"}
+                          {displayAssetManufacturer(asset) ?? "—"}
                         </td>
-                        <td className="px-4 py-2">{asset.model ?? "—"}</td>
+                        <td className="px-4 py-2">{displayAssetModel(asset) ?? "—"}</td>
                         <td className="px-4 py-2 font-mono text-xs">
                           {asset.serialNumber ?? "—"}
                         </td>
@@ -839,8 +848,8 @@ function HardwareCard({
           ) : null}
           <p className="text-xs text-black/55">
             {asset.category}
-            {asset.manufacturer || asset.model
-              ? ` · ${[asset.manufacturer, asset.model].filter(Boolean).join(" ")}`
+            {displayAssetManufacturer(asset) || displayAssetModel(asset)
+              ? ` · ${[displayAssetManufacturer(asset), displayAssetModel(asset)].filter(Boolean).join(" ")}`
               : ""}
           </p>
           {asset.deviceLocation ? (

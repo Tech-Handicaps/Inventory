@@ -8,6 +8,10 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ToastProvider";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
+import {
+  displayAssetManufacturer,
+  displayAssetModel,
+} from "@/lib/inventory/asset-hardware-display";
 
 type Asset = {
   id: string;
@@ -23,7 +27,12 @@ type Asset = {
   systemGpu: string | null;
   zohoAssistDeviceId: string | null;
   status: { id: string; code: string; label: string };
-  deviceTemplate?: { id: string; label: string } | null;
+  deviceTemplate?: {
+    id: string;
+    label: string;
+    manufacturer?: string | null;
+    model?: string | null;
+  } | null;
   club?: { id: string; name: string } | null;
   reason: string | null;
   dateAdded: string;
@@ -360,8 +369,8 @@ export default function AssetsPage() {
                         )}
                       </td>
                       <td className="py-2">{a.category}</td>
-                      <td className="py-2">{a.manufacturer ?? "—"}</td>
-                      <td className="py-2">{a.model ?? "—"}</td>
+                      <td className="py-2">{displayAssetManufacturer(a) ?? "—"}</td>
+                      <td className="py-2">{displayAssetModel(a) ?? "—"}</td>
                       <td className="py-2 font-mono text-xs">
                         {a.serialNumber ?? "—"}
                       </td>

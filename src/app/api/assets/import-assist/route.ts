@@ -13,6 +13,8 @@ import {
   refreshZohoAccessToken,
 } from "@/lib/zoho/client";
 import { resolveAssistResourceId } from "@/lib/zoho/resolve-assist-resource";
+import { findMatchingDeviceTemplate } from "@/lib/inventory/find-device-template";
+import { resolveHardwareFieldFromAssistAndTemplate } from "@/lib/inventory/assist-hardware-values";
 import { prisma } from "@/lib/prisma";
 
 type ImportBody = {
@@ -23,21 +25,6 @@ type ImportBody = {
   templateCategory?: string;
   clubId?: string;
 };
-
-async function findMatchingTemplate(
-  manufacturer: string | null | undefined,
-  model: string | null | undefined
-) {
-  const m = manufacturer?.trim();
-  const o = model?.trim();
-  if (!m || !o) return null;
-  return prisma.deviceTemplate.findFirst({
-    where: {
-      manufacturer: { equals: m, mode: "insensitive" },
-      model: { equals: o, mode: "insensitive" },
-    },
-  });
-}
 
 // POST /api/assets/import-assist — import one asset from Zoho Assist by resource id or display name
 export async function POST(request: NextRequest) {
@@ -118,7 +105,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let template = await findMatchingTemplate(mapped.manufacturer, mapped.model);
+    let template = await findMatchingDeviceTemplate(
+      mapped.manufacturer,
+      mapped.model
+    );
 
     if (!template && createTemplate) {
       const category = (templateCategory ?? "Hardware").trim() || "Hardware";
@@ -144,7 +134,7 @@ export async function POST(request: NextRequest) {
         });
       } catch (e) {
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-          template = await findMatchingTemplate(manufacturer, model);
+          template = await findMatchingDeviceTemplate(manufacturer, model);
         } else {
           throw e;
         }
@@ -167,7 +157,7 @@ export async function POST(request: NextRequest) {
         {
           code: "NO_MATCHING_DEVICE_TEMPLATE",
           error:
-            "No device template matches this manufacturer/model. Create a template in Settings, import without a template, or create one from this device.",
+            "No device template matches this device. We match on manufacturer + model when both are present, or on model alone when Assist only reports a model number. Create a template in Settings, import without a template, or create one from this device.",
           resourceId: assistId,
           mapped: {
             assetName: mapped.assetName,
@@ -261,11 +251,26 @@ export async function POST(request: NextRequest) {
         clubId: resolvedImportClubId,
         deviceLocation: mapped.deviceLocation ?? undefined,
         serialNumber: serialForCreate ?? undefined,
-        manufacturer: mapped.manufacturer ?? template?.manufacturer ?? undefined,
-        model: mapped.model ?? template?.model ?? undefined,
-        processorName: mapped.processorName ?? template?.processorName ?? undefined,
-        systemRam: mapped.systemRam ?? template?.systemRam ?? undefined,
-        systemGpu: mapped.systemGpu ?? template?.systemGpu ?? undefined,
+        manufacturer: resolveHardwareFieldFromAssistAndTemplate(
+          mapped.manufacturer,
+          template?.manufacturer
+        ),
+        model: resolveHardwareFieldFromAssistAndTemplate(
+          mapped.model,
+          template?.model
+        ),
+        processorName: resolveHardwareFieldFromAssistAndTemplate(
+          mapped.processorName,
+          template?.processorName
+        ),
+        systemRam: resolveHardwareFieldFromAssistAndTemplate(
+          mapped.systemRam,
+          template?.systemRam
+        ),
+        systemGpu: resolveHardwareFieldFromAssistAndTemplate(
+          mapped.systemGpu,
+          template?.systemGpu
+        ),
         lastSyncedFromAssistAt: new Date(),
         publicIp: ip ?? undefined,
         publicIpAssistSyncedAt: ip ? new Date() : undefined,

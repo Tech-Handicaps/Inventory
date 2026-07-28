@@ -1,3 +1,4 @@
+import { normalizeAssistHardwareValue } from "@/lib/inventory/assist-hardware-values";
 import type { Prisma } from "@prisma/client";
 import { prismaGeoFieldsFromPublicIp } from "@/lib/geo/lookup-ip";
 import {
@@ -13,8 +14,8 @@ import {
 import { prisma } from "@/lib/prisma";
 
 function strOrNull(v: string | null | undefined): string | null {
-  const t = typeof v === "string" ? v.trim() : "";
-  return t ? t : null;
+  const normalized = normalizeAssistHardwareValue(v);
+  return normalized ?? null;
 }
 
 /** Prefer existing registry value; fill from Assist only when empty. */
