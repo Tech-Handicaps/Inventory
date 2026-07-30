@@ -7,6 +7,17 @@ import type { PdfCatalogRow } from "@/lib/pdf/catalog-report-document";
 import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderInventoryReportPdf } from "@/lib/pdf/render-inventory-report";
 import { renderCatalogReportPdf } from "@/lib/pdf/render-catalog-report";
+import { renderReconcileReportPdf } from "@/lib/pdf/render-reconcile-report";
+import {
+  reportAssetTypeById,
+  type ReportAssetTypeId,
+} from "@/lib/reports/asset-types";
+import {
+  buildStockReconcileReport,
+  filterAssetsByReportTypeAndStatus,
+  stockStatusInclude,
+  type StockStatusFilter,
+} from "@/lib/reports/stock-reconcile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +29,11 @@ const REPORT_TYPES = [
   "deployed",
   "refurbished",
   "terminals_available",
+  "hardware_new_stock",
+  "hardware_refurbished",
+  "usb_hid_msr_new_stock",
+  "usb_hid_msr_refurbished",
+  "reconcile",
 ] as const;
 type ReportType = (typeof REPORT_TYPES)[number];
 
@@ -34,7 +50,7 @@ function formatDate(d: Date) {
 }
 
 type AssetWithStatus = Prisma.AssetGetPayload<{
-  include: { status: true };
+  include: typeof stockStatusInclude;
 }>;
 
 function toRows(assets: AssetWithStatus[]): PdfAssetRow[] {
@@ -47,6 +63,78 @@ function toRows(assets: AssetWithStatus[]): PdfAssetRow[] {
     statusLabel: a.status.label,
     dateUpdated: formatDate(a.dateUpdated),
   }));
+}
+
+type TypeStatusReport = {
+  type: ReportType;
+  typeId: ReportAssetTypeId;
+  status: StockStatusFilter;
+  filenameBase: string;
+};
+
+const TYPE_STATUS_REPORTS: Record<string, TypeStatusReport> = {
+  hardware_new_stock: {
+    type: "hardware_new_stock",
+    typeId: "hardware",
+    status: "new_stock",
+    filenameBase: "hna-hardware-new-stock",
+  },
+  hardware_refurbished: {
+    type: "hardware_refurbished",
+    typeId: "hardware",
+    status: "refurbished",
+    filenameBase: "hna-hardware-refurbished",
+  },
+  usb_hid_msr_new_stock: {
+    type: "usb_hid_msr_new_stock",
+    typeId: "usb_hid_msr",
+    status: "new_stock",
+    filenameBase: "hna-usb-readers-new-stock",
+  },
+  usb_hid_msr_refurbished: {
+    type: "usb_hid_msr_refurbished",
+    typeId: "usb_hid_msr",
+    status: "refurbished",
+    filenameBase: "hna-usb-readers-refurbished",
+  },
+};
+
+async function renderTypeStatusPdf(
+  config: TypeStatusReport,
+  generatedAt: string,
+  logoSource: Buffer | string | null
+) {
+  const assetType = reportAssetTypeById(config.typeId)!;
+  const statusLabel =
+    config.status === "new_stock" ? "New Stock" : "Refurbished";
+
+  const all = await prisma.asset.findMany({
+    include: stockStatusInclude,
+    orderBy: [{ assetName: "asc" }],
+  });
+  const assets = filterAssetsByReportTypeAndStatus(
+    all,
+    config.typeId,
+    config.status
+  );
+
+  const title = `${assetType.label} — ${statusLabel}`;
+  const subtitle = `Units in ${statusLabel} classified as ${assetType.label.toLowerCase()} (by category on each asset row)`;
+
+  const buffer = await renderInventoryReportPdf({
+    title,
+    subtitle,
+    generatedAt,
+    logoSource,
+    summaryRows: [
+      { label: "Asset type", value: assetType.label },
+      { label: "Lifecycle stage", value: statusLabel },
+      { label: "Unit count", value: String(assets.length) },
+    ],
+    rows: toRows(assets),
+  });
+
+  return pdfResponse(buffer, config.filenameBase);
 }
 
 export async function GET(request: NextRequest) {
@@ -87,6 +175,33 @@ export async function GET(request: NextRequest) {
       return pdfResponse(buffer, "hna-catalog-device-templates");
     }
 
+    if (raw === "reconcile") {
+      const assets = await prisma.asset.findMany({
+        include: stockStatusInclude,
+      });
+      const report = buildStockReconcileReport(assets);
+      const monthLabel = new Date().toLocaleDateString("en-ZA", {
+        year: "numeric",
+        month: "long",
+      });
+      const buffer = await renderReconcileReportPdf({
+        title: "Monthly stock reconcile",
+        subtitle: `Finance reconciliation — ${monthLabel} · stock and full register by asset type`,
+        generatedAt,
+        logoSource,
+        report,
+      });
+      return pdfResponse(buffer, "hna-monthly-stock-reconcile");
+    }
+
+    if (raw && TYPE_STATUS_REPORTS[raw]) {
+      return renderTypeStatusPdf(
+        TYPE_STATUS_REPORTS[raw]!,
+        generatedAt,
+        logoSource
+      );
+    }
+
     const type = isReportType(raw) ? raw : "overall";
 
     const statuses = await prisma.assetStatus.findMany({
@@ -94,7 +209,7 @@ export async function GET(request: NextRequest) {
     });
     const byCode = Object.fromEntries(statuses.map((s) => [s.code, s.id]));
 
-    const include = { status: true as const };
+    const include = stockStatusInclude;
 
     if (type === "overall") {
       const title = "Overall inventory report";

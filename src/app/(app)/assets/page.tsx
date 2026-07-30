@@ -5,6 +5,7 @@ import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { AssetTagChips } from "@/components/ui/AssetTagChips";
 import { useToast } from "@/components/ToastProvider";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
@@ -17,6 +18,7 @@ type Asset = {
   id: string;
   assetName: string;
   category: string;
+  tags?: string[] | null;
   serialNumber: string | null;
   manufacturer: string | null;
   model: string | null;
@@ -325,7 +327,7 @@ export default function AssetsPage() {
                     <th className="py-2 text-left font-medium whitespace-nowrap">
                       Source
                     </th>
-                    <th className="py-2 text-left font-medium">Category</th>
+                    <th className="py-2 text-left font-medium">Tags</th>
                     <th className="py-2 text-left font-medium">
                       Manufacturer
                     </th>
@@ -368,7 +370,9 @@ export default function AssetsPage() {
                           "Manual"
                         )}
                       </td>
-                      <td className="py-2">{a.category}</td>
+                      <td className="py-2">
+                        <AssetTagChips tags={a.tags} category={a.category} size="xs" />
+                      </td>
                       <td className="py-2">{displayAssetManufacturer(a) ?? "—"}</td>
                       <td className="py-2">{displayAssetModel(a) ?? "—"}</td>
                       <td className="py-2 font-mono text-xs">

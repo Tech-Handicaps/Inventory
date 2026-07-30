@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
+import {
+  parseTagsFromUnknown,
+  resolveTagsForSave,
+} from "@/lib/inventory/asset-tags";
 
 export async function PUT(
   request: NextRequest,
@@ -23,6 +27,7 @@ export async function PUT(
       manufacturer,
       model,
       category,
+      tags: tagsInput,
       notes,
       processorName,
       systemRam,
@@ -34,8 +39,19 @@ export async function PUT(
     if (typeof manufacturer === "string" && manufacturer.trim())
       data.manufacturer = manufacturer.trim();
     if (typeof model === "string" && model.trim()) data.model = model.trim();
-    if (typeof category === "string" && category.trim())
-      data.category = category.trim();
+    if (category != null || tagsInput !== undefined) {
+      const resolved = resolveTagsForSave({
+        tags:
+          tagsInput !== undefined
+            ? parseTagsFromUnknown(tagsInput)
+            : undefined,
+        category: typeof category === "string" ? category : before.category,
+      });
+      if (resolved.category) {
+        data.category = resolved.category;
+        data.tags = resolved.tags;
+      }
+    }
     if (notes === null || notes === "") data.notes = null;
     else if (typeof notes === "string" && notes.trim())
       data.notes = notes.trim();

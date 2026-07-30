@@ -6,6 +6,11 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { catchToJsonError, jsonError } from "@/lib/api/error-response";
 import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
+import {
+  assetTagsForDisplay,
+  parseTagsFromUnknown,
+  resolveTagsForSave,
+} from "@/lib/inventory/asset-tags";
 import { nextResponseIfPrismaSchemaDrift } from "@/lib/prisma-error-response";
 import { prisma } from "@/lib/prisma";
 
@@ -18,6 +23,7 @@ const optionalTrimmed = z
 const createAssetSchema = z.object({
   assetName: z.string().optional(),
   category: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   statusId: z.string().trim().min(1).optional(),
   reason: z.string().nullable().optional(),
   serialNumber: z.string().nullable().optional(),
@@ -160,6 +166,7 @@ export async function POST(request: NextRequest) {
     const {
       assetName,
       category,
+      tags: tagsInput,
       statusId,
       reason,
       serialNumber,
@@ -182,8 +189,10 @@ export async function POST(request: NextRequest) {
 
     let resolvedName =
       typeof assetName === "string" ? assetName.trim() : "";
-    let resolvedCategory =
-      typeof category === "string" ? category.trim() : "";
+    let tagResolution = resolveTagsForSave({
+      tags: parseTagsFromUnknown(tagsInput),
+      category: typeof category === "string" ? category : undefined,
+    });
     let resolvedManufacturer =
       typeof manufacturer === "string" && manufacturer.trim()
         ? manufacturer.trim()
@@ -209,18 +218,25 @@ export async function POST(request: NextRequest) {
       if (!tpl) {
         return jsonError("deviceTemplateId not found", 400);
       }
-      if (!resolvedCategory) resolvedCategory = tpl.category;
+      if (!tagResolution.category) {
+        tagResolution = resolveTagsForSave({
+          tags: assetTagsForDisplay(tpl.tags, tpl.category),
+        });
+      }
       if (!resolvedManufacturer) resolvedManufacturer = tpl.manufacturer;
       if (!resolvedModel) resolvedModel = tpl.model;
       if (!resolvedName) resolvedName = tpl.label;
     }
 
-    if (!resolvedName || !resolvedCategory || !statusId) {
+    if (!resolvedName || !tagResolution.category || !statusId) {
       return jsonError(
-        "assetName (or a device template), category, and statusId are required",
+        "assetName (or a device template), at least one asset tag, and statusId are required",
         400
       );
     }
+
+    const resolvedCategory = tagResolution.category;
+    const resolvedTags = tagResolution.tags;
 
     const resolvedDataSource = dataSource ?? "manual";
 
@@ -233,6 +249,7 @@ export async function POST(request: NextRequest) {
       data: {
         assetName: resolvedName,
         category: resolvedCategory,
+        tags: resolvedTags,
         statusId,
         reason,
         deviceTemplateId: templateId,

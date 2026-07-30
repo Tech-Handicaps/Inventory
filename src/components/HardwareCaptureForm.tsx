@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { TagInput } from "@/components/ui/TagInput";
+import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
+import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
 
 type Status = {
   id: string;
@@ -14,6 +17,7 @@ type DeviceTemplate = {
   manufacturer: string;
   model: string;
   category: string;
+  tags?: string[];
   processorName: string | null;
   systemRam: string | null;
   systemGpu: string | null;
@@ -95,7 +99,8 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   const [templateId, setTemplateId] = useState("");
   const [templateFilter, setTemplateFilter] = useState("");
   const [assetName, setAssetName] = useState("");
-  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const { suggestions: tagSuggestions } = useAssetTagSuggestions();
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
@@ -203,7 +208,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       if (!t) return;
       setTemplateFilter(`${t.label} · ${t.manufacturer} ${t.model}`);
       setAssetName(t.label);
-      setCategory(t.category);
+      setTags(assetTagsForDisplay(t.tags, t.category));
       setManufacturer(t.manufacturer);
       setModel(t.model);
       setProcessorName(t.processorName ?? "");
@@ -238,10 +243,10 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     e.preventDefault();
     setFormError(null);
     const nameOk = assetName.trim() || Boolean(templateId);
-    const catOk = category.trim() || Boolean(templateId);
-    if (!nameOk || !catOk || !effectiveStatusId) {
+    const tagsOk = tags.length > 0 || Boolean(templateId);
+    if (!nameOk || !tagsOk || !effectiveStatusId) {
       setFormError(
-        "Provide a display name and category, or choose a device template."
+        "Provide a display name and at least one asset tag, or choose a device template."
       );
       return;
     }
@@ -249,7 +254,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     try {
       const payload: Record<string, unknown> = {
         assetName: assetName.trim(),
-        category: category.trim(),
+        tags,
         statusId: effectiveStatusId,
         serialNumber: serialNumber.trim() || undefined,
         manufacturer: manufacturer.trim() || undefined,
@@ -275,7 +280,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       setTemplateId("");
       setTemplateFilter("");
       setAssetName("");
-      setCategory("");
+      setTags([]);
       setManufacturer("");
       setModel("");
       setSerialNumber("");
@@ -596,18 +601,15 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label
-                    htmlFor="hw-category"
-                    className="text-xs font-medium text-black/70"
-                  >
-                    Category {!templateId ? "(required)" : ""}
-                  </label>
-                  <input
-                    id="hw-category"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="e.g. Laptop, Desktop, Monitor"
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  <TagInput
+                    id="hw-tags"
+                    label="Asset tags"
+                    value={tags}
+                    onChange={setTags}
+                    suggestions={tagSuggestions}
+                    required={!templateId}
+                    placeholder="e.g. Hardware, POS Terminal, USB HID Magnetic Stripe Reader"
+                    hint="Type to search suggestions. Add multiple tags — finance reports use these to separate hardware from USB readers. The first tag is the primary category."
                   />
                 </div>
                 <div>

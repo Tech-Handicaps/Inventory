@@ -4,6 +4,10 @@ import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { optionalIsoDateFromBody } from "@/lib/dates/optional-iso-date";
 import {
+  parseTagsFromUnknown,
+  resolveTagsForSave,
+} from "@/lib/inventory/asset-tags";
+import {
   createRefurbishedAcknowledgementAndNotify,
   createWrittenOffAcknowledgementAndNotify,
 } from "@/lib/finance/acknowledgement-notify";
@@ -61,6 +65,7 @@ export async function PUT(
     const {
       assetName,
       category,
+      tags: tagsInput,
       statusId,
       reason,
       serialNumber,
@@ -85,7 +90,19 @@ export async function PUT(
     // AssetUpdateInput only exposes nested `status` / `deviceTemplate`, not direct FK columns.
     const updateData: Prisma.AssetUncheckedUpdateInput = {};
     if (assetName != null) updateData.assetName = assetName;
-    if (category != null) updateData.category = category;
+    if (category != null || tagsInput !== undefined) {
+      const resolved = resolveTagsForSave({
+        tags:
+          tagsInput !== undefined
+            ? parseTagsFromUnknown(tagsInput)
+            : undefined,
+        category: typeof category === "string" ? category : before.category,
+      });
+      if (resolved.category) {
+        updateData.category = resolved.category;
+        updateData.tags = resolved.tags;
+      }
+    }
     if (statusId != null) updateData.statusId = statusId;
     if (reason !== undefined) updateData.reason = reason;
     if (serialNumber !== undefined) updateData.serialNumber = serialNumber;

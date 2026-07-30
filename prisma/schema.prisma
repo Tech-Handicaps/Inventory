@@ -34,6 +34,8 @@ model DeviceTemplate {
   manufacturer   String
   model          String
   category       String
+  /// Asset identification tags (finance + search). First tag mirrors `category` for legacy reports.
+  tags           String[] @default([])
   notes          String?
   /// Typical CPU for this SKU — pre-fills new assets when template is chosen
   processorName  String?
@@ -62,6 +64,8 @@ model Asset {
   id                String           @id @default(cuid())
   assetName         String
   category          String
+  /// Identification tags — e.g. Hardware, POS Terminal, USB HID Magnetic Stripe Reader
+  tags              String[]         @default([])
   serialNumber      String?          @unique
   manufacturer      String?
   model             String?

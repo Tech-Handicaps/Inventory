@@ -15,6 +15,10 @@ import {
 import { resolveAssistResourceId } from "@/lib/zoho/resolve-assist-resource";
 import { findMatchingDeviceTemplate } from "@/lib/inventory/find-device-template";
 import { resolveHardwareFieldFromAssistAndTemplate } from "@/lib/inventory/assist-hardware-values";
+import {
+  assetTagsForDisplay,
+  resolveTagsForSave,
+} from "@/lib/inventory/asset-tags";
 import { prisma } from "@/lib/prisma";
 
 type ImportBody = {
@@ -202,7 +206,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const category = template?.category ?? "Hardware";
+    const tagResolution = resolveTagsForSave({
+      tags: template
+        ? assetTagsForDisplay(template.tags, template.category)
+        : undefined,
+      category: template?.category ?? "Hardware",
+    });
+    const category = tagResolution.category;
+    const assetTags = tagResolution.tags;
     const assetName =
       mapped.assetName?.trim() ||
       dnIn?.trim() ||
@@ -242,6 +253,7 @@ export async function POST(request: NextRequest) {
       data: {
         assetName,
         category,
+        tags: assetTags,
         statusId: initialStatus.id,
         dataSource: "zoho_assist",
         zohoAssistDeviceId: assistId,

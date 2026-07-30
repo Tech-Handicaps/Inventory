@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { TagInput } from "@/components/ui/TagInput";
 import { useToast } from "@/components/ToastProvider";
 import { apiErrorMessage } from "@/lib/client/api-error";
+import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
+import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
 
 type DeviceTemplate = {
   id: string;
@@ -10,6 +13,7 @@ type DeviceTemplate = {
   manufacturer: string;
   model: string;
   category: string;
+  tags?: string[];
   notes: string | null;
   processorName: string | null;
   systemRam: string | null;
@@ -26,7 +30,8 @@ export function DeviceTemplatesSettingsSection() {
   const [label, setLabel] = useState("");
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
-  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const { suggestions: tagSuggestions } = useAssetTagSuggestions();
   const [notes, setNotes] = useState("");
   const [processorName, setProcessorName] = useState("");
   const [systemRam, setSystemRam] = useState("");
@@ -47,7 +52,7 @@ export function DeviceTemplatesSettingsSection() {
     setLabel("");
     setManufacturer("");
     setModel("");
-    setCategory("");
+    setTags([]);
     setNotes("");
     setProcessorName("");
     setSystemRam("");
@@ -59,7 +64,7 @@ export function DeviceTemplatesSettingsSection() {
     setLabel(t.label);
     setManufacturer(t.manufacturer);
     setModel(t.model);
-    setCategory(t.category);
+    setTags(assetTagsForDisplay(t.tags, t.category));
     setNotes(t.notes ?? "");
     setProcessorName(t.processorName ?? "");
     setSystemRam(t.systemRam ?? "");
@@ -68,7 +73,7 @@ export function DeviceTemplatesSettingsSection() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!label.trim() || !manufacturer.trim() || !model.trim() || !category.trim())
+    if (!label.trim() || !manufacturer.trim() || !model.trim() || tags.length === 0)
       return;
     setSaving(true);
     try {
@@ -80,7 +85,7 @@ export function DeviceTemplatesSettingsSection() {
             label: label.trim(),
             manufacturer: manufacturer.trim(),
             model: model.trim(),
-            category: category.trim(),
+            tags,
             notes: notes.trim() || null,
             processorName: processorName.trim() || null,
             systemRam: systemRam.trim() || null,
@@ -98,7 +103,7 @@ export function DeviceTemplatesSettingsSection() {
             label: label.trim(),
             manufacturer: manufacturer.trim(),
             model: model.trim(),
-            category: category.trim(),
+            tags,
             notes: notes.trim() || undefined,
             processorName: processorName.trim() || undefined,
             systemRam: systemRam.trim() || undefined,
@@ -198,16 +203,15 @@ export function DeviceTemplatesSettingsSection() {
               className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
             />
           </div>
-          <div>
-            <label className="text-xs font-medium text-black/70">
-              Default category
-            </label>
-            <input
+          <div className="sm:col-span-2 lg:col-span-3">
+            <TagInput
+              label="Default asset tags"
+              value={tags}
+              onChange={setTags}
+              suggestions={tagSuggestions}
               required
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Laptop, Monitor, …"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              placeholder="Hardware, POS Terminal, USB HID Magnetic Stripe Reader…"
+              hint="Applied when this template is chosen on the hardware board. First tag is the primary category."
             />
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
@@ -286,7 +290,7 @@ export function DeviceTemplatesSettingsSection() {
                 <th className="py-2 pr-4 font-medium">Label</th>
                 <th className="py-2 pr-4 font-medium">Manufacturer</th>
                 <th className="py-2 pr-4 font-medium">Model</th>
-                <th className="py-2 pr-4 font-medium">Category</th>
+                <th className="py-2 pr-4 font-medium">Tags</th>
                 <th className="py-2 pr-4 font-medium">CPU / RAM / GPU</th>
                 <th className="py-2 pr-4 font-medium">Notes</th>
                 <th className="py-2 font-medium" />
@@ -298,7 +302,9 @@ export function DeviceTemplatesSettingsSection() {
                   <td className="py-2 pr-4 font-medium">{t.label}</td>
                   <td className="py-2 pr-4">{t.manufacturer}</td>
                   <td className="py-2 pr-4">{t.model}</td>
-                  <td className="py-2 pr-4">{t.category}</td>
+                  <td className="py-2 pr-4">
+                    {assetTagsForDisplay(t.tags, t.category).join(" · ")}
+                  </td>
                   <td className="py-2 pr-4 text-xs text-black/65">
                     {[t.processorName, t.systemRam, t.systemGpu]
                       .filter(Boolean)

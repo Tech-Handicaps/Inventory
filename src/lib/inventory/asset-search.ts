@@ -1,4 +1,5 @@
 import { formatGeoLabel } from "@/lib/geo/region-display";
+import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
 
 /**
  * Minimal shape for client-side inventory search (board, registry, lifecycle picker).
@@ -8,6 +9,7 @@ export type AssetSearchFields = {
   assetName: string;
   serialNumber: string | null;
   category: string;
+  tags?: string[] | null;
   manufacturer: string | null;
   model: string | null;
   deviceTemplate?: { label: string } | null;
@@ -46,6 +48,7 @@ export function assetSearchText(asset: AssetSearchFields): string {
     asset.assetName,
     asset.serialNumber,
     asset.category,
+    ...assetTagsForDisplay(asset.tags, asset.category),
     asset.manufacturer,
     asset.model,
     asset.deviceTemplate?.label,

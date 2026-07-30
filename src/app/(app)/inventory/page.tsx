@@ -8,6 +8,7 @@ import { StartAssessmentModal } from "@/components/StartAssessmentModal";
 import { useToast } from "@/components/ToastProvider";
 import { WriteOffModal } from "@/components/WriteOffModal";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { AssetTagChips } from "@/components/ui/AssetTagChips";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 import {
   displayAssetManufacturer,
@@ -33,6 +34,7 @@ type Asset = {
   id: string;
   assetName: string;
   category: string;
+  tags?: string[] | null;
   serialNumber: string | null;
   manufacturer: string | null;
   model: string | null;
@@ -618,7 +620,7 @@ export default function InventoryPage() {
                     <tr className="border-b border-black/10 bg-white/80 text-left">
                       <th className="px-4 py-3 font-medium">Club name</th>
                       <th className="px-4 py-3 font-medium">Name</th>
-                      <th className="px-4 py-3 font-medium">Category</th>
+                      <th className="px-4 py-3 font-medium">Tags</th>
                       <th className="px-4 py-3 font-medium">Manufacturer</th>
                       <th className="px-4 py-3 font-medium">Model</th>
                       <th className="px-4 py-3 font-medium">Serial</th>
@@ -640,7 +642,13 @@ export default function InventoryPage() {
                           {asset.club?.name ?? "—"}
                         </td>
                         <td className="px-4 py-2">{asset.assetName}</td>
-                        <td className="px-4 py-2">{asset.category}</td>
+                        <td className="px-4 py-2">
+                          <AssetTagChips
+                            tags={asset.tags}
+                            category={asset.category}
+                            size="xs"
+                          />
+                        </td>
                         <td className="px-4 py-2">
                           {displayAssetManufacturer(asset) ?? "—"}
                         </td>
@@ -846,12 +854,16 @@ function HardwareCard({
               Template: {asset.deviceTemplate.label}
             </p>
           ) : null}
-          <p className="text-xs text-black/55">
-            {asset.category}
-            {displayAssetManufacturer(asset) || displayAssetModel(asset)
-              ? ` · ${[displayAssetManufacturer(asset), displayAssetModel(asset)].filter(Boolean).join(" ")}`
-              : ""}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <AssetTagChips tags={asset.tags} category={asset.category} size="xs" />
+          </div>
+          {(displayAssetManufacturer(asset) || displayAssetModel(asset)) ? (
+            <p className="mt-1 text-xs text-black/55">
+              {[displayAssetManufacturer(asset), displayAssetModel(asset)]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
           {asset.deviceLocation ? (
             <p className="mt-1 text-xs text-black/60">
               <span className="font-medium text-black/45">Location:</span>{" "}

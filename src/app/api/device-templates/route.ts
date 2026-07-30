@@ -4,6 +4,10 @@ import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prismaMutationError } from "@/lib/prisma/error-response";
 import { prisma } from "@/lib/prisma";
+import {
+  parseTagsFromUnknown,
+  resolveTagsForSave,
+} from "@/lib/inventory/asset-tags";
 
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
@@ -40,11 +44,17 @@ export async function POST(request: NextRequest) {
       manufacturer,
       model,
       category,
+      tags: tagsInput,
       notes,
       processorName,
       systemRam,
       systemGpu,
     } = body as Record<string, unknown>;
+
+    const { tags, category: resolvedCategory } = resolveTagsForSave({
+      tags: parseTagsFromUnknown(tagsInput),
+      category: typeof category === "string" ? category : undefined,
+    });
 
     if (
       typeof label !== "string" ||
@@ -53,11 +63,13 @@ export async function POST(request: NextRequest) {
       !manufacturer.trim() ||
       typeof model !== "string" ||
       !model.trim() ||
-      typeof category !== "string" ||
-      !category.trim()
+      !resolvedCategory
     ) {
       return NextResponse.json(
-        { error: "label, manufacturer, model, and category are required" },
+        {
+          error:
+            "label, manufacturer, model, and at least one asset tag are required",
+        },
         { status: 400 }
       );
     }
@@ -67,7 +79,8 @@ export async function POST(request: NextRequest) {
         label: label.trim(),
         manufacturer: manufacturer.trim(),
         model: model.trim(),
-        category: category.trim(),
+        category: resolvedCategory,
+        tags,
         notes:
           typeof notes === "string" && notes.trim() ? notes.trim() : undefined,
         processorName:

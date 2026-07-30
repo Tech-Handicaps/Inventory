@@ -20,6 +20,62 @@ type ReportGroup = {
 
 const REPORT_GROUPS: ReportGroup[] = [
   {
+    id: "finance",
+    label: "Finance & reconciliation",
+    blurb:
+      "Monthly stock reconcile for accounting — asset types are kept separate so hardware and USB readers are never combined in one total.",
+    reports: [
+      {
+        id: "reconcile",
+        type: "reconcile",
+        title: "Monthly stock reconcile",
+        description:
+          "Matrix by asset type: New stock, Refurbished, and Total stock, plus a full lifecycle breakdown for audit. Point-in-time snapshot for finance.",
+        audience: "Finance · Accounting",
+      },
+    ],
+  },
+  {
+    id: "stock-by-type",
+    label: "Stock by asset type",
+    blurb:
+      "New Stock and Refurbished PDFs split by Hardware vs USB HID Magnetic Stripe Readers (classified from each asset’s category).",
+    reports: [
+      {
+        id: "hardware-new",
+        type: "hardware_new_stock",
+        title: "Hardware — New stock",
+        description:
+          "Computers, terminals, POS, and general IT hardware in New Stock only.",
+        audience: "Operations · Finance",
+      },
+      {
+        id: "hardware-refurb",
+        type: "hardware_refurbished",
+        title: "Hardware — Refurbished",
+        description:
+          "General hardware in Refurbished stage, ready for redistribution.",
+        audience: "Operations · Finance",
+      },
+      {
+        id: "usb-new",
+        type: "usb_hid_msr_new_stock",
+        title: "USB HID readers — New stock",
+        description:
+          "USB HID Magnetic Stripe Readers in New Stock (category must include reader / MSR / magnetic stripe).",
+        audience: "Operations · Finance",
+      },
+      {
+        id: "usb-refurb",
+        type: "usb_hid_msr_refurbished",
+        title: "USB HID readers — Refurbished",
+        description:
+          "USB HID Magnetic Stripe Readers in Refurbished stage.",
+        audience: "Operations · Finance",
+      },
+    ],
+  },
+  {
     id: "snapshots",
     label: "Inventory snapshots",
     blurb: "Full or filtered PDFs of the live register for stakeholders and period-end review.",
@@ -135,7 +191,7 @@ export default function ReportsPage() {
     <main className="mx-auto max-w-7xl space-y-10 p-6 pb-16">
         <PageHeader
           title="Reports"
-          description="Printable inventory PDFs for sharing, audits, and accounting — plus a per-asset movement history from the board audit trail."
+          description="Printable inventory PDFs for finance reconciliation, stock by asset type, audits, and accounting — plus per-asset movement history from the audit trail."
         >
           <nav className="flex flex-wrap gap-2" aria-label="Reports sections">
             <a href="#pdf-library" className="filter-pill filter-pill-active">
@@ -155,8 +211,10 @@ export default function ReportsPage() {
                 PDF library
               </h2>
               <p className="mt-1 max-w-xl text-sm text-black/60">
-                Inventory PDFs include serials and dates where available. Open
-                in a new tab or download for email and print.
+                Inventory PDFs include serials and dates where available. Use{" "}
+                <strong>Monthly stock reconcile</strong> for finance; ensure each
+                asset’s <strong>asset tags</strong> are set correctly (e.g. Hardware
+                vs USB HID Magnetic Stripe Reader) so type splits are accurate.
               </p>
             </div>
             <p className="text-[11px] text-black/45 sm:text-right">

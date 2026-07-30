@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AssistDevicePicker } from "@/components/AssistDevicePicker";
+import { TagInput } from "@/components/ui/TagInput";
 import { toDateInputValue } from "@/lib/dates/optional-iso-date";
+import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
+import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 
 type StatusOpt = { id: string; code: string; label: string };
@@ -36,7 +39,8 @@ export function EditAssetModal({
   const [clubs, setClubs] = useState<ClubOpt[]>([]);
 
   const [assetName, setAssetName] = useState("");
-  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const { suggestions: tagSuggestions } = useAssetTagSuggestions();
   const [serialNumber, setSerialNumber] = useState("");
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
@@ -87,7 +91,12 @@ export function EditAssetModal({
       setClubs(Array.isArray(cJson) ? (cJson as ClubOpt[]) : []);
 
       setAssetName(String(aJson.assetName ?? ""));
-      setCategory(String(aJson.category ?? ""));
+      setTags(
+        assetTagsForDisplay(
+          Array.isArray(aJson.tags) ? (aJson.tags as string[]) : [],
+          typeof aJson.category === "string" ? aJson.category : ""
+        )
+      );
       setSerialNumber(String(aJson.serialNumber ?? ""));
       setManufacturer(String(aJson.manufacturer ?? ""));
       setModel(String(aJson.model ?? ""));
@@ -236,7 +245,7 @@ export function EditAssetModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assetName: assetName.trim(),
-          category: category.trim(),
+          tags,
           serialNumber: serialNumber.trim() || null,
           manufacturer: manufacturer.trim() || null,
           model: model.trim() || null,
@@ -341,35 +350,30 @@ export function EditAssetModal({
                   className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
                 />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="text-xs font-medium text-black/70">
-                    Category
-                  </label>
-                  <input
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    required
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-black/70">
-                    Status
-                  </label>
-                  <select
-                    value={statusId}
-                    onChange={(e) => setStatusId(e.target.value)}
-                    required
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-                  >
-                    {statuses.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <TagInput
+                label="Asset tags"
+                value={tags}
+                onChange={setTags}
+                suggestions={tagSuggestions}
+                required
+                hint="First tag is the primary category on reports. Add USB HID Magnetic Stripe Reader or Hardware as needed."
+              />
+              <div>
+                <label className="text-xs font-medium text-black/70">
+                  Status
+                </label>
+                <select
+                  value={statusId}
+                  onChange={(e) => setStatusId(e.target.value)}
+                  required
+                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                >
+                  {statuses.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-medium text-black/70">
