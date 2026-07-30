@@ -23,8 +23,19 @@ function brandLogoEmailUrl(appBaseUrl: string): string {
  * Wraps message body in HNA-branded HTML. `appBaseUrl` must be your deployed site origin
  * (e.g. NEXT_PUBLIC_APP_URL) so the logo loads in inbox clients.
  */
-export function wrapHnaEmailHtml(bodyHtml: string, appBaseUrl: string): string {
+export function wrapHnaEmailHtml(
+  bodyHtml: string,
+  appBaseUrl: string,
+  options?: {
+    /** Default: acknowledgement reminder. Use `informational` for report-only emails. */
+    footerVariant?: "acknowledgement" | "informational";
+  }
+): string {
   const logoSrc = esc(brandLogoEmailUrl(appBaseUrl));
+  const footer =
+    options?.footerVariant === "informational"
+      ? "This message was sent by the inventory system. If you have received this email in error, or do not recognise the sender or the content of this email, please refrain from opening any attachments and delete this message."
+      : "This message was sent by the inventory system. Please acknowledge in the app under <strong>Acknowledgements</strong> when your records are updated.";
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -49,7 +60,7 @@ export function wrapHnaEmailHtml(bodyHtml: string, appBaseUrl: string): string {
           </tr>
           <tr>
             <td style="padding:12px 24px;border-top:1px solid #eee;font-size:11px;color:${MUTED};">
-              This message was sent by the inventory system. Please acknowledge in the app under <strong>Acknowledgements</strong> when your records are updated.
+              ${footer}
             </td>
           </tr>
         </table>
@@ -376,13 +387,15 @@ export function buildMonthlyReconcileEmail(params: {
       Kindly find attached the <strong>Monthly Stock Reconcile Report</strong> for
       <strong>${esc(params.monthLabel)}</strong>.
     </p>
-    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.55;color:${MUTED};">
+    <p style="margin:0 0 0 0;font-size:14px;line-height:1.55;color:${MUTED};">
       This is a point-in-time snapshot of the live inventory register (new stock, refurbished,
       and full lifecycle counts by asset type).
     </p>
-    <p style="margin:16px 0 0 0;">
-      <a href="${esc(params.appUrl + "/reports")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open Reports</a>
-    </p>
   `;
-  return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
+  return {
+    subject,
+    html: wrapHnaEmailHtml(body, params.appUrl, {
+      footerVariant: "informational",
+    }),
+  };
 }
