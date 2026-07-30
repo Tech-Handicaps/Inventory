@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { nextResponseIfPrismaSchemaDrift } from "@/lib/prisma-error-response";
 import { prismaMutationError } from "@/lib/prisma/error-response";
 import { prisma } from "@/lib/prisma";
 import {
@@ -19,6 +20,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(templates);
   } catch (error) {
     console.error("GET /api/device-templates", error);
+    const drift = nextResponseIfPrismaSchemaDrift(error);
+    if (drift) return drift;
     return NextResponse.json(
       { error: "Failed to fetch device templates" },
       { status: 500 }

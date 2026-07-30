@@ -24,6 +24,7 @@ export function DeviceTemplatesSettingsSection() {
   const toast = useToast();
   const [templates, setTemplates] = useState<DeviceTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -38,8 +39,18 @@ export function DeviceTemplatesSettingsSection() {
   const [systemGpu, setSystemGpu] = useState("");
 
   const load = useCallback(async () => {
+    setLoadError(null);
     const res = await fetch("/api/device-templates");
     const data = await res.json();
+    if (!res.ok) {
+      setTemplates([]);
+      setLoadError(
+        typeof data?.error === "string"
+          ? data.error
+          : `Could not load device templates (${res.status}).`
+      );
+      return;
+    }
     setTemplates(Array.isArray(data) ? data : []);
   }, []);
 
@@ -155,6 +166,18 @@ export function DeviceTemplatesSettingsSection() {
           About device templates
         </h2>
         <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
+        {loadError ? (
+          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">
+            {loadError}
+            {loadError.includes("db push") || loadError.includes("SCHEMA") ? (
+              <span className="mt-2 block text-red-950/90">
+                From the project folder run{" "}
+                <code className="rounded bg-red-100/80 px-1 font-mono text-xs">npm run db:push:schema</code>{" "}
+                (uses session pooler — see .env.example), then refresh this page.
+              </span>
+            ) : null}
+          </p>
+        ) : null}
         <p className="mt-4 text-sm leading-relaxed text-black/70">
           Define reusable device types (make, model, default category, optional typical
           CPU/RAM/GPU for that SKU). On the <strong>Hardware board</strong>, choose a

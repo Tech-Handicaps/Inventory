@@ -14,7 +14,7 @@ export function nextResponseIfPrismaSchemaDrift(
     return NextResponse.json(
       {
         error:
-          "Database is missing columns this app expects (e.g. Asset.purchaseDate). Run: npx prisma db push. On Supabase, if db push hangs on the transaction pooler (port 6543), use the Session pooler (port 5432) URI from Dashboard → Connect for that command only, or add DIRECT_URL (see .env.example).",
+          "Database is missing columns this app expects (e.g. Asset.tags). Run: npm run db:push:schema. On Supabase, if db push hangs on the transaction pooler (port 6543), that script uses the session pooler (5432) automatically — see .env.example.",
         code: "SCHEMA_DRIFT",
       },
       { status: 503 }
