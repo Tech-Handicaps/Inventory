@@ -268,9 +268,9 @@ export function EmailNotificationsSettingsSection() {
                   className="mt-1"
                 />
                 <span className="text-sm text-black/80">
-                  <strong>{opt.label}</strong>
+                  <strong>{opt.title}</strong>
                   <span className="mt-0.5 block text-xs text-black/50">
-                    {opt.hint}
+                    {opt.detail}
                   </span>
                 </span>
               </label>
