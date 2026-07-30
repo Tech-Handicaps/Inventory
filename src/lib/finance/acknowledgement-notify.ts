@@ -1,15 +1,14 @@
 import {
-  financeRecipientEmails,
+  financeRecipientsList,
   getEmailNotificationSettings,
   isSenderConfiguredForTransport,
 } from "@/lib/email/email-settings";
-import { sendHtmlEmailUnified } from "@/lib/email/send-html-email";
+import { sendPersonalizedFinanceEmails } from "@/lib/email/send-personalized-finance";
 import {
   buildInAssessmentEmail,
   buildInRepairEmail,
   buildRefurbishedEmail,
   buildWrittenOffEmail,
-  greetingLine,
 } from "@/lib/email/templates/hna-finance-email";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -108,7 +107,7 @@ export async function createRepairAcknowledgementAndNotify(params: {
     return;
   }
 
-  const recipients = financeRecipientEmails(settings);
+  const recipients = financeRecipientsList(settings);
   if (recipients.length === 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
@@ -134,36 +133,40 @@ export async function createRepairAcknowledgementAndNotify(params: {
     return;
   }
 
-  const greeting = greetingLine(settings.financeGreetingName);
-  const { subject, html } = buildInRepairEmail({
-    greeting,
-    assetName: asset.assetName,
-    clubName: asset.club?.name ?? null,
-    serial: asset.serialNumber,
-    category: asset.category,
-    manufacturer: asset.manufacturer,
-    model: asset.model,
-    repairReference: params.referenceNumber,
-    appUrl: appBaseUrl(),
-  });
+  const result = await sendPersonalizedFinanceEmails(
+    settings,
+    recipients,
+    (greeting) =>
+      buildInRepairEmail({
+        greeting,
+        assetName: asset.assetName,
+        clubName: asset.club?.name ?? null,
+        serial: asset.serialNumber,
+        category: asset.category,
+        manufacturer: asset.manufacturer,
+        model: asset.model,
+        repairReference: params.referenceNumber,
+        appUrl: appBaseUrl(),
+      })
+  );
 
-  const result = await sendHtmlEmailUnified(settings, {
-    to: recipients,
-    subject,
-    html,
-    from: settings.fromAddress,
-    replyTo: settings.replyTo,
-  });
-
-  if (result.ok) {
+  if (result.sent > 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailSentAt: new Date(), emailError: null },
+      data: {
+        emailSentAt: new Date(),
+        emailError:
+          result.failed > 0
+            ? (result.lastError ?? "partial_send_failure").slice(0, 500)
+            : null,
+      },
     });
   } else {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailError: result.error.slice(0, 500) },
+      data: {
+        emailError: (result.lastError ?? "All sends failed").slice(0, 500),
+      },
     });
   }
 }
@@ -206,7 +209,7 @@ export async function createAssessmentAcknowledgementAndNotify(params: {
     return;
   }
 
-  const recipients = financeRecipientEmails(settings);
+  const recipients = financeRecipientsList(settings);
   if (recipients.length === 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ackId },
@@ -232,36 +235,40 @@ export async function createAssessmentAcknowledgementAndNotify(params: {
     return;
   }
 
-  const greeting = greetingLine(settings.financeGreetingName);
-  const { subject, html } = buildInAssessmentEmail({
-    greeting,
-    assetName: asset.assetName,
-    clubName: asset.club?.name ?? null,
-    serial: asset.serialNumber,
-    category: asset.category,
-    manufacturer: asset.manufacturer,
-    model: asset.model,
-    assessmentReference: params.referenceNumber,
-    appUrl: appBaseUrl(),
-  });
+  const result = await sendPersonalizedFinanceEmails(
+    settings,
+    recipients,
+    (greeting) =>
+      buildInAssessmentEmail({
+        greeting,
+        assetName: asset.assetName,
+        clubName: asset.club?.name ?? null,
+        serial: asset.serialNumber,
+        category: asset.category,
+        manufacturer: asset.manufacturer,
+        model: asset.model,
+        assessmentReference: params.referenceNumber,
+        appUrl: appBaseUrl(),
+      })
+  );
 
-  const result = await sendHtmlEmailUnified(settings, {
-    to: recipients,
-    subject,
-    html,
-    from: settings.fromAddress,
-    replyTo: settings.replyTo,
-  });
-
-  if (result.ok) {
+  if (result.sent > 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ackId },
-      data: { emailSentAt: new Date(), emailError: null },
+      data: {
+        emailSentAt: new Date(),
+        emailError:
+          result.failed > 0
+            ? (result.lastError ?? "partial_send_failure").slice(0, 500)
+            : null,
+      },
     });
   } else {
     await prisma.financeAcknowledgement.update({
       where: { id: ackId },
-      data: { emailError: result.error.slice(0, 500) },
+      data: {
+        emailError: (result.lastError ?? "All sends failed").slice(0, 500),
+      },
     });
   }
 }
@@ -330,7 +337,7 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     return;
   }
 
-  const recipients = financeRecipientEmails(settings);
+  const recipients = financeRecipientsList(settings);
   if (recipients.length === 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
@@ -355,30 +362,6 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     });
     return;
   }
-
-  const greeting = greetingLine(settings.financeGreetingName);
-  const { subject, html } = buildWrittenOffEmail({
-    greeting,
-    assetName: asset.assetName,
-    clubName: asset.club?.name ?? null,
-    serial: asset.serialNumber,
-    category: asset.category,
-    manufacturer: asset.manufacturer,
-    model: asset.model,
-    reason: params.reason?.trim() ?? null,
-    assessmentReference: params.assessmentReference?.trim() ?? null,
-    writeOffCertificateReference: certRef,
-    xeroFixedAssetNumber: params.xeroFixedAssetNumber?.trim() ?? null,
-    replacementRequested: params.replacementRequested === true,
-    replacementAssetName: params.replacementAssetName?.trim() ?? null,
-    replacementAssetType: params.replacementAssetType?.trim() ?? null,
-    replacementMakeModel: params.replacementMakeModel?.trim() ?? null,
-    replacementSerialNumber: params.replacementSerialNumber?.trim() ?? null,
-    replacementXeroFixedAssetNumber:
-      params.replacementXeroFixedAssetNumber?.trim() ?? null,
-    replacementNotes: params.replacementNotes?.trim() ?? null,
-    appUrl: appBaseUrl(),
-  });
 
   let attachments:
     | { filename: string; content: Buffer; contentType: string }[]
@@ -406,24 +389,52 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
     }
   }
 
-  const result = await sendHtmlEmailUnified(settings, {
-    to: recipients,
-    subject,
-    html,
-    from: settings.fromAddress,
-    replyTo: settings.replyTo,
-    attachments,
-  });
+  const result = await sendPersonalizedFinanceEmails(
+    settings,
+    recipients,
+    (greeting) =>
+      buildWrittenOffEmail({
+        greeting,
+        assetName: asset.assetName,
+        clubName: asset.club?.name ?? null,
+        serial: asset.serialNumber,
+        category: asset.category,
+        manufacturer: asset.manufacturer,
+        model: asset.model,
+        reason: params.reason?.trim() ?? null,
+        assessmentReference: params.assessmentReference?.trim() ?? null,
+        writeOffCertificateReference: certRef,
+        xeroFixedAssetNumber: params.xeroFixedAssetNumber?.trim() ?? null,
+        replacementRequested: params.replacementRequested === true,
+        replacementAssetName: params.replacementAssetName?.trim() ?? null,
+        replacementAssetType: params.replacementAssetType?.trim() ?? null,
+        replacementMakeModel: params.replacementMakeModel?.trim() ?? null,
+        replacementSerialNumber: params.replacementSerialNumber?.trim() ?? null,
+        replacementXeroFixedAssetNumber:
+          params.replacementXeroFixedAssetNumber?.trim() ?? null,
+        replacementNotes: params.replacementNotes?.trim() ?? null,
+        appUrl: appBaseUrl(),
+      }),
+    { attachments }
+  );
 
-  if (result.ok) {
+  if (result.sent > 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailSentAt: new Date(), emailError: null },
+      data: {
+        emailSentAt: new Date(),
+        emailError:
+          result.failed > 0
+            ? (result.lastError ?? "partial_send_failure").slice(0, 500)
+            : null,
+      },
     });
   } else {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailError: result.error.slice(0, 500) },
+      data: {
+        emailError: (result.lastError ?? "All sends failed").slice(0, 500),
+      },
     });
   }
 }
@@ -510,7 +521,7 @@ export async function createRefurbishedAcknowledgementAndNotify(params: {
     return;
   }
 
-  const recipients = financeRecipientEmails(settings);
+  const recipients = financeRecipientsList(settings);
   if (recipients.length === 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
@@ -536,46 +547,50 @@ export async function createRefurbishedAcknowledgementAndNotify(params: {
     return;
   }
 
-  const greeting = greetingLine(settings.financeGreetingName);
-  const { subject, html } = buildRefurbishedEmail({
-    greeting,
-    assetName: asset.assetName,
-    clubName,
-    serial: asset.serialNumber,
-    category: asset.category,
-    manufacturer: asset.manufacturer,
-    model: asset.model,
-    deviceLocation: asset.deviceLocation,
-    templateLabel: asset.deviceTemplate?.label ?? null,
-    processorName: asset.processorName,
-    systemRam: asset.systemRam,
-    systemGpu: asset.systemGpu,
-    publicIp: asset.publicIp,
-    geoLabel: formatGeoLabel(asset),
-    zohoAssistDeviceId: asset.zohoAssistDeviceId,
-    dataSource: asset.dataSource,
-    assessmentReference: assessmentRef,
-    bookedAt: formatBookedAt(new Date()),
-    appUrl: appBaseUrl(),
-  });
+  const result = await sendPersonalizedFinanceEmails(
+    settings,
+    recipients,
+    (greeting) =>
+      buildRefurbishedEmail({
+        greeting,
+        assetName: asset.assetName,
+        clubName,
+        serial: asset.serialNumber,
+        category: asset.category,
+        manufacturer: asset.manufacturer,
+        model: asset.model,
+        deviceLocation: asset.deviceLocation,
+        templateLabel: asset.deviceTemplate?.label ?? null,
+        processorName: asset.processorName,
+        systemRam: asset.systemRam,
+        systemGpu: asset.systemGpu,
+        publicIp: asset.publicIp,
+        geoLabel: formatGeoLabel(asset),
+        zohoAssistDeviceId: asset.zohoAssistDeviceId,
+        dataSource: asset.dataSource,
+        assessmentReference: assessmentRef,
+        bookedAt: formatBookedAt(new Date()),
+        appUrl: appBaseUrl(),
+      })
+  );
 
-  const result = await sendHtmlEmailUnified(settings, {
-    to: recipients,
-    subject,
-    html,
-    from: settings.fromAddress,
-    replyTo: settings.replyTo,
-  });
-
-  if (result.ok) {
+  if (result.sent > 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailSentAt: new Date(), emailError: null },
+      data: {
+        emailSentAt: new Date(),
+        emailError:
+          result.failed > 0
+            ? (result.lastError ?? "partial_send_failure").slice(0, 500)
+            : null,
+      },
     });
   } else {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailError: result.error.slice(0, 500) },
+      data: {
+        emailError: (result.lastError ?? "All sends failed").slice(0, 500),
+      },
     });
   }
 }

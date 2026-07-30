@@ -10,6 +10,7 @@ import {
 import { sendHtmlEmailUnified } from "@/lib/email/send-html-email";
 import { nextResponseIfPrismaSchemaDrift } from "@/lib/prisma-error-response";
 import { prisma } from "@/lib/prisma";
+import { sendMonthlyReconcileReport } from "@/lib/reports/send-monthly-reconcile";
 
 /** GET — read email / finance notification settings (admin, super_admin, accountant). */
 export async function GET(request: NextRequest) {
@@ -39,6 +40,10 @@ export async function GET(request: NextRequest) {
       financeGreetingName: row?.financeGreetingName ?? "",
       fromName: row?.fromName ?? "Handicaps Network Africa Inventory",
       replyTo: row?.replyTo ?? "",
+      scheduleReconcileEnabled: row?.scheduleReconcileEnabled ?? false,
+      scheduleReconcileDayOfMonth: resolved.scheduleReconcileDayOfMonth,
+      scheduleReconcileLastSentMonth:
+        row?.scheduleReconcileLastSentMonth ?? null,
       resendFromEmailConfigured: Boolean(
         process.env.RESEND_FROM_EMAIL?.trim() ||
           process.env.EMAIL_FROM?.trim() ||
@@ -92,6 +97,14 @@ export async function PATCH(request: NextRequest) {
       typeof body.emailTransport === "string" ? body.emailTransport.trim() : "";
     const emailTransport =
       emailTransportRaw === "smtp" ? "smtp" : "resend_rest";
+    const scheduleReconcileEnabled = body.scheduleReconcileEnabled === true;
+    const dayRaw = body.scheduleReconcileDayOfMonth;
+    const scheduleReconcileDayOfMonth =
+      typeof dayRaw === "number" && Number.isFinite(dayRaw)
+        ? Math.min(28, Math.max(1, Math.trunc(dayRaw)))
+        : typeof dayRaw === "string" && dayRaw.trim()
+          ? Math.min(28, Math.max(1, Math.trunc(Number(dayRaw)) || 1))
+          : 1;
 
     const row = await prisma.emailNotificationSettings.upsert({
       where: { id: "singleton" },
@@ -108,6 +121,8 @@ export async function PATCH(request: NextRequest) {
         financeGreetingName,
         fromName,
         replyTo,
+        scheduleReconcileEnabled,
+        scheduleReconcileDayOfMonth,
       },
       update: {
         emailTransport,
@@ -121,6 +136,8 @@ export async function PATCH(request: NextRequest) {
         financeGreetingName,
         fromName,
         replyTo,
+        scheduleReconcileEnabled,
+        scheduleReconcileDayOfMonth,
       },
     });
 
@@ -136,7 +153,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-/** POST — test email (admin / super_admin). Body: `{ "to"?: string }` */
+/** POST — test email or monthly reconcile. Body: `{ "to"?: string, "action"?: "test"|"send_reconcile" }` */
 export async function POST(request: NextRequest) {
   const auth = await requireEmailSettingsAdmin(request);
   if (auth instanceof NextResponse) return auth;
@@ -144,7 +161,24 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json().catch(() => ({}))) as {
       to?: unknown;
+      action?: unknown;
     };
+
+    if (body.action === "send_reconcile") {
+      const result = await sendMonthlyReconcileReport({
+        mode: "manual_test",
+        force: true,
+        userId: auth.user.id,
+      });
+      if (!result.ok) {
+        return NextResponse.json(
+          { error: result.error ?? "Failed to send reconcile report", ...result },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json(result);
+    }
+
     const settings = await getEmailNotificationSettings();
     const to =
       typeof body.to === "string" && body.to.includes("@")

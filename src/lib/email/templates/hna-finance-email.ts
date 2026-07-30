@@ -346,6 +346,43 @@ export function buildRefurbishedEmail(params: {
 
 export function greetingLine(financeGreetingName: string | null): string {
   const n = financeGreetingName?.trim();
-  if (n) return `Hi ${n},`;
-  return "Hi,";
+  if (n) {
+    if (/\{[a-z]+\}/i.test(n)) {
+      const rendered = n
+        .replace(/\{name\}/gi, "Finance team")
+        .replace(/\{email\}/gi, "")
+        .replace(/\{month\}/gi, "")
+        .trim();
+      return /,$/.test(rendered) ? rendered : `${rendered},`;
+    }
+    return `Hi ${n},`;
+  }
+  return "Hi Finance team,";
+}
+
+/** Monthly stock reconcile — personalized body; `greeting` should already include the name. */
+export function buildMonthlyReconcileEmail(params: {
+  greeting: string;
+  monthLabel: string;
+  appUrl: string;
+}): { subject: string; html: string } {
+  const subject = `Monthly Stock Reconcile Report — ${params.monthLabel}`;
+  const body = `
+    <p style="margin:0 0 16px 0;font-size:15px;color:#111;">${esc(params.greeting)}</p>
+    <p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
+      You are receiving this email because you are part of the finance / auditing notification list.
+    </p>
+    <p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
+      Kindly find attached the <strong>Monthly Stock Reconcile Report</strong> for
+      <strong>${esc(params.monthLabel)}</strong>.
+    </p>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.55;color:${MUTED};">
+      This is a point-in-time snapshot of the live inventory register (new stock, refurbished,
+      and full lifecycle counts by asset type).
+    </p>
+    <p style="margin:16px 0 0 0;">
+      <a href="${esc(params.appUrl + "/reports")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open Reports</a>
+    </p>
+  `;
+  return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }

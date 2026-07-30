@@ -2,6 +2,10 @@ import {
   parseEmailTransport,
   type EmailTransportId,
 } from "@/lib/email/email-notification-copy";
+import {
+  parseFinanceRecipients,
+  type FinanceRecipient,
+} from "@/lib/email/finance-recipients";
 import { prisma } from "@/lib/prisma";
 
 export type EmailTransport = EmailTransportId;
@@ -14,20 +18,19 @@ export type EmailNotificationSettingsResolved = {
   notifyOnWrittenOff: boolean;
   notifyOnDispatch: boolean;
   notifyOnRefurbished: boolean;
+  /** Parsed recipients (supports `Name <email>`). */
+  financeRecipients: FinanceRecipient[];
+  /** Email addresses only (backward compatible). */
   financeEmails: string[];
   financeGreetingName: string | null;
   fromName: string;
   replyTo: string | null;
+  scheduleReconcileEnabled: boolean;
+  scheduleReconcileDayOfMonth: number;
+  scheduleReconcileLastSentMonth: string | null;
   /** From header value: `Name <email@domain>` — email from env (see resolveFromEmailPart). */
   fromAddress: string;
 };
-
-function parseEmailList(raw: string): string[] {
-  return raw
-    .split(/[,;\n]/)
-    .map((s) => s.trim().toLowerCase())
-    .filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
-}
 
 /**
  * Single “from” mailbox for both Resend REST and SMTP (`SMTP_FROM`, `EMAIL_FROM`, or `RESEND_FROM_EMAIL`).
@@ -75,6 +78,8 @@ export async function getEmailNotificationSettings(): Promise<EmailNotificationS
 
   const transport = parseEmailTransport(row?.emailTransport);
   const fromEmail = resolveFromEmailPart();
+  const financeRecipients = parseFinanceRecipients(row?.financeEmails ?? "");
+  const day = row?.scheduleReconcileDayOfMonth ?? 1;
 
   return {
     emailTransport: transport,
@@ -84,10 +89,15 @@ export async function getEmailNotificationSettings(): Promise<EmailNotificationS
     notifyOnWrittenOff: row?.notifyOnWrittenOff ?? true,
     notifyOnDispatch: row?.notifyOnDispatch ?? true,
     notifyOnRefurbished: row?.notifyOnRefurbished ?? true,
-    financeEmails: parseEmailList(row?.financeEmails ?? ""),
+    financeRecipients,
+    financeEmails: financeRecipients.map((r) => r.email),
     financeGreetingName: row?.financeGreetingName?.trim() || null,
     fromName: row?.fromName?.trim() || "Handicaps Network Africa Inventory",
     replyTo: row?.replyTo?.trim() || null,
+    scheduleReconcileEnabled: row?.scheduleReconcileEnabled ?? false,
+    scheduleReconcileDayOfMonth: Math.min(28, Math.max(1, day)),
+    scheduleReconcileLastSentMonth:
+      row?.scheduleReconcileLastSentMonth?.trim() || null,
     fromAddress: fromEmail
       ? `${row?.fromName?.trim() || "Handicaps Network Africa Inventory"} <${fromEmail}>`
       : "",
@@ -98,4 +108,10 @@ export function financeRecipientEmails(
   settings: EmailNotificationSettingsResolved
 ): string[] {
   return [...new Set(settings.financeEmails)];
+}
+
+export function financeRecipientsList(
+  settings: EmailNotificationSettingsResolved
+): FinanceRecipient[] {
+  return settings.financeRecipients;
 }

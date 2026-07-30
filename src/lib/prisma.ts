@@ -49,6 +49,27 @@ function prismaClientNeedsRefresh(client: PrismaClient): boolean {
   if (typeof (client as { userProfile?: unknown }).userProfile === "undefined") {
     return true;
   }
+  const profileFields = runtimeFieldNames(client, "UserProfile");
+  if (
+    profileFields.length > 0 &&
+    (!profileFields.includes("firstName") ||
+      !profileFields.includes("lastName") ||
+      !profileFields.includes("email"))
+  ) {
+    return true;
+  }
+  const emailSettingsFields = runtimeFieldNames(
+    client,
+    "EmailNotificationSettings"
+  );
+  if (
+    emailSettingsFields.length > 0 &&
+    (!emailSettingsFields.includes("scheduleReconcileEnabled") ||
+      !emailSettingsFields.includes("scheduleReconcileDayOfMonth") ||
+      !emailSettingsFields.includes("scheduleReconcileLastSentMonth"))
+  ) {
+    return true;
+  }
   const wocFields = runtimeFieldNames(client, "WriteOffCertificate");
   // Empty means we couldn't introspect — don't force recreate.
   if (wocFields.length === 0) return false;
@@ -74,6 +95,7 @@ function resolvePrisma(): PrismaClient {
   // After `prisma generate`, a stale `next dev` singleton can omit new models/fields.
   if (process.env.NODE_ENV !== "production" && prismaClientNeedsRefresh(client)) {
     void client.$disconnect().catch(() => undefined);
+    globalForPrisma.prisma = undefined;
     client = createPrismaClient();
   }
 

@@ -12,7 +12,7 @@ function toInputJson(
  * Best-effort audit trail. Never throws — failures are logged only.
  */
 export async function createAuditLog(entry: {
-  userId: string;
+  userId?: string | null;
   actionType: string;
   notes?: string | null;
   metadata?: Record<string, unknown>;
@@ -20,7 +20,7 @@ export async function createAuditLog(entry: {
   try {
     await prisma.auditLog.create({
       data: {
-        userId: entry.userId,
+        userId: entry.userId?.trim() || null,
         actionType: entry.actionType,
         notes: entry.notes ?? null,
         metadata: toInputJson(entry.metadata),

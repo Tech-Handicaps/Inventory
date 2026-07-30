@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { patchUserSchema } from "@/lib/auth/admin-user-schemas";
+import {
+  formatPersonDisplayName,
+  patchUserSchema,
+} from "@/lib/auth/admin-user-schemas";
 import { appRoleForAuthUser } from "@/lib/auth/app-role-for-user";
 import { isProtectedAdminEmail, isSuperAdminEmail, toStoredRole } from "@/lib/auth/roles";
 import { requireUserAdmin } from "@/lib/auth/require-user-admin";
@@ -29,7 +32,7 @@ async function countResolvedAdmins(admin: ReturnType<typeof createSupabaseAdmin>
 
 /**
  * PATCH — change role, disable user, username, and/or email (admin/super admin only).
- * Body: `{ role?, disabled?, username?, email? }`
+ * Body: `{ role?, disabled?, username?, email?, firstName?, lastName? }`
  */
 export async function PATCH(
   request: NextRequest,
@@ -50,6 +53,8 @@ export async function PATCH(
   const disableRequested = parsed.disabled;
   const nextUsername = parsed.username;
   const nextEmail = parsed.email;
+  const nextFirstName = parsed.firstName;
+  const nextLastName = parsed.lastName;
 
   try {
     const admin = createSupabaseAdmin();
@@ -140,21 +145,78 @@ export async function PATCH(
 
     const previousStoredRole: string | null = stored?.role ?? null;
     let resolvedUsername: string | null = null;
+    let resolvedFirstName: string | null = null;
+    let resolvedLastName: string | null = null;
 
-    if (nextUsername !== undefined) {
-      const profile = await prisma.userProfile.upsert({
-        where: { userId },
-        create: { userId, username: nextUsername },
-        update: { username: nextUsername },
-        select: { username: true },
-      });
-      resolvedUsername = profile.username;
+    const profileNeeded =
+      nextUsername !== undefined ||
+      nextEmail !== undefined ||
+      nextFirstName !== undefined ||
+      nextLastName !== undefined;
+
+    if (profileNeeded) {
+      const emailForProfile =
+        nextEmail !== undefined && nextEmail !== currentEmail
+          ? nextEmail
+          : currentEmail || null;
+
+      if (nextUsername !== undefined) {
+        const profile = await prisma.userProfile.upsert({
+          where: { userId },
+          create: {
+            userId,
+            username: nextUsername,
+            email: emailForProfile,
+            firstName: nextFirstName ?? null,
+            lastName: nextLastName ?? null,
+          },
+          update: {
+            username: nextUsername,
+            ...(nextEmail !== undefined ? { email: nextEmail } : {}),
+            ...(nextFirstName !== undefined ? { firstName: nextFirstName } : {}),
+            ...(nextLastName !== undefined ? { lastName: nextLastName } : {}),
+          },
+          select: { username: true, firstName: true, lastName: true },
+        });
+        resolvedUsername = profile.username;
+        resolvedFirstName = profile.firstName;
+        resolvedLastName = profile.lastName;
+      } else {
+        const existing = await prisma.userProfile.findUnique({
+          where: { userId },
+          select: { username: true, firstName: true, lastName: true },
+        });
+        if (!existing) {
+          return jsonError(
+            "Set a username before saving name or email on the profile.",
+            400
+          );
+        }
+        const profile = await prisma.userProfile.update({
+          where: { userId },
+          data: {
+            ...(nextEmail !== undefined
+              ? { email: nextEmail }
+              : emailForProfile
+                ? { email: emailForProfile }
+                : {}),
+            ...(nextFirstName !== undefined ? { firstName: nextFirstName } : {}),
+            ...(nextLastName !== undefined ? { lastName: nextLastName } : {}),
+          },
+          select: { username: true, firstName: true, lastName: true },
+        });
+        resolvedUsername = profile.username;
+        resolvedFirstName = profile.firstName;
+        resolvedLastName = profile.lastName;
+      }
     } else {
       const profile = await prisma.userProfile.findUnique({
         where: { userId },
-        select: { username: true },
+        select: { username: true, firstName: true, lastName: true },
       });
       resolvedUsername = profile?.username ?? null;
+      resolvedFirstName = profile?.firstName ?? null;
+      resolvedLastName = profile?.lastName ?? null;
     }
 
     if (assignRole) {
@@ -219,6 +281,9 @@ export async function PATCH(
       disabled: disableRequested,
       username: resolvedUsername,
       email: resolvedEmail,
+      firstName: resolvedFirstName,
+      lastName: resolvedLastName,
+      displayName: formatPersonDisplayName(resolvedFirstName, resolvedLastName),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Server error";

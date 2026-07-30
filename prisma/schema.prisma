@@ -252,8 +252,15 @@ model UserProfile {
   id        String   @id @default(cuid())
   userId    String   @unique // Supabase auth user id
   username  String   @unique // lowercase: ^[a-z0-9._-]{3,32}$
+  /// Person the account belongs to (for UI + personalized emails).
+  firstName String?
+  lastName  String?
+  /// Denormalized Auth email (lowercase) for finance {name} lookup by address.
+  email     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([email])
 }
 
 // Zoho Assist OAuth (client credentials + refresh token stored in-app; restrict DB access in production)
@@ -297,13 +304,19 @@ model EmailNotificationSettings {
   notifyOnDispatch     Boolean  @default(true)
   /// Email finance when hardware is booked into Refurbished from Assessment/Maintenance.
   notifyOnRefurbished  Boolean  @default(true)
-  /// Comma-separated recipient emails for finance notifications.
+  /// Comma/semicolon/newline-separated recipients. Supports `Name <email@domain>`.
   financeEmails        String   @default("")
-  /// Optional greeting name, e.g. "Lerisha" → "Hi Lerisha," in emails.
+  /// Fallback display name when a recipient has no name — used in `Hi {name},`.
   financeGreetingName  String?
   /// Display name for the From header (domain must be verified in Resend).
   fromName             String   @default("Handicaps Network Africa Inventory")
   replyTo              String?
+  /// Email Monthly Stock Reconcile PDF to finance on the configured day each month.
+  scheduleReconcileEnabled     Boolean  @default(false)
+  /// Day of month (1–28) in Africa/Johannesburg — default 1st.
+  scheduleReconcileDayOfMonth  Int      @default(1)
+  /// Last successful send month key `YYYY-MM` (idempotency for cron retries).
+  scheduleReconcileLastSentMonth String?
   updatedAt            DateTime @updatedAt
 }
 

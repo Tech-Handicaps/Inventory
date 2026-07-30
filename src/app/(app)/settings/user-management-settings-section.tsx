@@ -14,6 +14,9 @@ type Row = {
   id: string;
   email: string;
   username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string | null;
   role: AppRole;
   createdAt: string;
   lastSignInAt: string | null;
@@ -31,6 +34,9 @@ async function readError(res: Response): Promise<string> {
   }
 }
 
+const fieldClass =
+  "mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm";
+
 export function UserManagementSettingsSection() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +46,8 @@ export function UserManagementSettingsSection() {
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [createRole, setCreateRole] = useState<AssignableRole>("operations");
@@ -51,6 +59,8 @@ export function UserManagementSettingsSection() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editUsername, setEditUsername] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/users", { cache: "no-store" });
@@ -92,6 +102,8 @@ export function UserManagementSettingsSection() {
         body: JSON.stringify({
           username: username.trim(),
           email: email.trim().toLowerCase(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           password,
           role: createRole,
         }),
@@ -103,12 +115,12 @@ export function UserManagementSettingsSection() {
         );
       }
       setMessage(
-        typeof j.message === "string"
-          ? j.message
-          : "User created."
+        typeof j.message === "string" ? j.message : "User created."
       );
       setUsername("");
       setEmail("");
+      setFirstName("");
+      setLastName("");
       setPassword("");
       setPasswordConfirm("");
       await load();
@@ -138,9 +150,7 @@ export function UserManagementSettingsSection() {
           typeof j.error === "string" ? j.error : await readError(res)
         );
       }
-      setMessage(
-        typeof j.message === "string" ? j.message : "Done."
-      );
+      setMessage(typeof j.message === "string" ? j.message : "Done.");
       setInviteEmail("");
       await load();
     } catch (err) {
@@ -198,6 +208,8 @@ export function UserManagementSettingsSection() {
     setEditingId(row.id);
     setEditUsername(row.username ?? "");
     setEditEmail(row.email);
+    setEditFirstName(row.firstName ?? "");
+    setEditLastName(row.lastName ?? "");
     setError(null);
     setMessage(null);
   }
@@ -206,11 +218,15 @@ export function UserManagementSettingsSection() {
     setEditingId(null);
     setEditUsername("");
     setEditEmail("");
+    setEditFirstName("");
+    setEditLastName("");
   }
 
   async function saveProfile(userId: string, row: Row) {
     const usernameTrimmed = editUsername.trim().toLowerCase();
     const emailTrimmed = editEmail.trim().toLowerCase();
+    const firstTrimmed = editFirstName.trim();
+    const lastTrimmed = editLastName.trim();
     if (!usernameTrimmed) {
       setError("Username is required.");
       return;
@@ -219,14 +235,33 @@ export function UserManagementSettingsSection() {
       setError("Email is required.");
       return;
     }
+    if (!firstTrimmed || !lastTrimmed) {
+      setError("First name and surname are required.");
+      return;
+    }
 
-    const payload: { username?: string; email?: string } = {};
+    const payload: {
+      username?: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+    } = {};
     if (usernameTrimmed !== (row.username ?? "").toLowerCase()) {
       payload.username = usernameTrimmed;
     }
     if (emailTrimmed !== row.email.trim().toLowerCase()) {
       payload.email = emailTrimmed;
     }
+    if (firstTrimmed !== (row.firstName ?? "").trim()) {
+      payload.firstName = firstTrimmed;
+    }
+    if (lastTrimmed !== (row.lastName ?? "").trim()) {
+      payload.lastName = lastTrimmed;
+    }
+    // Always send names when profile had none, even if equal after trim edge cases
+    if (!row.firstName && firstTrimmed) payload.firstName = firstTrimmed;
+    if (!row.lastName && lastTrimmed) payload.lastName = lastTrimmed;
+
     if (Object.keys(payload).length === 0) {
       cancelEditProfile();
       return;
@@ -265,10 +300,11 @@ export function UserManagementSettingsSection() {
           Create user
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-black/65">
-          Create an account with username, email, and password. Users can sign in
-          with either username or email. Use <strong>Edit profile</strong> on
-          existing users (e.g. after an email invite) to add or change their
-          username. Super admin is controlled via{" "}
+          Capture who the account belongs to (name and surname), plus login
+          username and email. Display names are used for personalized finance
+          emails (<code className="rounded bg-black/[0.06] px-1 text-xs">{"{name}"}</code>
+          ). Users can sign in with username or email. Super admin is controlled
+          via{" "}
           <code className="rounded bg-black/[0.06] px-1 text-xs">
             SUPER_ADMIN_EMAILS
           </code>
@@ -280,6 +316,34 @@ export function UserManagementSettingsSection() {
           className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2"
         >
           <label className="block">
+            <span className="text-xs font-medium text-black/70">First name</span>
+            <input
+              type="text"
+              name="firstName"
+              autoComplete="off"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className={fieldClass}
+              placeholder="Jane"
+              required
+              maxLength={60}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-black/70">Surname</span>
+            <input
+              type="text"
+              name="lastName"
+              autoComplete="off"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className={fieldClass}
+              placeholder="Smith"
+              required
+              maxLength={60}
+            />
+          </label>
+          <label className="block">
             <span className="text-xs font-medium text-black/70">Username</span>
             <input
               type="text"
@@ -287,7 +351,7 @@ export function UserManagementSettingsSection() {
               autoComplete="off"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className={fieldClass}
               placeholder="jsmith"
               required
               minLength={3}
@@ -303,7 +367,7 @@ export function UserManagementSettingsSection() {
               autoComplete="off"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className={fieldClass}
               placeholder="colleague@example.com"
               required
             />
@@ -315,7 +379,7 @@ export function UserManagementSettingsSection() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className={fieldClass}
               required
               minLength={8}
             />
@@ -329,7 +393,7 @@ export function UserManagementSettingsSection() {
               autoComplete="new-password"
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className={fieldClass}
               required
               minLength={8}
             />
@@ -339,7 +403,7 @@ export function UserManagementSettingsSection() {
             <select
               value={createRole}
               onChange={(e) => setCreateRole(e.target.value as AssignableRole)}
-              className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+              className={`${fieldClass} bg-white`}
             >
               {ASSIGNABLE_ROLES.map((r) => (
                 <option key={r} value={r}>
@@ -375,8 +439,9 @@ export function UserManagementSettingsSection() {
           <div className="mt-3">
             <p className="max-w-2xl text-sm text-black/65">
               Sends a Supabase invite email when the address is new. If the user
-              already exists, their role is updated instead. They set their own
-              password via the invite link.
+              already exists, their role is updated instead. After they accept,
+              use <strong>Edit profile</strong> to set username, first name, and
+              surname.
             </p>
             <form
               onSubmit={submitInvite}
@@ -390,7 +455,7 @@ export function UserManagementSettingsSection() {
                   autoComplete="off"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className={fieldClass}
                   placeholder="colleague@example.com"
                   required
                 />
@@ -402,7 +467,7 @@ export function UserManagementSettingsSection() {
                   onChange={(e) =>
                     setInviteRole(e.target.value as AssignableRole)
                   }
-                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  className={`${fieldClass} bg-white`}
                 >
                   {ASSIGNABLE_ROLES.map((r) => (
                     <option key={r} value={r}>
@@ -449,9 +514,10 @@ export function UserManagementSettingsSection() {
           Users
         </h2>
         <div className="mt-3 overflow-x-auto rounded-lg border border-black/10">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead>
               <tr className="border-b border-black/10 bg-black/[0.03] text-left">
+                <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Username</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Role</th>
@@ -464,6 +530,38 @@ export function UserManagementSettingsSection() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-black/5">
+                  <td className="px-4 py-2.5">
+                    {editingId === row.id ? (
+                      <div className="flex min-w-[12rem] flex-col gap-1.5">
+                        <input
+                          type="text"
+                          value={editFirstName}
+                          onChange={(e) => setEditFirstName(e.target.value)}
+                          className="w-full rounded border border-black/15 px-2 py-1.5 text-xs"
+                          placeholder="First name"
+                          autoComplete="off"
+                          maxLength={60}
+                          aria-label={`First name for ${row.email}`}
+                        />
+                        <input
+                          type="text"
+                          value={editLastName}
+                          onChange={(e) => setEditLastName(e.target.value)}
+                          className="w-full rounded border border-black/15 px-2 py-1.5 text-xs"
+                          placeholder="Surname"
+                          autoComplete="off"
+                          maxLength={60}
+                          aria-label={`Surname for ${row.email}`}
+                        />
+                      </div>
+                    ) : row.displayName ? (
+                      <span className="font-medium text-black/85">
+                        {row.displayName}
+                      </span>
+                    ) : (
+                      <span className="text-black/40">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 font-mono text-xs">
                     {editingId === row.id ? (
                       <input

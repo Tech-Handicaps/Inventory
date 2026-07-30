@@ -21,6 +21,9 @@ type EmailSettingsRow = {
   financeGreetingName: string;
   fromName: string;
   replyTo: string;
+  scheduleReconcileEnabled: boolean;
+  scheduleReconcileDayOfMonth: number;
+  scheduleReconcileLastSentMonth: string | null;
   resendFromEmailConfigured: boolean;
   resendApiKeyConfigured: boolean;
   smtpEnvConfigured: boolean;
@@ -45,6 +48,9 @@ function mapApiToRow(j: EmailSettingsRow & { error?: string }): EmailSettingsRow
     financeGreetingName: j.financeGreetingName,
     fromName: j.fromName,
     replyTo: j.replyTo,
+    scheduleReconcileEnabled: j.scheduleReconcileEnabled ?? false,
+    scheduleReconcileDayOfMonth: j.scheduleReconcileDayOfMonth ?? 1,
+    scheduleReconcileLastSentMonth: j.scheduleReconcileLastSentMonth ?? null,
     resendFromEmailConfigured: j.resendFromEmailConfigured,
     resendApiKeyConfigured: j.resendApiKeyConfigured,
     smtpEnvConfigured: j.smtpEnvConfigured ?? false,
@@ -59,6 +65,7 @@ export function EmailNotificationsSettingsSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [sendingReconcile, setSendingReconcile] = useState(false);
   const [testToEmail, setTestToEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +107,8 @@ export function EmailNotificationsSettingsSection() {
           financeGreetingName: data.financeGreetingName,
           fromName: data.fromName,
           replyTo: data.replyTo,
+          scheduleReconcileEnabled: data.scheduleReconcileEnabled,
+          scheduleReconcileDayOfMonth: data.scheduleReconcileDayOfMonth,
         }),
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
@@ -136,6 +145,34 @@ export function EmailNotificationsSettingsSection() {
       setError(err instanceof Error ? err.message : "Test failed");
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function sendReconcileNow() {
+    setSendingReconcile(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/settings/email-notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send_reconcile" }),
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        sent?: number;
+        failed?: number;
+        monthLabel?: string;
+      };
+      if (!res.ok) throw new Error(j.error ?? "Reconcile send failed");
+      setMessage(
+        `Monthly reconcile sent${j.monthLabel ? ` for ${j.monthLabel}` : ""} (${j.sent ?? 0} recipient${(j.sent ?? 0) === 1 ? "" : "s"}${j.failed ? `, ${j.failed} failed` : ""}).`
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reconcile send failed");
+    } finally {
+      setSendingReconcile(false);
     }
   }
 
@@ -198,37 +235,47 @@ export function EmailNotificationsSettingsSection() {
                 <span className="ml-1 text-black/45">({blockedHint})</span>
               ) : null}
             </li>
-            <li>
-              Resolved From header:{" "}
-              <span className="font-mono text-[11px] text-black/70">
-                {data.resolvedFromPreview || "—"}
-              </span>
-            </li>
+            {data.resolvedFromPreview ? (
+              <li>
+                From preview:{" "}
+                <code className="text-[11px] text-black/70">
+                  {data.resolvedFromPreview}
+                </code>
+              </li>
+            ) : null}
           </ul>
         </div>
       </div>
 
-      <form onSubmit={save} className="max-w-xl space-y-4">
-        <fieldset className="space-y-3 rounded-lg border border-black/10 p-4">
-          <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-black/70">
-            Delivery transport
+      <form onSubmit={save} className="space-y-5">
+        <fieldset className="space-y-2">
+          <legend className="text-xs font-medium text-black/70">
+            Delivery method
           </legend>
-          {EMAIL_DELIVERY_OPTIONS.map((opt) => (
-            <label key={opt.id} className="flex items-start gap-2">
-              <input
-                type="radio"
-                name="emailTransport"
-                checked={data.emailTransport === opt.id}
-                onChange={() =>
-                  setData((d) => (d ? { ...d, emailTransport: opt.id } : d))
-                }
-                className="mt-1"
-              />
-              <span className="text-sm text-black/80">
-                <strong>{opt.title}</strong> — {opt.detail}
-              </span>
-            </label>
-          ))}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {EMAIL_DELIVERY_OPTIONS.map((opt) => (
+              <label
+                key={opt.id}
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-black/10 px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand/5"
+              >
+                <input
+                  type="radio"
+                  name="emailTransport"
+                  checked={data.emailTransport === opt.id}
+                  onChange={() =>
+                    setData((d) => (d ? { ...d, emailTransport: opt.id } : d))
+                  }
+                  className="mt-1"
+                />
+                <span className="text-sm text-black/80">
+                  <strong>{opt.label}</strong>
+                  <span className="mt-0.5 block text-xs text-black/50">
+                    {opt.hint}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
         </fieldset>
 
         <label className="flex items-start gap-2">
@@ -244,7 +291,8 @@ export function EmailNotificationsSettingsSection() {
           />
           <span className="text-sm text-black/80">
             <strong>Enable sending</strong> — when off, acknowledgement rows are
-            still created; emails are skipped.
+            still created; emails are skipped. Scheduled monthly reconcile also
+            respects this switch.
           </span>
         </label>
 
@@ -335,23 +383,23 @@ export function EmailNotificationsSettingsSection() {
 
         <label className="block">
           <span className="text-xs font-medium text-black/70">
-            Finance emails (comma-separated)
+            Finance emails
           </span>
-          <input
-            type="text"
+          <textarea
             value={data.financeEmails}
             onChange={(e) =>
               setData((d) =>
                 d ? { ...d, financeEmails: e.target.value } : d
               )
             }
-            className={fieldClass}
-            placeholder="finance@handicaps.co.za, lerisha@handicaps.co.za"
+            className={`${fieldClass} min-h-[88px] font-mono text-[13px]`}
+            placeholder={`Jane Smith <jane@handicaps.co.za>\nAudit Desk <audit@handicaps.co.za>\nfinance@handicaps.co.za`}
           />
           <span className="mt-1 block text-xs text-black/50">
-            Used for real repair/write-off notifications. Click <strong>Save</strong>{" "}
-            after editing. <strong>Send test email</strong> can also use the first
-            address here if you leave “Test to” empty.
+            One per line (or comma-separated). Prefer{" "}
+            <code className="text-[11px]">Name &lt;email@domain&gt;</code> so{" "}
+            <code className="text-[11px]">{"{name}"}</code> personalizes each
+            message. Plain emails fall back to the greeting name below.
           </span>
         </label>
 
@@ -374,7 +422,7 @@ export function EmailNotificationsSettingsSection() {
 
         <label className="block">
           <span className="text-xs font-medium text-black/70">
-            Greeting name (optional)
+            Fallback greeting name (optional)
           </span>
           <input
             type="text"
@@ -385,8 +433,13 @@ export function EmailNotificationsSettingsSection() {
               )
             }
             className={fieldClass}
-            placeholder="Lerisha"
+            placeholder="Finance team"
           />
+          <span className="mt-1 block text-xs text-black/50">
+            Used when a recipient has no display name. Default is{" "}
+            <strong>Finance team</strong>. You can also use a template such as{" "}
+            <code className="text-[11px]">{"Hi {name},"}</code>.
+          </span>
         </label>
 
         <label className="block">
@@ -417,6 +470,87 @@ export function EmailNotificationsSettingsSection() {
             placeholder="inventory@handicaps.co.za"
           />
         </label>
+
+        <section className="rounded-xl border border-black/10 bg-black/[0.02] p-4 space-y-4">
+          <div>
+            <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+              Scheduled reports
+            </h3>
+            <p className="mt-1 text-sm text-black/60">
+              Email the <strong>Monthly Stock Reconcile</strong> PDF to the
+              finance list above. Runs daily at 06:00 UTC and only sends on the
+              chosen day in Africa/Johannesburg (once per month).
+            </p>
+          </div>
+
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={data.scheduleReconcileEnabled}
+              onChange={(e) =>
+                setData((d) =>
+                  d
+                    ? { ...d, scheduleReconcileEnabled: e.target.checked }
+                    : d
+                )
+              }
+              className="mt-1"
+            />
+            <span className="text-sm text-black/80">
+              Send <strong>Monthly Stock Reconcile</strong> automatically
+            </span>
+          </label>
+
+          <label className="block max-w-xs">
+            <span className="text-xs font-medium text-black/70">
+              Day of month (1–28)
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={28}
+              value={data.scheduleReconcileDayOfMonth}
+              onChange={(e) =>
+                setData((d) =>
+                  d
+                    ? {
+                        ...d,
+                        scheduleReconcileDayOfMonth: Math.min(
+                          28,
+                          Math.max(1, Number(e.target.value) || 1)
+                        ),
+                      }
+                    : d
+                )
+              }
+              className={fieldClass}
+            />
+          </label>
+
+          {data.scheduleReconcileLastSentMonth ? (
+            <p className="text-xs text-black/50">
+              Last scheduled send:{" "}
+              <strong className="text-black/70">
+                {data.scheduleReconcileLastSentMonth}
+              </strong>
+            </p>
+          ) : (
+            <p className="text-xs text-black/50">
+              No scheduled send recorded yet.
+            </p>
+          )}
+
+          <button
+            type="button"
+            disabled={sendingReconcile || saving}
+            onClick={() => void sendReconcileNow()}
+            className="rounded-lg border border-black/15 px-4 py-2 text-sm font-medium text-black/80 hover:bg-black/[0.04] disabled:opacity-50"
+          >
+            {sendingReconcile
+              ? "Sending reconcile…"
+              : "Send monthly reconcile now"}
+          </button>
+        </section>
 
         {error ? (
           <p className="text-sm text-red-700" role="alert">

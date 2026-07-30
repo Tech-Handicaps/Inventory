@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/sync-assist-public-ip",
       "schedule": "0 5 * * 0"
+    },
+    {
+      "path": "/api/cron/send-monthly-reconcile",
+      "schedule": "0 6 * * *"
     }
   ]
 }

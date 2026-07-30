@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { inviteUserSchema } from "@/lib/auth/admin-user-schemas";
+import {
+  formatPersonDisplayName,
+  inviteUserSchema,
+} from "@/lib/auth/admin-user-schemas";
 import {
   type AssignableRole,
 } from "@/lib/auth/assignable-roles";
@@ -56,11 +59,23 @@ export async function GET(request: NextRequest) {
       where: { userId: { in: ids } },
     });
 
-    let profiles: { userId: string; username: string }[] = [];
+    let profiles: {
+      userId: string;
+      username: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string | null;
+    }[] = [];
     try {
       profiles = await prisma.userProfile.findMany({
         where: { userId: { in: ids } },
-        select: { userId: true, username: true },
+        select: {
+          userId: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
       });
     } catch (profileErr) {
       console.warn(
@@ -70,17 +85,38 @@ export async function GET(request: NextRequest) {
     }
 
     const roleByUserId = new Map(rows.map((r) => [r.userId, r.role]));
-    const usernameByUserId = new Map(
-      profiles.map((p) => [p.userId, p.username])
-    );
+    const profileByUserId = new Map(profiles.map((p) => [p.userId, p]));
+
+    // Backfill denormalized profile email once (needed for finance {name} lookup).
+    for (const u of users) {
+      const profile = profileByUserId.get(u.id);
+      const authEmail = u.email?.trim().toLowerCase();
+      if (profile && !profile.email && authEmail) {
+        try {
+          await prisma.userProfile.update({
+            where: { userId: u.id },
+            data: { email: authEmail },
+          });
+          profile.email = authEmail;
+        } catch {
+          /* ignore unique conflicts */
+        }
+      }
+    }
 
     const items = users.map((u) => {
       const stored = roleByUserId.get(u.id);
       const role = appRoleForAuthUser(u, stored);
+      const profile = profileByUserId.get(u.id);
+      const firstName = profile?.firstName ?? null;
+      const lastName = profile?.lastName ?? null;
       return {
         id: u.id,
         email: u.email ?? "",
-        username: usernameByUserId.get(u.id) ?? null,
+        username: profile?.username ?? null,
+        firstName,
+        lastName,
+        displayName: formatPersonDisplayName(firstName, lastName),
         role,
         createdAt: u.created_at,
         lastSignInAt: u.last_sign_in_at ?? null,

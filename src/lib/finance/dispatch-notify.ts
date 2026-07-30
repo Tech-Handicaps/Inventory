@@ -1,13 +1,10 @@
 import {
-  financeRecipientEmails,
+  financeRecipientsList,
   getEmailNotificationSettings,
   isSenderConfiguredForTransport,
 } from "@/lib/email/email-settings";
-import { sendHtmlEmailUnified } from "@/lib/email/send-html-email";
-import {
-  buildDispatchVoucherEmail,
-  greetingLine,
-} from "@/lib/email/templates/hna-finance-email";
+import { sendPersonalizedFinanceEmails } from "@/lib/email/send-personalized-finance";
+import { buildDispatchVoucherEmail } from "@/lib/email/templates/hna-finance-email";
 import {
   dispatchFromStatusLabel,
   newDispatchVoucherReference,
@@ -101,7 +98,7 @@ export async function createDispatchVoucherAndNotify(params: {
     return { referenceNumber };
   }
 
-  const recipients = financeRecipientEmails(settings);
+  const recipients = financeRecipientsList(settings);
   if (recipients.length === 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
@@ -150,52 +147,58 @@ export async function createDispatchVoucherAndNotify(params: {
     logoSource
   );
 
-  const greeting = greetingLine(settings.financeGreetingName);
-  const { subject, html } = buildDispatchVoucherEmail({
-    greeting,
-    voucherReference: referenceNumber,
-    fromStageLabel,
-    assetName: asset.assetName,
-    clubName: asset.club?.name ?? null,
-    serial: asset.serialNumber,
-    category: asset.category,
-    manufacturer: asset.manufacturer,
-    model: asset.model,
-    deviceLocation: asset.deviceLocation,
-    templateLabel: asset.deviceTemplate?.label ?? null,
-    processorName: asset.processorName,
-    systemRam: asset.systemRam,
-    systemGpu: asset.systemGpu,
-    dataSource: asset.dataSource,
-    dispatchedAt: dispatchedAtLabel,
-    appUrl: appBaseUrl(),
-  });
-
   const pdfFilename = `${referenceNumber}.pdf`;
-  const result = await sendHtmlEmailUnified(settings, {
-    to: recipients,
-    subject,
-    html,
-    from: settings.fromAddress,
-    replyTo: settings.replyTo,
-    attachments: [
-      {
-        filename: pdfFilename,
-        content: pdfBuffer,
-        contentType: "application/pdf",
-      },
-    ],
-  });
+  const result = await sendPersonalizedFinanceEmails(
+    settings,
+    recipients,
+    (greeting) =>
+      buildDispatchVoucherEmail({
+        greeting,
+        voucherReference: referenceNumber,
+        fromStageLabel,
+        assetName: asset.assetName,
+        clubName: asset.club?.name ?? null,
+        serial: asset.serialNumber,
+        category: asset.category,
+        manufacturer: asset.manufacturer,
+        model: asset.model,
+        deviceLocation: asset.deviceLocation,
+        templateLabel: asset.deviceTemplate?.label ?? null,
+        processorName: asset.processorName,
+        systemRam: asset.systemRam,
+        systemGpu: asset.systemGpu,
+        dataSource: asset.dataSource,
+        dispatchedAt: dispatchedAtLabel,
+        appUrl: appBaseUrl(),
+      }),
+    {
+      attachments: [
+        {
+          filename: pdfFilename,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+    }
+  );
 
-  if (result.ok) {
+  if (result.sent > 0) {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailSentAt: new Date(), emailError: null },
+      data: {
+        emailSentAt: new Date(),
+        emailError:
+          result.failed > 0
+            ? (result.lastError ?? "partial_send_failure").slice(0, 500)
+            : null,
+      },
     });
   } else {
     await prisma.financeAcknowledgement.update({
       where: { id: ack.id },
-      data: { emailError: result.error.slice(0, 500) },
+      data: {
+        emailError: (result.lastError ?? "All sends failed").slice(0, 500),
+      },
     });
   }
 

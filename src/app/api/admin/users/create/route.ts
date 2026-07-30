@@ -9,7 +9,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
  * POST /api/admin/users/create — create Auth user with password + username + role.
- * Body: `{ username, email, password, role }`
+ * Body: `{ username, email, firstName, lastName, password, role }`
  */
 export async function POST(request: NextRequest) {
   const auth = await requireUserAdmin(request);
@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
   const parsed = await parseJsonBody(request, createUserSchema);
   if (isNextResponse(parsed)) return parsed;
 
-  const { username, email, password, role: assignRole } = parsed;
+  const { username, email, password, role: assignRole, firstName, lastName } =
+    parsed;
 
   if (isSuperAdminEmail(email)) {
     return jsonError(
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
           update: { role: storedRole },
         });
         await tx.userProfile.create({
-          data: { userId, username },
+          data: { userId, username, firstName, lastName, email },
         });
       });
     } catch (dbErr) {
@@ -114,6 +115,8 @@ export async function POST(request: NextRequest) {
       userId,
       username,
       email,
+      firstName,
+      lastName,
       role: assignRole,
       message: "User created. They can sign in with username or email.",
     });
