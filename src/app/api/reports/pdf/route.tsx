@@ -102,7 +102,8 @@ const TYPE_STATUS_REPORTS: Record<string, TypeStatusReport> = {
 async function renderTypeStatusPdf(
   config: TypeStatusReport,
   generatedAt: string,
-  logoSource: Buffer | string | null
+  logoSource: Buffer | string | null,
+  asAttachment: boolean
 ) {
   const assetType = reportAssetTypeById(config.typeId)!;
   const statusLabel =
@@ -134,7 +135,7 @@ async function renderTypeStatusPdf(
     rows: toRows(assets),
   });
 
-  return pdfResponse(buffer, config.filenameBase);
+  return pdfResponse(buffer, config.filenameBase, asAttachment);
 }
 
 export async function GET(request: NextRequest) {
@@ -142,6 +143,9 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
+    const asAttachment = request.nextUrl.searchParams.has("download");
+    const respondPdf = (buffer: Buffer, filenameBase: string) =>
+      pdfResponse(buffer, filenameBase, asAttachment);
     const raw = request.nextUrl.searchParams.get("type");
     const generatedAt = new Date().toLocaleString("en-ZA");
     const logoSource = await loadLogoForPdf();
@@ -172,7 +176,7 @@ export async function GET(request: NextRequest) {
         summaryRows,
         rows,
       });
-      return pdfResponse(buffer, "hna-catalog-device-templates");
+      return respondPdf(buffer, "hna-catalog-device-templates");
     }
 
     if (raw === "reconcile") {
@@ -191,14 +195,15 @@ export async function GET(request: NextRequest) {
         logoSource,
         report,
       });
-      return pdfResponse(buffer, "hna-monthly-stock-reconcile");
+      return respondPdf(buffer, "hna-monthly-stock-reconcile");
     }
 
     if (raw && TYPE_STATUS_REPORTS[raw]) {
       return renderTypeStatusPdf(
         TYPE_STATUS_REPORTS[raw]!,
         generatedAt,
-        logoSource
+        logoSource,
+        asAttachment
       );
     }
 
@@ -247,7 +252,7 @@ export async function GET(request: NextRequest) {
         rows: toRows(assets),
       });
 
-      return pdfResponse(buffer, "hna-inventory-overall");
+      return respondPdf(buffer, "hna-inventory-overall");
     }
 
     if (type === "available") {
@@ -281,7 +286,7 @@ export async function GET(request: NextRequest) {
         summaryRows,
         rows: toRows(assets),
       });
-      return pdfResponse(buffer, "hna-inventory-available");
+      return respondPdf(buffer, "hna-inventory-available");
     }
 
     if (type === "deployed") {
@@ -328,7 +333,7 @@ export async function GET(request: NextRequest) {
         summaryRows,
         rows: toRows(assets),
       });
-      return pdfResponse(buffer, "hna-inventory-deployed");
+      return respondPdf(buffer, "hna-inventory-deployed");
     }
 
     if (type === "refurbished") {
@@ -353,7 +358,7 @@ export async function GET(request: NextRequest) {
         summaryRows,
         rows: toRows(assets),
       });
-      return pdfResponse(buffer, "hna-inventory-refurbished");
+      return respondPdf(buffer, "hna-inventory-refurbished");
     }
 
     const title = "Terminals available to distribute";
@@ -388,7 +393,7 @@ export async function GET(request: NextRequest) {
       summaryRows,
       rows: toRows(assets),
     });
-    return pdfResponse(buffer, "hna-inventory-terminals-available");
+    return respondPdf(buffer, "hna-inventory-terminals-available");
   } catch (error) {
     console.error("GET /api/reports/pdf", error);
     return NextResponse.json(
@@ -398,13 +403,20 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function pdfResponse(buffer: Buffer, filenameBase: string) {
+function pdfResponse(
+  buffer: Buffer,
+  filenameBase: string,
+  asAttachment: boolean
+) {
   const safe = `${filenameBase}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const disposition = asAttachment
+    ? `attachment; filename="${safe}"`
+    : `inline; filename="${safe}"`;
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${safe}"`,
+      "Content-Disposition": disposition,
       "Cache-Control": "no-store",
     },
   });

@@ -139,12 +139,14 @@ const REPORT_GROUPS: ReportGroup[] = [
   },
 ];
 
-function pdfUrl(type: string) {
-  return `/api/reports/pdf?type=${encodeURIComponent(type)}`;
+function pdfUrl(type: string, download = false) {
+  const base = `/api/reports/pdf?type=${encodeURIComponent(type)}`;
+  return download ? `${base}&download=1` : base;
 }
 
 function ReportTile({ report }: { report: ReportDef }) {
-  const href = pdfUrl(report.type);
+  const openHref = pdfUrl(report.type);
+  const downloadHref = pdfUrl(report.type, true);
   return (
     <article className="section-card section-card-interactive group relative flex flex-col overflow-hidden">
       <div
@@ -166,7 +168,7 @@ function ReportTile({ report }: { report: ReportDef }) {
         </p>
         <div className="mt-1 flex flex-wrap gap-2 border-t border-black/5 pt-4">
           <a
-            href={href}
+            href={openHref}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-primary flex-1 py-2.5 sm:flex-none"
@@ -174,8 +176,7 @@ function ReportTile({ report }: { report: ReportDef }) {
             Open PDF
           </a>
           <a
-            href={href}
-            download
+            href={downloadHref}
             className="btn-secondary flex-1 py-2.5 sm:flex-none"
           >
             Download
