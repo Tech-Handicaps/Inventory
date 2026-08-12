@@ -6,6 +6,8 @@ import {
 } from "@/lib/zoho/assist-device-map";
 import {
   handleAssistDeviceMissingOnSync,
+  detachAssistFromAsset,
+  isAssistDeploymentUninstalled,
 } from "@/lib/zoho/assist-lifecycle";
 import {
   fetchAssistDeviceDetails,
@@ -98,6 +100,21 @@ export async function syncAllAssistAssetsPublicIp(): Promise<SyncPublicIpResult>
       });
       let mapped = mapAssistDeviceJsonToHardwareFields(raw);
       mapped = mergeAssistListComputerIntoMapped(undefined, mapped);
+
+      // Zoho can report the unattended agent/software as "uninstalled/deleted"
+      // without throwing an error. In that case, we must fully detach so the
+      // UI no longer shows the Assist source/name/tag.
+      if (isAssistDeploymentUninstalled(mapped.deploymentStatus)) {
+        await detachAssistFromAsset(a.id, {
+          userId: null,
+          reason: "assist_agent_uninstalled_on_sync",
+          resetAssistDisplayName: true,
+        });
+        detached += 1;
+        await delay(DELAY_MS);
+        continue;
+      }
+
       const nextIp = resolveNextPublicIp(mapped, a.publicIp);
       const geo = await prismaGeoFieldsFromPublicIp(nextIp);
 
@@ -171,6 +188,16 @@ export async function syncPublicIpForOneAsset(assetId: string): Promise<{
     );
     let mapped = mapAssistDeviceJsonToHardwareFields(raw);
     mapped = mergeAssistListComputerIntoMapped(undefined, mapped);
+
+    if (isAssistDeploymentUninstalled(mapped.deploymentStatus)) {
+      await detachAssistFromAsset(asset.id, {
+        userId: null,
+        reason: "assist_agent_uninstalled_on_sync",
+        resetAssistDisplayName: true,
+      });
+      return { ok: true, detached: true };
+    }
+
     const nextIp = resolveNextPublicIp(mapped, asset.publicIp);
     const geo = await prismaGeoFieldsFromPublicIp(nextIp);
 

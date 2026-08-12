@@ -45,6 +45,11 @@ export type AssistHardwareFields = {
   systemGpu?: string;
   serialNumber?: string;
   zohoAssistDepartmentId?: string;
+  /**
+   * Zoho "deployment status" text (installed/uninstalled/deleted/etc).
+   * Best-effort; varies across payload versions.
+   */
+  deploymentStatus?: string;
   /** Public IPv4 from Assist network details when present */
   publicIp?: string;
 };
@@ -83,6 +88,12 @@ export function mapAssistDeviceJsonToHardwareFields(json: unknown): AssistHardwa
         str(di.device_name) ?? str(di.name) ?? str(di.computer_full_name);
     }
     out.serialNumber = str(di.serial_number) ?? str(di.service_tag);
+    out.deploymentStatus =
+      str(di.deployment_status) ??
+      str(di.deploymentStatus) ??
+      str(di.agent_deployment_status) ??
+      str(di.agentDeploymentStatus) ??
+      undefined;
   }
 
   const dept = asRecord(rep.department);

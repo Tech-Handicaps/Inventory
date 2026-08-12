@@ -15,7 +15,10 @@ import {
   createDispatchVoucherAndNotify,
   shouldIssueDispatchVoucher,
 } from "@/lib/finance/dispatch-notify";
-import { hardwareBoardMoveError } from "@/lib/zoho/assist-lifecycle";
+import {
+  detachAssistFromAsset,
+  hardwareBoardMoveError,
+} from "@/lib/zoho/assist-lifecycle";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/assets/:id
@@ -284,6 +287,17 @@ export async function PUT(
           fromClubNameForRefurb = before.club?.name?.trim() || null;
         }
         updateData.clubId = null;
+
+        // When triaged into Refurbished/New stock, we should clear any Assist-derived
+        // nickname and source branding. The unit will be associated to a new Assist
+        // device only when it is redeployed from a fresh Assist import (serial match).
+        if (before.zohoAssistDeviceId) {
+          await detachAssistFromAsset(id, {
+            userId: user.id,
+            reason: "triage_to_refurbished_clears_assist",
+            resetAssistDisplayName: true,
+          });
+        }
       }
 
       // Returned to club after triage — complete open assessment intake.

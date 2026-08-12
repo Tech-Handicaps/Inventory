@@ -15,6 +15,7 @@ import {
   displayAssetModel,
 } from "@/lib/inventory/asset-hardware-display";
 import { formatGeoLabel } from "@/lib/geo/region-display";
+import { HARDWARE_BOARD_STATUS_MOVES } from "@/lib/inventory/hardware-board-moves";
 
 type Status = {
   id: string;
@@ -63,10 +64,6 @@ type Asset = {
   /** Open assessments for this asset (API returns at most one when workflowStatus is open). */
   assessments?: OpenAssessmentBrief[];
 };
-
-import {
-  HARDWARE_BOARD_STATUS_MOVES,
-} from "@/lib/zoho/assist-lifecycle";
 
 const PRIMARY_ORDER = [
   "new_stock",

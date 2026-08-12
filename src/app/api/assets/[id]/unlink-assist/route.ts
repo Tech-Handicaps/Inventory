@@ -36,9 +36,7 @@ export async function POST(
     const asset = await detachAssistFromAsset(id, {
       userId: user.id,
       reason: "manual_unlink",
-      resetAssistDisplayName:
-        before.status.code === "refurbished" ||
-        before.status.code === "new_stock",
+      resetAssistDisplayName: true,
     });
 
     return NextResponse.json({ asset });

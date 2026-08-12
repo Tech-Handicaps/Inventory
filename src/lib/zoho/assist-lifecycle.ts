@@ -7,44 +7,25 @@ import {
 } from "@/lib/inventory/asset-tags";
 import type { Prisma } from "@prisma/client";
 import type { AssistHardwareFields } from "@/lib/zoho/assist-device-map";
+import {
+  buildDepotAssetName,
+  isAssistDeviceNotFoundError,
+  isAssistDeploymentUninstalled,
+  isDepotStockStatus,
+} from "@/lib/zoho/assist-lifecycle-shared";
 import { prisma } from "@/lib/prisma";
 
-const DEPOT_STOCK_STATUSES = new Set(["refurbished", "new_stock"]);
-
-export function isDepotStockStatus(statusCode: string): boolean {
-  return DEPOT_STOCK_STATUSES.has(statusCode);
-}
-
-/** True when Assist API indicates the unattended device no longer exists. */
-export function isAssistDeviceNotFoundError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error);
-  const lower = msg.toLowerCase();
-  return (
-    msg.includes("Assist API 404") ||
-    lower.includes("not found") ||
-    lower.includes("invalid resource") ||
-    lower.includes("does not exist") ||
-    lower.includes("no device") ||
-    lower.includes("resource not found")
-  );
-}
-
-/** Inventory-native label for depot stock after Assist display name is cleared. */
-export function buildDepotAssetName(asset: {
-  serialNumber: string | null;
-  manufacturer: string | null;
-  model: string | null;
-  deviceTemplate?: { label: string } | null;
-}): string {
-  const templateLabel = asset.deviceTemplate?.label?.trim();
-  const makeModel = [asset.manufacturer, asset.model]
-    .map((v) => v?.trim())
-    .filter(Boolean)
-    .join(" ");
-  const base = templateLabel || makeModel || "Refurbished unit";
-  const serial = asset.serialNumber?.trim();
-  return serial ? `${base} · S/N ${serial}` : base;
-}
+export {
+  buildDepotAssetName,
+  isAssistDeviceNotFoundError,
+  isAssistDeploymentUninstalled,
+  isDepotStockStatus,
+} from "@/lib/zoho/assist-lifecycle-shared";
+export {
+  hardwareBoardMoveError,
+  HARDWARE_BOARD_STATUS_MOVES,
+  isAllowedHardwareBoardMove,
+} from "@/lib/inventory/hardware-board-moves";
 
 export type DetachAssistOptions = {
   userId?: string | null;
@@ -72,9 +53,7 @@ export async function detachAssistFromAsset(
   if (!before?.zohoAssistDeviceId) return before;
 
   const prevAssistId = before.zohoAssistDeviceId;
-  const resetName =
-    options.resetAssistDisplayName === true &&
-    isDepotStockStatus(before.status.code);
+  const resetName = options.resetAssistDisplayName === true;
 
   const updated = await prisma.asset.update({
     where: { id: assetId },
@@ -124,7 +103,9 @@ export async function handleAssistDeviceMissingOnSync(
   await detachAssistFromAsset(assetId, {
     userId,
     reason: "assist_device_missing_on_sync",
-    resetAssistDisplayName: isDepotStockStatus(asset.status.code),
+    // When Assist soft/uninstall happens we want to remove any stale Assist-derived
+    // asset naming across all lifecycle stages (not only depot stock).
+    resetAssistDisplayName: true,
   });
   return "detached";
 }
@@ -235,40 +216,4 @@ export async function redeployStockAssetFromAssistImport(
   });
 
   return updated;
-}
-
-/** Allowed status moves from the hardware board (server enforced). */
-export const HARDWARE_BOARD_STATUS_MOVES: Record<string, readonly string[]> = {
-  deployed: ["assessment"],
-  assessment: ["deployed", "refurbished"],
-  repair: ["deployed", "refurbished"],
-  refurbished: ["deployed", "new_stock"],
-  new_stock: ["deployed", "repair", "refurbished"],
-};
-
-export function isAllowedHardwareBoardMove(
-  fromStatusCode: string,
-  toStatusCode: string
-): boolean {
-  if (fromStatusCode === toStatusCode) return true;
-  const allowed = HARDWARE_BOARD_STATUS_MOVES[fromStatusCode];
-  if (!allowed) return true;
-  return allowed.includes(toStatusCode);
-}
-
-export function hardwareBoardMoveError(
-  fromStatusCode: string,
-  toStatusCode: string
-): string | null {
-  if (isAllowedHardwareBoardMove(fromStatusCode, toStatusCode)) return null;
-  if (fromStatusCode === "deployed" && toStatusCode === "refurbished") {
-    return "Send hardware to Assessment/Maintenance first, then move to Refurbished after triage.";
-  }
-  if (fromStatusCode === "deployed" && toStatusCode === "written_off") {
-    return "Send hardware to Assessment/Maintenance first, then write off from that stage if needed.";
-  }
-  if (fromStatusCode === "deployed" && toStatusCode === "repair") {
-    return "Move Deployed hardware to Assessment/Maintenance first (then Log repair only if a formal repair is required).";
-  }
-  return `Cannot move directly from ${fromStatusCode} to ${toStatusCode}. Use the workflow actions on the card.`;
 }
