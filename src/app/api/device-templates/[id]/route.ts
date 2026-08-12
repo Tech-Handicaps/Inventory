@@ -6,6 +6,7 @@ import {
   parseTagsFromUnknown,
   resolveTagsForSave,
 } from "@/lib/inventory/asset-tags";
+import { buildDeviceTemplateLabel, withDerivedDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 
 export async function PUT(
   request: NextRequest,
@@ -35,7 +36,6 @@ export async function PUT(
     } = body;
 
     const data: Record<string, unknown> = {};
-    if (typeof label === "string" && label.trim()) data.label = label.trim();
     if (typeof manufacturer === "string" && manufacturer.trim())
       data.manufacturer = manufacturer.trim();
     if (typeof model === "string" && model.trim()) data.model = model.trim();
@@ -69,6 +69,11 @@ export async function PUT(
     if (Object.keys(data).length === 0) {
       return NextResponse.json(before);
     }
+
+    const nextManufacturer =
+      (data.manufacturer as string | undefined) ?? before.manufacturer;
+    const nextModel = (data.model as string | undefined) ?? before.model;
+    data.label = buildDeviceTemplateLabel(nextManufacturer, nextModel);
 
     const updated = await prisma.deviceTemplate.update({
       where: { id },
@@ -114,7 +119,7 @@ export async function PUT(
       metadata: { templateId: id, changes },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json(withDerivedDeviceTemplateLabel(updated));
   } catch (error: unknown) {
     const code =
       error && typeof error === "object" && "code" in error

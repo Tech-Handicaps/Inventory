@@ -5,6 +5,7 @@ import { TagInput } from "@/components/ui/TagInput";
 import { useToast } from "@/components/ToastProvider";
 import { apiErrorMessage } from "@/lib/client/api-error";
 import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
+import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
 
 type DeviceTemplate = {
@@ -28,7 +29,8 @@ export function DeviceTemplatesSettingsSection() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [label, setLabel] = useState("");
+  const [labelPreview, setLabelPreview] = useState("");
+
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -60,7 +62,7 @@ export function DeviceTemplatesSettingsSection() {
 
   function resetForm() {
     setEditingId(null);
-    setLabel("");
+    setLabelPreview("");
     setManufacturer("");
     setModel("");
     setTags([]);
@@ -72,7 +74,7 @@ export function DeviceTemplatesSettingsSection() {
 
   function startEdit(t: DeviceTemplate) {
     setEditingId(t.id);
-    setLabel(t.label);
+    setLabelPreview(displayDeviceTemplateLabel(t));
     setManufacturer(t.manufacturer);
     setModel(t.model);
     setTags(assetTagsForDisplay(t.tags, t.category));
@@ -84,24 +86,23 @@ export function DeviceTemplatesSettingsSection() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!label.trim() || !manufacturer.trim() || !model.trim() || tags.length === 0)
-      return;
+    if (!manufacturer.trim() || !model.trim() || tags.length === 0) return;
     setSaving(true);
     try {
+      const body = {
+        manufacturer: manufacturer.trim(),
+        model: model.trim(),
+        tags,
+        notes: notes.trim() || null,
+        processorName: processorName.trim() || null,
+        systemRam: systemRam.trim() || null,
+        systemGpu: systemGpu.trim() || null,
+      };
       if (editingId) {
         const res = await fetch(`/api/device-templates/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            label: label.trim(),
-            manufacturer: manufacturer.trim(),
-            model: model.trim(),
-            tags,
-            notes: notes.trim() || null,
-            processorName: processorName.trim() || null,
-            systemRam: systemRam.trim() || null,
-            systemGpu: systemGpu.trim() || null,
-          }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) {
           throw new Error(await apiErrorMessage(res));
@@ -111,10 +112,7 @@ export function DeviceTemplatesSettingsSection() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            label: label.trim(),
-            manufacturer: manufacturer.trim(),
-            model: model.trim(),
-            tags,
+            ...body,
             notes: notes.trim() || undefined,
             processorName: processorName.trim() || undefined,
             systemRam: systemRam.trim() || undefined,
@@ -194,17 +192,16 @@ export function DeviceTemplatesSettingsSection() {
           onSubmit={submit}
           className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         >
-          <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-black/70">
-              Display label
-            </label>
-            <input
-              required
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Dell Latitude 5540"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-            />
+          <div className="sm:col-span-2 lg:col-span-3">
+            <p className="text-xs font-medium text-black/70">Catalog label</p>
+            <p className="mt-1 rounded-lg border border-black/10 bg-black/[0.02] px-3 py-2 text-sm text-black/80">
+              {labelPreview ||
+                displayDeviceTemplateLabel({ manufacturer, model, label: "" }) ||
+                "Enter manufacturer and model — label is generated automatically."}
+            </p>
+            <p className="mt-1 text-xs text-black/50">
+              Built from manufacturer + model (not asset deployment names like HNA-CLUB-01).
+            </p>
           </div>
           <div>
             <label className="text-xs font-medium text-black/70">
@@ -213,7 +210,16 @@ export function DeviceTemplatesSettingsSection() {
             <input
               required
               value={manufacturer}
-              onChange={(e) => setManufacturer(e.target.value)}
+              onChange={(e) => {
+                setManufacturer(e.target.value);
+                setLabelPreview(
+                  displayDeviceTemplateLabel({
+                    manufacturer: e.target.value,
+                    model,
+                    label: "",
+                  })
+                );
+              }}
               className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
             />
           </div>
@@ -222,7 +228,16 @@ export function DeviceTemplatesSettingsSection() {
             <input
               required
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => {
+                setModel(e.target.value);
+                setLabelPreview(
+                  displayDeviceTemplateLabel({
+                    manufacturer,
+                    model: e.target.value,
+                    label: "",
+                  })
+                );
+              }}
               className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
             />
           </div>
@@ -322,7 +337,9 @@ export function DeviceTemplatesSettingsSection() {
             <tbody>
               {templates.map((t) => (
                 <tr key={t.id} className="border-b border-black/5">
-                  <td className="py-2 pr-4 font-medium">{t.label}</td>
+                  <td className="py-2 pr-4 font-medium">
+                    {displayDeviceTemplateLabel(t)}
+                  </td>
                   <td className="py-2 pr-4">{t.manufacturer}</td>
                   <td className="py-2 pr-4">{t.model}</td>
                   <td className="py-2 pr-4">

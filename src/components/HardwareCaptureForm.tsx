@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TagInput } from "@/components/ui/TagInput";
 import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
+import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
 
 type Status = {
@@ -132,7 +133,8 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     const q = templateFilter.trim().toLowerCase();
     if (!q) return templates;
     return templates.filter((t) => {
-      const hay = `${t.label} ${t.manufacturer} ${t.model} ${t.category}`.toLowerCase();
+      const catalogLabel = displayDeviceTemplateLabel(t);
+      const hay = `${catalogLabel} ${t.manufacturer} ${t.model} ${t.category}`.toLowerCase();
       return hay.includes(q);
     });
   }, [templates, templateFilter]);
@@ -206,8 +208,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       }
       const t = templates.find((x) => x.id === id);
       if (!t) return;
-      setTemplateFilter(`${t.label} · ${t.manufacturer} ${t.model}`);
-      setAssetName(t.label);
+      setTemplateFilter(displayDeviceTemplateLabel(t));
       setTags(assetTagsForDisplay(t.tags, t.category));
       setManufacturer(t.manufacturer);
       setModel(t.model);
@@ -488,7 +489,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   </option>
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.label} · {t.manufacturer} {t.model}
+                      {displayDeviceTemplateLabel(t)}
                     </option>
                   ))}
                 </select>

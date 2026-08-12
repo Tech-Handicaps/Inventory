@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const statusCode = searchParams.get("statusCode");
     const category = searchParams.get("category");
+    const clubId = searchParams.get("clubId")?.trim();
     const limit = Math.min(
       1000,
       Math.max(1, parseInt(searchParams.get("limit") ?? "500", 10) || 500)
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     if (status) where.statusId = status;
     if (category) where.category = category;
+    if (clubId) where.clubId = clubId;
 
     if (statusCode && !status) {
       const st = await prisma.assetStatus.findFirst({

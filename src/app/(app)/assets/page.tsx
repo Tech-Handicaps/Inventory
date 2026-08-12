@@ -13,6 +13,7 @@ import {
   displayAssetManufacturer,
   displayAssetModel,
 } from "@/lib/inventory/asset-hardware-display";
+import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 
 type Asset = {
   id: string;
@@ -398,7 +399,9 @@ export default function AssetsPage() {
                         )}
                       </td>
                       <td className="py-2 text-xs text-black/70">
-                        {a.deviceTemplate?.label ?? "—"}
+                        {a.deviceTemplate
+                          ? displayDeviceTemplateLabel(a.deviceTemplate)
+                          : "—"}
                       </td>
                       <td className="whitespace-nowrap py-2 text-xs text-black/70">
                         {a.purchaseDate

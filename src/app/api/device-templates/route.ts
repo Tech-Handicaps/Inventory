@@ -9,6 +9,10 @@ import {
   parseTagsFromUnknown,
   resolveTagsForSave,
 } from "@/lib/inventory/asset-tags";
+import {
+  buildDeviceTemplateLabel,
+  withDerivedDeviceTemplateLabel,
+} from "@/lib/inventory/device-template-label";
 
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
@@ -17,7 +21,7 @@ export async function GET(request: NextRequest) {
     const templates = await prisma.deviceTemplate.findMany({
       orderBy: [{ manufacturer: "asc" }, { model: "asc" }],
     });
-    return NextResponse.json(templates);
+    return NextResponse.json(templates.map(withDerivedDeviceTemplateLabel));
   } catch (error) {
     console.error("GET /api/device-templates", error);
     const drift = nextResponseIfPrismaSchemaDrift(error);
@@ -43,7 +47,6 @@ export async function POST(request: NextRequest) {
     }
 
     const {
-      label,
       manufacturer,
       model,
       category,
@@ -60,8 +63,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (
-      typeof label !== "string" ||
-      !label.trim() ||
       typeof manufacturer !== "string" ||
       !manufacturer.trim() ||
       typeof model !== "string" ||
@@ -70,18 +71,24 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         {
-          error:
-            "label, manufacturer, model, and at least one asset tag are required",
+          error: "manufacturer, model, and at least one asset tag are required",
         },
         { status: 400 }
       );
     }
 
+    const trimmedManufacturer = manufacturer.trim();
+    const trimmedModel = model.trim();
+    const derivedLabel = buildDeviceTemplateLabel(
+      trimmedManufacturer,
+      trimmedModel
+    );
+
     const created = await prisma.deviceTemplate.create({
       data: {
-        label: label.trim(),
-        manufacturer: manufacturer.trim(),
-        model: model.trim(),
+        label: derivedLabel,
+        manufacturer: trimmedManufacturer,
+        model: trimmedModel,
         category: resolvedCategory,
         tags,
         notes:
@@ -113,7 +120,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(created);
+    return NextResponse.json(withDerivedDeviceTemplateLabel(created));
   } catch (error: unknown) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

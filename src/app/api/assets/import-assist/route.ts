@@ -14,6 +14,7 @@ import {
 } from "@/lib/zoho/client";
 import { resolveAssistResourceId } from "@/lib/zoho/resolve-assist-resource";
 import { findMatchingDeviceTemplate } from "@/lib/inventory/find-device-template";
+import { buildDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import {
   isDepotStockStatus,
   redeployStockAssetFromAssistImport,
@@ -126,8 +127,7 @@ export async function POST(request: NextRequest) {
         mapped.model?.trim() ||
         (assistId.length > 6 ? assistId.slice(-12) : assistId) ||
         "Unknown";
-      const label =
-        mapped.assetName?.trim() || `${manufacturer} ${model}`.trim();
+      const label = buildDeviceTemplateLabel(manufacturer, model);
       try {
         template = await prisma.deviceTemplate.create({
           data: {

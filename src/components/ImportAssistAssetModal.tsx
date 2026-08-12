@@ -1,12 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type AssistRow = {
   resourceId: string;
   displayName: string;
   deviceName?: string;
+};
+
+type ClubAsset = {
+  id: string;
+  assetName: string;
+  serialNumber: string | null;
+  dataSource: string;
+  zohoAssistDeviceId: string | null;
+  status: { code: string; label: string };
 };
 
 type NoTemplatePayload = {
@@ -51,6 +60,9 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
   const [clubs, setClubs] = useState<{ id: string; name: string }[]>([]);
   const [clubsLoading, setClubsLoading] = useState(false);
   const [clubId, setClubId] = useState("");
+  const [clubAssets, setClubAssets] = useState<ClubAsset[]>([]);
+  const [clubAssetsLoading, setClubAssetsLoading] = useState(false);
+  const [clubAssetsError, setClubAssetsError] = useState<string | null>(null);
 
   const reset = useCallback(() => {
     setFormError(null);
@@ -59,6 +71,8 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
     setNoTpl(null);
     setTplCategory("Hardware");
     setClubId("");
+    setClubAssets([]);
+    setClubAssetsError(null);
   }, []);
 
   useEffect(() => {
@@ -96,6 +110,64 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
       cancelled = true;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !clubId.trim()) {
+      setClubAssets([]);
+      setClubAssetsError(null);
+      setClubAssetsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setClubAssetsLoading(true);
+    setClubAssetsError(null);
+
+    fetch(`/api/assets?clubId=${encodeURIComponent(clubId.trim())}&limit=500`)
+      .then(async (r) => {
+        if (!r.ok) {
+          const j = (await r.json().catch(() => ({}))) as { error?: string };
+          throw new Error(
+            typeof j.error === "string" ? j.error : "Could not load club assets"
+          );
+        }
+        return r.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const assets = Array.isArray(data.assets) ? data.assets : [];
+        setClubAssets(
+          assets
+            .map((a: ClubAsset) => a)
+            .sort((a: ClubAsset, b: ClubAsset) =>
+              a.assetName.localeCompare(b.assetName)
+            )
+        );
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setClubAssets([]);
+          setClubAssetsError(
+            e instanceof Error ? e.message : "Could not load club assets"
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setClubAssetsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, clubId]);
+
+  const matchingClubAsset = useMemo(() => {
+    const q = displayName.trim().toLowerCase();
+    if (!q || clubAssets.length === 0) return null;
+    return (
+      clubAssets.find((a) => a.assetName.trim().toLowerCase() === q) ?? null
+    );
+  }, [displayName, clubAssets]);
 
   const loadList = useCallback(async () => {
     setListBusy(true);
@@ -290,6 +362,14 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
                 </option>
               ))}
             </select>
+            {clubId ? (
+              <ClubAssignedAssetsPanel
+                loading={clubAssetsLoading}
+                error={clubAssetsError}
+                assets={clubAssets}
+                matchingAsset={matchingClubAsset}
+              />
+            ) : null}
           </div>
           {formError ? (
             <div
@@ -347,6 +427,17 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
                 <p className="mt-1 text-xs text-black/50">
                   Must match the unattended device name / display name in Zoho Assist.
                 </p>
+                {matchingClubAsset ? (
+                  <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-950">
+                    <strong>{matchingClubAsset.assetName}</strong> is already assigned
+                    to this club
+                    {matchingClubAsset.serialNumber
+                      ? ` (S/N ${matchingClubAsset.serialNumber})`
+                      : ""}
+                    . Import will likely fail as a duplicate — use{" "}
+                    <strong>Link to Assist</strong> on the existing asset instead.
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -472,6 +563,74 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ClubAssignedAssetsPanel({
+  loading,
+  error,
+  assets,
+  matchingAsset,
+}: {
+  loading: boolean;
+  error: string | null;
+  assets: ClubAsset[];
+  matchingAsset: ClubAsset | null;
+}) {
+  return (
+    <div className="mt-3 rounded-lg border border-black/10 bg-black/[0.02] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-black/50">
+        Already assigned to this club
+      </p>
+      {loading ? (
+        <p className="mt-2 text-xs text-black/55">Loading club assets…</p>
+      ) : error ? (
+        <p className="mt-2 text-xs text-red-800">{error}</p>
+      ) : assets.length === 0 ? (
+        <p className="mt-2 text-xs text-black/55">
+          No assets registered to this club yet.
+        </p>
+      ) : (
+        <>
+          <p className="mt-1 text-xs text-black/60">
+            {assets.length} asset{assets.length === 1 ? "" : "s"} on record — check
+            before importing.
+          </p>
+          <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto text-xs">
+            {assets.map((asset) => {
+              const isMatch = matchingAsset?.id === asset.id;
+              return (
+                <li
+                  key={asset.id}
+                  className={`rounded-md border px-2.5 py-2 ${
+                    isMatch
+                      ? "border-amber-300 bg-amber-50"
+                      : "border-black/10 bg-white"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-medium text-black">{asset.assetName}</span>
+                    {asset.dataSource === "zoho_assist" ? (
+                      <span className="rounded border border-violet-200 bg-violet-50 px-1 py-px text-[9px] font-bold uppercase tracking-wide text-violet-900">
+                        Assist
+                      </span>
+                    ) : null}
+                    <span className="rounded border border-black/10 bg-black/[0.03] px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-black/55">
+                      {asset.status.label}
+                    </span>
+                  </div>
+                  {asset.serialNumber ? (
+                    <p className="mt-0.5 font-mono text-[10px] text-black/50">
+                      S/N {asset.serialNumber}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

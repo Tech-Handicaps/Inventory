@@ -4,6 +4,7 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 import type { PdfAssetRow } from "@/lib/pdf/inventory-report-document";
 import type { PdfCatalogRow } from "@/lib/pdf/catalog-report-document";
+import { buildDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderInventoryReportPdf } from "@/lib/pdf/render-inventory-report";
 import { renderCatalogReportPdf } from "@/lib/pdf/render-catalog-report";
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
       });
       const categories = new Set(templates.map((t) => t.category));
       const rows: PdfCatalogRow[] = templates.map((t) => ({
-        label: t.label,
+        label: buildDeviceTemplateLabel(t.manufacturer, t.model) || t.label,
         manufacturer: t.manufacturer,
         model: t.model,
         category: t.category,

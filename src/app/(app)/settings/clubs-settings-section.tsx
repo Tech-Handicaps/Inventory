@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useToast } from "@/components/ToastProvider";
 import { apiErrorMessage } from "@/lib/client/api-error";
+
+const CLUBS_PAGE_SIZE = 10;
 
 type Club = {
   id: string;
@@ -16,6 +18,22 @@ export function ClubsSettingsSection() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [page, setPage] = useState(0);
+
+  const sortedClubs = useMemo(
+    () => [...clubs].sort((a, b) => a.name.localeCompare(b.name)),
+    [clubs]
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedClubs.length / CLUBS_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageStart = safePage * CLUBS_PAGE_SIZE;
+  const visibleClubs = sortedClubs.slice(pageStart, pageStart + CLUBS_PAGE_SIZE);
+  const rangeStart = sortedClubs.length === 0 ? 0 : pageStart + 1;
+  const rangeEnd = Math.min(pageStart + CLUBS_PAGE_SIZE, sortedClubs.length);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages - 1));
+  }, [totalPages]);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/clubs");
@@ -159,7 +177,7 @@ export function ClubsSettingsSection() {
               </tr>
             </thead>
             <tbody>
-              {clubs.map((c) => (
+              {visibleClubs.map((c) => (
                 <tr key={c.id} className="border-b border-black/5">
                   <td className="py-2 pr-4 font-medium">{c.name}</td>
                   <td className="py-2 pr-0 text-right">
@@ -182,13 +200,77 @@ export function ClubsSettingsSection() {
               ))}
             </tbody>
           </table>
-          {clubs.length === 0 && (
+          {sortedClubs.length === 0 ? (
             <p className="py-8 text-center text-sm text-black/45">
               No clubs yet. Add one using the form above.
             </p>
+          ) : (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
+              <p className="text-xs text-black/55">
+                Showing {rangeStart}–{rangeEnd} of {sortedClubs.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <PaginationButton
+                  label="First page"
+                  disabled={safePage === 0}
+                  onClick={() => setPage(0)}
+                >
+                  «
+                </PaginationButton>
+                <PaginationButton
+                  label="Previous page"
+                  disabled={safePage === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  ‹
+                </PaginationButton>
+                <span className="min-w-[5rem] px-2 text-center text-xs font-medium text-black/70">
+                  Page {safePage + 1} of {totalPages}
+                </span>
+                <PaginationButton
+                  label="Next page"
+                  disabled={safePage >= totalPages - 1}
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                >
+                  ›
+                </PaginationButton>
+                <PaginationButton
+                  label="Last page"
+                  disabled={safePage >= totalPages - 1}
+                  onClick={() => setPage(totalPages - 1)}
+                >
+                  »
+                </PaginationButton>
+              </div>
+            </div>
           )}
         </div>
       </section>
     </div>
+  );
+}
+
+function PaginationButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="font-heading flex h-8 w-8 items-center justify-center rounded-md border border-black/15 bg-white text-base leading-none text-black transition-colors hover:bg-brand-muted/40 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {children}
+    </button>
   );
 }

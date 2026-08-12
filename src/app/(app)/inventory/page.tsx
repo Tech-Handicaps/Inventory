@@ -15,6 +15,7 @@ import {
   displayAssetModel,
 } from "@/lib/inventory/asset-hardware-display";
 import { formatGeoLabel } from "@/lib/geo/region-display";
+import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import { HARDWARE_BOARD_STATUS_MOVES } from "@/lib/inventory/hardware-board-moves";
 
 type Status = {
@@ -855,7 +856,7 @@ function HardwareCard({
           </div>
           {asset.deviceTemplate ? (
             <p className="text-[10px] font-medium uppercase tracking-wide text-brand">
-              Template: {asset.deviceTemplate.label}
+              Template: {displayDeviceTemplateLabel(asset.deviceTemplate)}
             </p>
           ) : null}
           <div className="mt-1 flex flex-wrap items-center gap-1">
