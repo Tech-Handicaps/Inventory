@@ -11,6 +11,7 @@ import {
   loadZohoAssistSettings,
   refreshZohoAccessToken,
 } from "@/lib/zoho/client";
+import { isDepotStockStatus } from "@/lib/zoho/assist-lifecycle";
 import { prisma } from "@/lib/prisma";
 
 function strOrNull(v: string | null | undefined): string | null {
@@ -143,6 +144,9 @@ export async function linkAssistToAsset(
   const geo = ip ? await prismaGeoFieldsFromPublicIp(ip) : null;
   const now = new Date();
 
+  const assistDisplayName =
+    mapped.assetName?.trim() || input.displayName?.trim() || null;
+
   const updated = await prisma.asset.update({
     where: { id: asset.id },
     data: {
@@ -151,6 +155,9 @@ export async function linkAssistToAsset(
       zohoAssistOrgId: orgId ?? undefined,
       zohoAssistDepartmentId: departmentId,
       lastSyncedFromAssistAt: now,
+      ...(isDepotStockStatus(asset.status.code) && assistDisplayName
+        ? { assetName: assistDisplayName }
+        : {}),
       ...(ip
         ? {
             publicIp: ip,
@@ -175,8 +182,7 @@ export async function linkAssistToAsset(
     asset: updated,
     assistDeviceId: assistId,
     assistDisplayName:
-      mapped.assetName?.trim() ||
-      input.displayName?.trim() ||
+      assistDisplayName ||
       null,
     serialMismatchWarning,
   };

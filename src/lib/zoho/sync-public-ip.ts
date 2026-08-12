@@ -5,6 +5,9 @@ import {
   mergeAssistListComputerIntoMapped,
 } from "@/lib/zoho/assist-device-map";
 import {
+  handleAssistDeviceMissingOnSync,
+} from "@/lib/zoho/assist-lifecycle";
+import {
   fetchAssistDeviceDetails,
   loadZohoAssistSettings,
   refreshZohoAccessToken,
@@ -32,6 +35,7 @@ export type SyncPublicIpResult = {
   processed: number;
   succeeded: number;
   failed: number;
+  detached: number;
   errors: { assetId: string; message: string }[];
 };
 
@@ -45,6 +49,7 @@ export async function syncAllAssistAssetsPublicIp(): Promise<SyncPublicIpResult>
       processed: 0,
       succeeded: 0,
       failed: 1,
+      detached: 0,
       errors: [{ assetId: "-", message: "Zoho Assist is not configured" }],
     };
   }
@@ -55,6 +60,7 @@ export async function syncAllAssistAssetsPublicIp(): Promise<SyncPublicIpResult>
       processed: 0,
       succeeded: 0,
       failed: 1,
+      detached: 0,
       errors: [{ assetId: "-", message: "Default department id missing in Zoho Assist settings" }],
     };
   }
@@ -68,15 +74,17 @@ export async function syncAllAssistAssetsPublicIp(): Promise<SyncPublicIpResult>
       id: true,
       zohoAssistDeviceId: true,
       publicIp: true,
+      status: { select: { code: true } },
     },
   });
 
   if (assets.length === 0) {
-    return { processed: 0, succeeded: 0, failed: 0, errors: [] };
+    return { processed: 0, succeeded: 0, failed: 0, detached: 0, errors: [] };
   }
 
   const errors: { assetId: string; message: string }[] = [];
   let succeeded = 0;
+  let detached = 0;
 
   for (const a of assets) {
     const assistId = a.zohoAssistDeviceId;
@@ -104,10 +112,15 @@ export async function syncAllAssistAssetsPublicIp(): Promise<SyncPublicIpResult>
       });
       succeeded += 1;
     } catch (e) {
-      errors.push({
-        assetId: a.id,
-        message: e instanceof Error ? e.message : "Sync failed",
-      });
+      const missing = await handleAssistDeviceMissingOnSync(a.id, e);
+      if (missing === "detached") {
+        detached += 1;
+      } else {
+        errors.push({
+          assetId: a.id,
+          message: e instanceof Error ? e.message : "Sync failed",
+        });
+      }
     }
 
     await delay(DELAY_MS);
@@ -117,12 +130,14 @@ export async function syncAllAssistAssetsPublicIp(): Promise<SyncPublicIpResult>
     processed: assets.length,
     succeeded,
     failed: errors.length,
+    detached,
     errors,
   };
 }
 
 export async function syncPublicIpForOneAsset(assetId: string): Promise<{
   ok: boolean;
+  detached?: boolean;
   error?: string;
 }> {
   const asset = await prisma.asset.findUnique({
@@ -170,6 +185,10 @@ export async function syncPublicIpForOneAsset(assetId: string): Promise<{
     });
     return { ok: true };
   } catch (e) {
+    const missing = await handleAssistDeviceMissingOnSync(assetId, e);
+    if (missing === "detached") {
+      return { ok: true, detached: true };
+    }
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Sync failed",

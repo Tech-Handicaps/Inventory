@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { detachAssistFromAsset } from "@/lib/zoho/assist-lifecycle";
 import { prisma } from "@/lib/prisma";
 
 /** POST /api/assets/:id/unlink-assist — remove Zoho Assist association; keeps registry fields */
@@ -20,7 +20,7 @@ export async function POST(
         id: true,
         assetName: true,
         zohoAssistDeviceId: true,
-        dataSource: true,
+        status: { select: { code: true } },
       },
     });
     if (!before) {
@@ -33,26 +33,12 @@ export async function POST(
       );
     }
 
-    const prevAssistId = before.zohoAssistDeviceId;
-    const asset = await prisma.asset.update({
-      where: { id },
-      data: {
-        dataSource: "manual",
-        zohoAssistDeviceId: null,
-        zohoAssistOrgId: null,
-        zohoAssistDepartmentId: null,
-      },
-      include: { status: true, deviceTemplate: true, club: true },
-    });
-
-    await createAuditLog({
+    const asset = await detachAssistFromAsset(id, {
       userId: user.id,
-      actionType: "asset.unlinked_from_zoho_assist",
-      notes: `Unlinked ${before.assetName} from Zoho Assist ${prevAssistId}`,
-      metadata: {
-        assetId: id,
-        zohoAssistDeviceId: prevAssistId,
-      },
+      reason: "manual_unlink",
+      resetAssistDisplayName:
+        before.status.code === "refurbished" ||
+        before.status.code === "new_stock",
     });
 
     return NextResponse.json({ asset });

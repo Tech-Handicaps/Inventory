@@ -14,6 +14,10 @@ import {
 } from "@/lib/zoho/client";
 import { resolveAssistResourceId } from "@/lib/zoho/resolve-assist-resource";
 import { findMatchingDeviceTemplate } from "@/lib/inventory/find-device-template";
+import {
+  isDepotStockStatus,
+  redeployStockAssetFromAssistImport,
+} from "@/lib/zoho/assist-lifecycle";
 import { resolveHardwareFieldFromAssistAndTemplate } from "@/lib/inventory/assist-hardware-values";
 import {
   assetTagsForDisplay,
@@ -230,9 +234,43 @@ export async function POST(request: NextRequest) {
           id: true,
           assetName: true,
           zohoAssistDeviceId: true,
+          status: { select: { code: true } },
         },
       });
       if (serialConflict) {
+        if (isDepotStockStatus(serialConflict.status.code)) {
+          const redeployed = await redeployStockAssetFromAssistImport({
+            existingAssetId: serialConflict.id,
+            assistId,
+            mapped,
+            assetName,
+            clubId: resolvedImportClubId,
+            orgId,
+            departmentId,
+            template,
+            userId: user.id,
+          });
+
+          await createAuditLog({
+            userId: user.id,
+            actionType: "asset.imported_from_zoho_assist",
+            notes: `Redeployed ${redeployed.assetName} from Assist (serial ${serialForCreate} matched depot stock)`,
+            metadata: {
+              assetId: redeployed.id,
+              zohoAssistDeviceId: assistId,
+              serialNumber: serialForCreate,
+              redeployedFromStatus: serialConflict.status.code,
+            },
+          });
+
+          return NextResponse.json({
+            asset: redeployed,
+            action: "redeployed_from_serial",
+            message:
+              "Existing depot stock matched by serial — linked to Assist, renamed, and moved to Deployed.",
+          });
+        }
+
         return NextResponse.json(
           {
             code: "DUPLICATE_SERIAL",

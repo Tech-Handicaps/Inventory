@@ -15,6 +15,7 @@ import {
   createDispatchVoucherAndNotify,
   shouldIssueDispatchVoucher,
 } from "@/lib/finance/dispatch-notify";
+import { hardwareBoardMoveError } from "@/lib/zoho/assist-lifecycle";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/assets/:id
@@ -225,6 +226,8 @@ export async function PUT(
 
     /** Origin club for Assessment → Refurbished notify (captured before club is cleared). */
     let fromClubNameForRefurb: string | null = null;
+    let completedAssessmentReference: string | null = null;
+    let assessmentOutcome: string | null = null;
 
     if (typeof updateData.statusId === "string") {
       const nextStatus = await prisma.assetStatus.findUnique({
@@ -233,6 +236,12 @@ export async function PUT(
       if (!nextStatus) {
         return NextResponse.json({ error: "statusId not found" }, { status: 400 });
       }
+
+      const moveError = hardwareBoardMoveError(before.status.code, nextStatus.code);
+      if (moveError) {
+        return NextResponse.json({ error: moveError }, { status: 400 });
+      }
+
       if (before.status.code === "deployed" && nextStatus.code === "repair") {
         return NextResponse.json(
           {
@@ -266,13 +275,20 @@ export async function PUT(
       }
 
       // Refurbished pool is unassigned stock — drop club ownership on the asset.
-      // Notification still receives the origin club via fromClubNameForRefurb.
       if (
-        before.status.code === "assessment" &&
+        (before.status.code === "assessment" ||
+          before.status.code === "repair") &&
         nextStatus.code === "refurbished"
       ) {
-        fromClubNameForRefurb = before.club?.name?.trim() || null;
+        if (before.status.code === "assessment") {
+          fromClubNameForRefurb = before.club?.name?.trim() || null;
+        }
         updateData.clubId = null;
+      }
+
+      // Returned to club after triage — complete open assessment intake.
+      if (before.status.code === "assessment" && nextStatus.code === "deployed") {
+        assessmentOutcome = "returned_to_club";
       }
     }
 
@@ -374,13 +390,17 @@ export async function PUT(
     );
 
     const transitionAssessmentToRefurbished =
-      before.status.code === "assessment" &&
+      (before.status.code === "assessment" ||
+        before.status.code === "repair") &&
       asset.status.code === "refurbished";
+
+    const transitionAssessmentToDeployed =
+      before.status.code === "assessment" &&
+      asset.status.code === "deployed";
 
     const notifyWarnings: string[] = [];
 
-    let completedAssessmentReference: string | null = null;
-    if (transitionAssessmentToRefurbished) {
+    if (transitionAssessmentToRefurbished || transitionAssessmentToDeployed) {
       const openAssessment = await prisma.assessment.findFirst({
         where: { assetId: id, workflowStatus: "open" },
         orderBy: { createdAt: "desc" },
@@ -394,18 +414,25 @@ export async function PUT(
           },
         });
         completedAssessmentReference = openAssessment.referenceNumber;
+        assessmentOutcome =
+          assessmentOutcome ??
+          (transitionAssessmentToRefurbished ? "refurbished" : "returned_to_club");
         await createAuditLog({
           userId: user.id,
           actionType: "assessment.completed",
-          notes: `Assessment/Maintenance intake ${openAssessment.referenceNumber} completed — refurbished: ${asset.assetName}`,
+          notes: `Assessment/Maintenance intake ${openAssessment.referenceNumber} completed — ${assessmentOutcome}: ${asset.assetName}`,
           metadata: {
             assessmentId: openAssessment.id,
             referenceNumber: openAssessment.referenceNumber,
             assetId: id,
-            outcome: "refurbished",
+            outcome: assessmentOutcome,
           },
         });
       }
+    }
+
+    if (transitionAssessmentToRefurbished && before.status.code === "repair") {
+      fromClubNameForRefurb = before.club?.name?.trim() || null;
     }
 
     await createAuditLog({
@@ -422,8 +449,10 @@ export async function PUT(
         : transitionToDeployed
           ? `Dispatched: ${asset.assetName} (${before.status.code} → deployed)`
           : transitionAssessmentToRefurbished
-            ? `Refurbished: ${asset.assetName} (assessment → refurbished)`
-            : `Updated: ${asset.assetName}`,
+            ? `Refurbished: ${asset.assetName} (${before.status.code} → refurbished)`
+            : transitionAssessmentToDeployed
+              ? `Returned to club: ${asset.assetName} (assessment → deployed)`
+              : `Updated: ${asset.assetName}`,
       metadata: {
         assetId: id,
         changes,

@@ -64,6 +64,10 @@ type Asset = {
   assessments?: OpenAssessmentBrief[];
 };
 
+import {
+  HARDWARE_BOARD_STATUS_MOVES,
+} from "@/lib/zoho/assist-lifecycle";
+
 const PRIMARY_ORDER = [
   "new_stock",
   "deployed",
@@ -79,9 +83,9 @@ function openAssessment(asset: Asset): OpenAssessmentBrief | null {
 
 /** Hide invalid lifecycle shortcuts (server also enforces transitions). */
 function statusesForMoves(statuses: Status[], asset: Asset): Status[] {
+  const allowed = HARDWARE_BOARD_STATUS_MOVES[asset.status.code];
   return statuses.filter((s) => {
-    if (asset.status.code === "deployed" && s.code === "repair") return false;
-    if (asset.status.code === "assessment" && s.code === "repair") return false;
+    if (allowed && !allowed.includes(s.code)) return false;
     if (
       (asset.status.code === "assessment" || asset.status.code === "repair") &&
       s.code === "written_off"

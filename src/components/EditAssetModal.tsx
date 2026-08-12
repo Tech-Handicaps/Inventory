@@ -221,9 +221,14 @@ export function EditAssetModal({
       const res = await fetch(`/api/assets/${assetId}/sync-assist`, {
         method: "POST",
       });
-      const j = (await res.json()) as { error?: string };
+      const j = (await res.json()) as { error?: string; detached?: boolean };
       if (!res.ok) {
         throw new Error(typeof j.error === "string" ? j.error : "Refresh failed");
+      }
+      if (j.detached) {
+        setAssistLinkNotice(
+          "Assist device no longer exists — link removed and depot name restored."
+        );
       }
       await load({ silent: true });
     } catch (e) {

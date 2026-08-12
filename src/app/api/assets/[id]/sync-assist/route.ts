@@ -18,5 +18,5 @@ export async function POST(
       { status: result.error === "Asset not found" ? 404 : 400 }
     );
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, detached: result.detached === true });
 }
