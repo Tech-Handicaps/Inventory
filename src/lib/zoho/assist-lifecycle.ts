@@ -12,6 +12,8 @@ import {
   isAssistDeviceNotFoundError,
   isAssistDeploymentUninstalled,
   isDepotStockStatus,
+  resolveReplacementAssetName,
+  shouldClearAssistLink,
 } from "@/lib/zoho/assist-lifecycle-shared";
 import { prisma } from "@/lib/prisma";
 
@@ -20,6 +22,10 @@ export {
   isAssistDeviceNotFoundError,
   isAssistDeploymentUninstalled,
   isDepotStockStatus,
+  looksLikeHnaAssistDeploymentName,
+  nextHnaStockAssetName,
+  resolveReplacementAssetName,
+  shouldClearAssistLink,
 } from "@/lib/zoho/assist-lifecycle-shared";
 export {
   hardwareBoardMoveError,
@@ -30,9 +36,17 @@ export {
 export type DetachAssistOptions = {
   userId?: string | null;
   reason: string;
-  /** When true and asset is depot stock, replace Assist display name with depot label. */
+  /** When true, replace Assist display name with inventory stock/hardware label. */
   resetAssistDisplayName?: boolean;
 };
+
+async function loadExistingStockNames(): Promise<string[]> {
+  const rows = await prisma.asset.findMany({
+    where: { assetName: { startsWith: "HNA-ST", mode: "insensitive" } },
+    select: { assetName: true },
+  });
+  return rows.map((row) => row.assetName);
+}
 
 /**
  * Remove Zoho Assist association from an asset.
@@ -54,6 +68,10 @@ export async function detachAssistFromAsset(
 
   const prevAssistId = before.zohoAssistDeviceId;
   const resetName = options.resetAssistDisplayName === true;
+  const stockNames = resetName ? await loadExistingStockNames() : [];
+  const nextAssetName = resetName
+    ? resolveReplacementAssetName(before, stockNames)
+    : undefined;
 
   const updated = await prisma.asset.update({
     where: { id: assetId },
@@ -64,7 +82,7 @@ export async function detachAssistFromAsset(
       zohoAssistDepartmentId: null,
       lastSyncedFromAssistAt: null,
       publicIpAssistSyncedAt: null,
-      ...(resetName ? { assetName: buildDepotAssetName(before) } : {}),
+      ...(resetName && nextAssetName ? { assetName: nextAssetName } : {}),
     },
     include: { status: true, deviceTemplate: true, club: true },
   });

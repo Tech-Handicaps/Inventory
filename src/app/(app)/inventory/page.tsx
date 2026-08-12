@@ -769,7 +769,10 @@ export default function InventoryPage() {
               code: s.code,
               label: s.label,
             }))}
-            onClose={() => setEditingId(null)}
+            onClose={() => {
+              setEditingId(null);
+              void load();
+            }}
             onSaved={() => {
               setEditingId(null);
               void load();

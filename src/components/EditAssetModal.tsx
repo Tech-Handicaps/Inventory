@@ -227,8 +227,10 @@ export function EditAssetModal({
       }
       if (j.detached) {
         setAssistLinkNotice(
-          "Assist device no longer exists — link removed and depot name restored."
+          "Assist link removed — stock name assigned (e.g. HNA-ST001). Hardware details kept."
         );
+        onSaved();
+        return;
       }
       await load({ silent: true });
     } catch (e) {

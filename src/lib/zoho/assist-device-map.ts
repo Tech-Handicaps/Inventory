@@ -229,6 +229,10 @@ export function mapAssistDeviceJsonToHardwareFields(json: unknown): AssistHardwa
 
   fillHardwareGapsFromDeepScan(rep, out);
 
+  if (!out.deploymentStatus) {
+    out.deploymentStatus = extractDeploymentStatusDeep(rep);
+  }
+
   let pip =
     extractPublicIpFromRepresentation(rep) ??
     extractPublicIpDeep(rep);
@@ -273,6 +277,29 @@ function extractPublicIpFromRepresentation(rep: Record<string, unknown>): string
       str(nd.wan_ip) ??
       str(nd.external_ip);
     if (raw && isLikelyPublicIpv4(raw)) return raw.trim();
+  }
+  return undefined;
+}
+
+function extractDeploymentStatusDeep(obj: unknown, depth = 0): string | undefined {
+  if (depth > 8) return undefined;
+  const r = asRecord(obj);
+  if (!r) return undefined;
+  for (const [k, v] of Object.entries(r)) {
+    const kl = k.toLowerCase();
+    if (
+      typeof v === "string" &&
+      v.trim() &&
+      (kl === "deployment_status" ||
+        kl === "deploymentstatus" ||
+        kl === "agent_deployment_status")
+    ) {
+      return v.trim();
+    }
+    if (v && typeof v === "object") {
+      const nested = extractDeploymentStatusDeep(v, depth + 1);
+      if (nested) return nested;
+    }
   }
   return undefined;
 }
@@ -407,12 +434,50 @@ export function mergeAssistListComputerIntoMapped(
     manufacturer: mapped.manufacturer ?? mfg,
     model: mapped.model ?? mdl,
     publicIp,
+    deploymentStatus:
+      mapped.deploymentStatus ??
+      str(rowDi?.deployment_status) ??
+      str(rowDi?.deploymentStatus) ??
+      undefined,
     serialNumber:
       mapped.serialNumber ??
       str(rowDi?.serial_number) ??
       str(rowDi?.service_tag) ??
       str(rowPd?.serial_number),
   };
+}
+
+/** deployment_status from an Assist devices-list row (most reliable for agent state). */
+export function extractDeploymentStatusFromAssistRow(
+  rowRaw: unknown
+): string | undefined {
+  const row = asRecord(rowRaw);
+  const di = row ? asRecord(row.device_info) : null;
+  return (
+    str(di?.deployment_status) ??
+    str(di?.deploymentStatus) ??
+    str(di?.agent_deployment_status) ??
+    undefined
+  );
+}
+
+/** Live connection status from list row (online/offline/deleted/…). */
+export function extractLiveStatusFromAssistRow(rowRaw: unknown): string | undefined {
+  const row = asRecord(rowRaw);
+  const di = row ? asRecord(row.device_info) : null;
+  return str(di?.status) ?? str(row?.status);
+}
+
+export function findAssistListRowByResourceId(
+  json: unknown,
+  resourceId: string
+): unknown | null {
+  const target = resourceId.trim();
+  if (!target) return null;
+  return (
+    extractAssistListRows(json).find((row) => row.resourceId === target)?.raw ??
+    null
+  );
 }
 
 export type AssistListRow = {

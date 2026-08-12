@@ -474,7 +474,10 @@ export default function AssetsPage() {
           <EditAssetModal
             assetId={editingId}
             statuses={effectiveStatuses}
-            onClose={() => setEditingId(null)}
+            onClose={() => {
+              setEditingId(null);
+              void load();
+            }}
             onSaved={() => {
               setEditingId(null);
               void load();
