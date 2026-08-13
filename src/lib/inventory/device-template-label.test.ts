@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDeviceTemplateLabel,
   displayDeviceTemplateLabel,
+  resolveAssetSkuModelLabel,
 } from "@/lib/inventory/device-template-label";
 
 describe("buildDeviceTemplateLabel", () => {
@@ -27,5 +28,33 @@ describe("displayDeviceTemplateLabel", () => {
         model: "OptiPlex 7440 AIO",
       })
     ).toBe("Dell Inc. OptiPlex 7440 AIO");
+  });
+});
+
+describe("resolveAssetSkuModelLabel", () => {
+  it("uses asset make/model and ignores template deployment-style label", () => {
+    expect(
+      resolveAssetSkuModelLabel({
+        manufacturer: "Dell Inc.",
+        model: "OptiPlex 7440 AIO",
+        deviceTemplate: {
+          manufacturer: "Dell Inc.",
+          model: "OptiPlex 7440 AIO",
+        },
+      })
+    ).toBe("Dell Inc. OptiPlex 7440 AIO");
+  });
+
+  it("falls back to template fields when asset row is empty", () => {
+    expect(
+      resolveAssetSkuModelLabel({
+        manufacturer: null,
+        model: null,
+        deviceTemplate: {
+          manufacturer: "Gigatek",
+          model: "MSR250HK",
+        },
+      })
+    ).toBe("Gigatek MSR250HK");
   });
 });

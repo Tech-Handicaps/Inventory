@@ -5,6 +5,7 @@ import {
   generateProcurementInsightBullets,
   type FleetProcurementMetrics,
 } from "@/lib/reports/fleet-procurement-insights";
+import { resolveAssetSkuModelLabel } from "@/lib/inventory/device-template-label";
 import { prisma } from "@/lib/prisma";
 import { REPORT_ASSET_LIST_LIMIT } from "@/lib/reports/limits";
 
@@ -37,7 +38,9 @@ export async function GET(request: NextRequest) {
           dateAdded: true,
           purchaseDate: true,
           warrantyEndDate: true,
-          deviceTemplate: { select: { label: true, manufacturer: true } },
+          deviceTemplate: {
+            select: { label: true, manufacturer: true, model: true },
+          },
         },
         take: REPORT_ASSET_LIST_LIMIT,
       }),
@@ -74,12 +77,10 @@ export async function GET(request: NextRequest) {
         "Unknown";
       byManufacturer.set(mfg, (byManufacturer.get(mfg) ?? 0) + 1);
 
-      const label =
-        a.deviceTemplate?.label?.trim() ||
-        `${a.manufacturer?.trim() || "Unknown"} — ${a.model?.trim() || "—"}`;
+      const label = resolveAssetSkuModelLabel(a);
       const prev = byModel.get(label) ?? {
         count: 0,
-        manufacturer: a.manufacturer ?? a.deviceTemplate?.manufacturer ?? null,
+        manufacturer: mfg === "Unknown" ? null : mfg,
       };
       byModel.set(label, {
         count: prev.count + 1,

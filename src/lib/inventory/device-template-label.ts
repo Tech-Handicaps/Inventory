@@ -30,3 +30,18 @@ export function withDerivedDeviceTemplateLabel<
   );
   return derived ? { ...template, label: derived } : template;
 }
+
+/** SKU / model label for fleet reports — never asset deployment names. */
+export function resolveAssetSkuModelLabel(asset: {
+  manufacturer: string | null;
+  model: string | null;
+  deviceTemplate?: { manufacturer: string; model: string } | null;
+}): string {
+  const manufacturer = (
+    asset.manufacturer ??
+    asset.deviceTemplate?.manufacturer ??
+    ""
+  ).trim();
+  const model = (asset.model ?? asset.deviceTemplate?.model ?? "").trim();
+  return buildDeviceTemplateLabel(manufacturer, model) || "Unknown";
+}

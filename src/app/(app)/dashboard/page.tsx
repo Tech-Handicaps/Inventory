@@ -377,8 +377,9 @@ export default function DashboardPage() {
           <p className="mt-2 max-w-4xl text-sm leading-relaxed text-black/70">
             <strong>Scope:</strong> operational units only (written-off assets are
             excluded) so percentages reflect what you still manage day to day.{" "}
-            <strong>SKU / model</strong> uses the device template label when set;
-            otherwise “manufacturer — model” from the asset row.{" "}
+            <strong>SKU / model</strong> groups units by manufacturer + model
+            (from the asset row or linked device template), not deployment names
+            like HNA-CLUB-01.{" "}
             <strong>Purchase date</strong> and <strong>warranty end</strong> (when
             captured on each asset) drive age averages, acquisition cohorts, and
             renewal alerts below. <strong>Registration year</strong> is from{" "}
