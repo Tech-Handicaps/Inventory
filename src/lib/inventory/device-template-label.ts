@@ -11,8 +11,8 @@ export function buildDeviceTemplateLabel(
 
 export function displayDeviceTemplateLabel(template: {
   label?: string | null;
-  manufacturer: string;
-  model: string;
+  manufacturer?: string | null;
+  model?: string | null;
 }): string {
   return (
     buildDeviceTemplateLabel(template.manufacturer, template.model) ||
