@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  ClipboardCheck,
   LayoutDashboard,
   LayoutGrid,
   Menu,
@@ -27,7 +26,6 @@ function navKeyFromPath(pathname: string): AppShellCurrent | undefined {
   if (pathname.startsWith("/inventory")) return "inventory";
   if (pathname.startsWith("/assets")) return "assets";
   if (pathname.startsWith("/reports")) return "reports";
-  if (pathname.startsWith("/acknowledgements")) return "acknowledgements";
   if (pathname.startsWith("/settings")) return "settings";
   return undefined;
 }
@@ -57,12 +55,6 @@ const NAV_ITEMS: {
     icon: Package,
   },
   { href: "/reports", key: "reports", label: "Reports", icon: FileText },
-  {
-    href: "/acknowledgements",
-    key: "acknowledgements",
-    label: "Acknowledgements",
-    icon: ClipboardCheck,
-  },
   { href: "/settings", key: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -82,7 +74,7 @@ function SidebarNav({
   const visible = (key: NavKey) => {
     if (hasFullNavAccess(role)) return true;
     if (loading || loadError || role === null) {
-      return key !== "settings" && key !== "acknowledgements";
+      return key !== "settings";
     }
     return isNavLinkVisible(role, key);
   };

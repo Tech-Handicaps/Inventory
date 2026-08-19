@@ -10,8 +10,10 @@ import { renderReconcileReportPdf } from "@/lib/pdf/render-reconcile-report";
 import { prisma } from "@/lib/prisma";
 import {
   buildStockReconcileReport,
+  buildStockBreakdownReport,
   stockStatusInclude,
 } from "@/lib/reports/stock-reconcile";
+import { renderStockBreakdownPdf } from "@/lib/pdf/render-stock-breakdown-report";
 
 const TZ = "Africa/Johannesburg";
 
@@ -63,26 +65,83 @@ export function johannesburgNowParts(now = new Date()): {
   return { year, month, day, monthKey, monthLabel };
 }
 
-async function buildReconcilePdfBuffer(): Promise<{
-  buffer: Buffer;
+/**
+ * For scheduled (cron) reports the label should reference the *previous* month
+ * because the cron fires on the 1st of the new month to close off the prior
+ * period — e.g. cron fires 1 Aug → "For month ending July 2026".
+ */
+export function previousMonthLabel(now = new Date()): {
+  monthKey: string;
   monthLabel: string;
+  monthEndingLabel: string;
+} {
+  const { year, month } = johannesburgNowParts(now);
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const monthKey = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
+  const monthLabel = new Date(
+    Date.UTC(prevYear, prevMonth - 1, 1)
+  ).toLocaleDateString("en-ZA", {
+    year: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+  return { monthKey, monthLabel, monthEndingLabel: `For month ending ${monthLabel}` };
+}
+
+async function buildReconcilePdfs(
+  mode: MonthlyReconcileSendMode
+): Promise<{
+  reconcileBuffer: Buffer;
+  breakdownBuffer: Buffer;
+  monthLabel: string;
+  monthEndingLabel: string;
+  monthKey: string;
   generatedAt: string;
 }> {
-  const { monthLabel } = johannesburgNowParts();
+  const isCron = mode === "cron";
+  const prev = previousMonthLabel();
+  const cur = johannesburgNowParts();
+
+  const reportMonthLabel = isCron ? prev.monthLabel : cur.monthLabel;
+  const reportMonthKey = isCron ? prev.monthKey : cur.monthKey;
+  const monthEndingLabel = isCron
+    ? prev.monthEndingLabel
+    : `For month ending ${cur.monthLabel}`;
+
   const assets = await prisma.asset.findMany({
     include: stockStatusInclude,
   });
-  const report = buildStockReconcileReport(assets);
+  const reconcileReport = buildStockReconcileReport(assets);
+  const breakdownReport = buildStockBreakdownReport(assets);
   const logoSource = await loadLogoForPdf();
   const generatedAt = new Date().toLocaleString("en-ZA", { timeZone: TZ });
-  const buffer = await renderReconcileReportPdf({
-    title: "Monthly stock reconcile",
-    subtitle: `Finance reconciliation — ${monthLabel} · stock and full register by asset type`,
+
+  const [reconcileBuffer, breakdownBuffer] = await Promise.all([
+    renderReconcileReportPdf({
+      title: "Monthly Stock Reconcile Report",
+      subtitle: `Finance reconciliation — ${monthEndingLabel} · stock and full register by asset type`,
+      generatedAt,
+      logoSource,
+      report: reconcileReport,
+    }),
+    renderStockBreakdownPdf({
+      title: "Stock Breakdown by Make / Model",
+      subtitle: `${monthEndingLabel} · new stock, refurbished, and written-off itemised`,
+      generatedAt,
+      logoSource,
+      report: breakdownReport,
+    }),
+  ]);
+
+  return {
+    reconcileBuffer,
+    breakdownBuffer,
+    monthLabel: reportMonthLabel,
+    monthEndingLabel,
+    monthKey: reportMonthKey,
     generatedAt,
-    logoSource,
-    report,
-  });
-  return { buffer, monthLabel, generatedAt };
+  };
 }
 
 /**
@@ -164,12 +223,16 @@ export async function sendMonthlyReconcileReport(options: {
   }
 
   try {
-    const { buffer } = await buildReconcilePdfBuffer();
-    const filename = `hna-monthly-stock-reconcile-${monthKey}.pdf`;
+    const pdf = await buildReconcilePdfs(options.mode);
     const attachments = [
       {
-        filename,
-        content: buffer,
+        filename: `hna-monthly-stock-reconcile-${pdf.monthKey}.pdf`,
+        content: pdf.reconcileBuffer,
+        contentType: "application/pdf",
+      },
+      {
+        filename: `hna-stock-breakdown-${pdf.monthKey}.pdf`,
+        content: pdf.breakdownBuffer,
         contentType: "application/pdf",
       },
     ];
@@ -180,10 +243,11 @@ export async function sendMonthlyReconcileReport(options: {
       (greeting) =>
         buildMonthlyReconcileEmail({
           greeting,
-          monthLabel,
+          monthLabel: pdf.monthLabel,
+          monthEndingLabel: pdf.monthEndingLabel,
           appUrl: appBaseUrl(),
         }),
-      { attachments, monthLabel }
+      { attachments, monthLabel: pdf.monthLabel }
     );
 
     if (result.sent === 0) {
@@ -212,11 +276,13 @@ export async function sendMonthlyReconcileReport(options: {
     await createAuditLog({
       userId: options.userId ?? null,
       actionType: "report.monthly_reconcile_email",
-      notes: `Monthly reconcile emailed for ${monthLabel} (${result.sent} sent, ${result.failed} failed)`,
+      notes: `Monthly reconcile emailed — ${pdf.monthEndingLabel} (${result.sent} sent, ${result.failed} failed)`,
       metadata: {
         mode: options.mode,
         monthKey,
-        monthLabel,
+        reportMonthKey: pdf.monthKey,
+        reportMonthLabel: pdf.monthLabel,
+        monthEndingLabel: pdf.monthEndingLabel,
         sent: result.sent,
         failed: result.failed,
         recipients: recipients.map((r) => r.email),
@@ -226,7 +292,7 @@ export async function sendMonthlyReconcileReport(options: {
     return {
       ok: true,
       monthKey,
-      monthLabel,
+      monthLabel: pdf.monthLabel,
       sent: result.sent,
       failed: result.failed,
       error: result.failed > 0 ? result.lastError ?? undefined : undefined,

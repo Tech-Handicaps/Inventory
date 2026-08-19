@@ -290,8 +290,8 @@ export function EmailNotificationsSettingsSection() {
             className="mt-1"
           />
           <span className="text-sm text-black/80">
-            <strong>Enable sending</strong> — when off, acknowledgement rows are
-            still created; emails are skipped. Scheduled monthly reconcile also
+            <strong>Enable sending</strong> — when off, event records are still
+            created but emails are skipped. Scheduled monthly reconcile also
             respects this switch.
           </span>
         </label>
@@ -477,9 +477,11 @@ export function EmailNotificationsSettingsSection() {
               Scheduled reports
             </h3>
             <p className="mt-1 text-sm text-black/60">
-              Email the <strong>Monthly Stock Reconcile</strong> PDF to the
-              finance list above. Runs daily at 06:00 UTC and only sends on the
-              chosen day in Africa/Johannesburg (once per month).
+              Email the <strong>Monthly Stock Reconcile Report</strong> PDF to
+              the finance list above. The report covers the <em>previous</em>{" "}
+              month (e.g. sent on 1 Aug → "For month ending July 2026"). Runs
+              daily at 06:00 UTC and only sends on the chosen day (once per
+              month).
             </p>
           </div>
 

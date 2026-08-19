@@ -5,7 +5,6 @@ export type NavKey =
   | "inventory"
   | "assets"
   | "reports"
-  | "acknowledgements"
   | "settings";
 
 /**
@@ -20,9 +19,6 @@ export function hasFullNavAccess(
 }
 
 export function isNavLinkVisible(role: AppRole, key: NavKey): boolean {
-  if (key === "acknowledgements") {
-    return role === "admin" || role === "super_admin" || role === "accountant";
-  }
   if (role === "reports_only") {
     return key === "reports";
   }

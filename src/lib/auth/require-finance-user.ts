@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 
-/** Finance queue + acknowledgement actions (admin / super_admin / accountant). */
+/** Finance notification actions (admin / super_admin / accountant). */
 export async function requireFinanceAckUser(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;

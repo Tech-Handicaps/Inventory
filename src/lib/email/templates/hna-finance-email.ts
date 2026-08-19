@@ -27,15 +27,13 @@ export function wrapHnaEmailHtml(
   bodyHtml: string,
   appBaseUrl: string,
   options?: {
-    /** Default: acknowledgement reminder. Use `informational` for report-only emails. */
-    footerVariant?: "acknowledgement" | "informational";
+    /** Kept for API compatibility; all emails now use the informational footer. */
+    footerVariant?: "informational";
   }
 ): string {
   const logoSrc = esc(brandLogoEmailUrl(appBaseUrl));
   const footer =
-    options?.footerVariant === "informational"
-      ? "This message was sent by the inventory system. If you have received this email in error, or do not recognise the sender or the content of this email, please refrain from opening any attachments and delete this message."
-      : "This message was sent by the inventory system. Please acknowledge in the app under <strong>Acknowledgements</strong> when your records are updated.";
+    "This message was sent by the inventory system. If you have received this email in error, or do not recognise the sender or the content of this email, please refrain from opening any attachments and delete this message.";
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -104,9 +102,6 @@ export function buildInRepairEmail(params: {
       <tr><td style="padding:6px 0;color:${MUTED};">Model</td><td style="padding:6px 0;">${escOptional(params.model)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Serial</td><td style="padding:6px 0;">${params.serial ? esc(params.serial) : "—"}</td></tr>
     </table>
-    <p style="margin:16px 0 0 0;">
-      <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
-    </p>
   `;
   return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }
@@ -144,9 +139,6 @@ export function buildInAssessmentEmail(params: {
       <tr><td style="padding:6px 0;color:${MUTED};">Model</td><td style="padding:6px 0;">${escOptional(params.model)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Serial</td><td style="padding:6px 0;">${params.serial ? esc(params.serial) : "—"}</td></tr>
     </table>
-    <p style="margin:16px 0 0 0;">
-      <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
-    </p>
   `;
   return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }
@@ -207,9 +199,6 @@ export function buildDispatchVoucherEmail(params: {
       <tr><td style="padding:6px 0;color:${MUTED};">CPU / RAM / GPU</td><td style="padding:6px 0;">${hw || "—"}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Source</td><td style="padding:6px 0;">${esc(sourceLabel)}</td></tr>
     </table>
-    <p style="margin:16px 0 0 0;">
-      <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
-    </p>
   `;
   return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }
@@ -262,7 +251,7 @@ export function buildWrittenOffEmail(params: {
       : "";
   const body = `
     <p style="margin:0 0 12px 0;">${esc(params.greeting)}</p>
-    <p style="margin:0 0 12px 0;">An asset has been marked <strong>Written off</strong>. Please update your financial records and acknowledge in the system.</p>
+    <p style="margin:0 0 12px 0;">An asset has been marked <strong>Written off</strong>. Please update your financial records accordingly.</p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <tr><td style="padding:6px 0;color:${MUTED};width:140px;">Asset</td><td style="padding:6px 0;">${esc(params.assetName)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};"><strong>Club name</strong></td><td style="padding:6px 0;">${clubBodyCell}</td></tr>
@@ -277,9 +266,6 @@ export function buildWrittenOffEmail(params: {
       <tr><td style="padding:6px 0;color:${MUTED};">Replacement requested</td><td style="padding:6px 0;">${params.replacementRequested ? "Yes" : "No"}</td></tr>
       ${replacementBlock}
     </table>
-    <p style="margin:16px 0 0 0;">
-      <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
-    </p>
   `;
   return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }
@@ -348,9 +334,6 @@ export function buildRefurbishedEmail(params: {
       <tr><td style="padding:6px 0;color:${MUTED};">Assist device id</td><td style="padding:6px 0;">${escOptional(params.zohoAssistDeviceId)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Source</td><td style="padding:6px 0;">${esc(sourceLabel)}</td></tr>
     </table>
-    <p style="margin:16px 0 0 0;">
-      <a href="${esc(params.appUrl + "/acknowledgements")}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:bold;font-size:13px;">Open acknowledgements</a>
-    </p>
   `;
   return { subject, html: wrapHnaEmailHtml(body, params.appUrl) };
 }
@@ -375,21 +358,27 @@ export function greetingLine(financeGreetingName: string | null): string {
 export function buildMonthlyReconcileEmail(params: {
   greeting: string;
   monthLabel: string;
+  /** e.g. "For month ending July 2026" */
+  monthEndingLabel: string;
   appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `Monthly Stock Reconcile Report — ${params.monthLabel}`;
+  const subject = `Finance reconciliation — ${params.monthEndingLabel}`;
   const body = `
     <p style="margin:0 0 16px 0;font-size:15px;color:#111;">${esc(params.greeting)}</p>
     <p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
       You are receiving this email because you are part of the finance / auditing notification list.
     </p>
     <p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
-      Kindly find attached the <strong>Monthly Stock Reconcile Report</strong> for
-      <strong>${esc(params.monthLabel)}</strong>.
+      Kindly find attached the <strong>Monthly Stock Reconcile Report</strong> —
+      <strong>${esc(params.monthEndingLabel)}</strong>.
+    </p>
+    <p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
+      A second attachment — <strong>Stock Breakdown by Make / Model</strong> — lists
+      every individual asset grouped by status (new stock, refurbished, written off)
+      with manufacturer, model, and serial number for detailed audit reference.
     </p>
     <p style="margin:0 0 0 0;font-size:14px;line-height:1.55;color:${MUTED};">
-      This is a point-in-time snapshot of the live inventory register (new stock, refurbished,
-      and full lifecycle counts by asset type).
+      Both reports are point-in-time snapshots of the live inventory register.
     </p>
   `;
   return {

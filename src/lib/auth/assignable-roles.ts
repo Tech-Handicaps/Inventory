@@ -45,7 +45,7 @@ export function roleDescription(role: AssignableRole): string {
     case "operations":
       return "Hardware board, assets, repairs, and reports — no settings or finance queue.";
     case "accountant":
-      return "Inventory plus finance acknowledgements — no user admin, Zoho settings, or audit.";
+      return "Inventory plus finance notifications — no user admin, Zoho settings, or audit.";
     case "reports_only":
       return "Home and reports only.";
     default:

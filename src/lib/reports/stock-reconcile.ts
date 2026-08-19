@@ -9,8 +9,12 @@ import {
 
 export type AssetForReconcile = {
   id: string;
+  assetName: string;
   category: string;
   tags?: string[] | null;
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string | null;
   status: { code: string; label: string };
 };
 
@@ -173,3 +177,68 @@ export function filterAssetsByReportTypeAndStatus<
 export const stockStatusInclude = {
   status: true,
 } as const satisfies Prisma.AssetInclude;
+
+/* ── Stock breakdown by make/model ──────────────────────────────────── */
+
+export type BreakdownModelRow = {
+  makeModel: string;
+  count: number;
+  assets: { assetName: string; serialNumber: string | null }[];
+};
+
+export type BreakdownSection = {
+  statusLabel: string;
+  statusCode: string;
+  totalCount: number;
+  models: BreakdownModelRow[];
+};
+
+export type StockBreakdownReport = {
+  sections: BreakdownSection[];
+};
+
+const BREAKDOWN_STATUSES: { code: string; label: string }[] = [
+  { code: "new_stock", label: "New Stock" },
+  { code: "refurbished", label: "Refurbished" },
+  { code: "written_off", label: "Written Off" },
+];
+
+export function buildStockBreakdownReport(
+  assets: AssetForReconcile[]
+): StockBreakdownReport {
+  const sections: BreakdownSection[] = [];
+
+  for (const { code, label } of BREAKDOWN_STATUSES) {
+    const matching = assets.filter((a) => a.status.code === code);
+    const byModel = new Map<
+      string,
+      { assetName: string; serialNumber: string | null }[]
+    >();
+
+    for (const a of matching) {
+      const mfg = a.manufacturer?.trim() || "";
+      const mdl = a.model?.trim() || "";
+      const makeModel = [mfg, mdl].filter(Boolean).join(" ") || "Unknown";
+      const list = byModel.get(makeModel) ?? [];
+      list.push({ assetName: a.assetName, serialNumber: a.serialNumber });
+      byModel.set(makeModel, list);
+    }
+
+    const models: BreakdownModelRow[] = Array.from(byModel.entries())
+      .map(([makeModel, list]) => ({
+        makeModel,
+        count: list.length,
+        assets: list.sort((a, b) => a.assetName.localeCompare(b.assetName)),
+      }))
+      .sort((a, b) => b.count - a.count || a.makeModel.localeCompare(b.makeModel));
+
+    sections.push({
+      statusLabel: label,
+      statusCode: code,
+      totalCount: matching.length,
+      models,
+    });
+  }
+
+  return { sections };
+}

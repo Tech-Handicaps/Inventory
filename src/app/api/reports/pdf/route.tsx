@@ -9,12 +9,14 @@ import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderInventoryReportPdf } from "@/lib/pdf/render-inventory-report";
 import { renderCatalogReportPdf } from "@/lib/pdf/render-catalog-report";
 import { renderReconcileReportPdf } from "@/lib/pdf/render-reconcile-report";
+import { renderStockBreakdownPdf } from "@/lib/pdf/render-stock-breakdown-report";
 import {
   reportAssetTypeById,
   type ReportAssetTypeId,
 } from "@/lib/reports/asset-types";
 import {
   buildStockReconcileReport,
+  buildStockBreakdownReport,
   filterAssetsByReportTypeAndStatus,
   stockStatusInclude,
   type StockStatusFilter,
@@ -35,6 +37,7 @@ const REPORT_TYPES = [
   "usb_hid_msr_new_stock",
   "usb_hid_msr_refurbished",
   "reconcile",
+  "stock_breakdown",
 ] as const;
 type ReportType = (typeof REPORT_TYPES)[number];
 
@@ -190,13 +193,32 @@ export async function GET(request: NextRequest) {
         month: "long",
       });
       const buffer = await renderReconcileReportPdf({
-        title: "Monthly stock reconcile",
-        subtitle: `Finance reconciliation — ${monthLabel} · stock and full register by asset type`,
+        title: "Monthly Stock Reconcile Report",
+        subtitle: `Finance reconciliation — For month ending ${monthLabel} · stock and full register by asset type`,
         generatedAt,
         logoSource,
         report,
       });
       return respondPdf(buffer, "hna-monthly-stock-reconcile");
+    }
+
+    if (raw === "stock_breakdown") {
+      const assets = await prisma.asset.findMany({
+        include: stockStatusInclude,
+      });
+      const report = buildStockBreakdownReport(assets);
+      const monthLabel = new Date().toLocaleDateString("en-ZA", {
+        year: "numeric",
+        month: "long",
+      });
+      const buffer = await renderStockBreakdownPdf({
+        title: "Stock Breakdown by Make / Model",
+        subtitle: `For month ending ${monthLabel} · new stock, refurbished, and written-off itemised`,
+        generatedAt,
+        logoSource,
+        report,
+      });
+      return respondPdf(buffer, "hna-stock-breakdown");
     }
 
     if (raw && TYPE_STATUS_REPORTS[raw]) {
