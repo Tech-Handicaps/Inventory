@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CategoryBarChart } from "@/components/charts/CategoryBarChart";
+import {
+  HandicaperModal,
+  type HandicaperRequest,
+} from "@/components/HandicaperModal";
 import { DataSourceDonutChart } from "@/components/charts/DataSourceDonutChart";
 import {
   capSlicesForDonut,
@@ -15,7 +19,18 @@ import { WriteoffsDonutChart } from "@/components/charts/WriteoffsDonutChart";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 type StockRow = { status: string; count: number; code: string };
-type StockData = { stock: StockRow[]; total: number };
+type StockAvailableBucket = {
+  new_stock: number;
+  refurbished: number;
+  total: number;
+};
+type StockAvailable = {
+  all: StockAvailableBucket;
+  hardware: StockAvailableBucket;
+  usb_hid_msr: StockAvailableBucket;
+  other: StockAvailableBucket;
+};
+type StockData = { stock: StockRow[]; total: number; available: StockAvailable };
 type RepairsData = {
   pipeline: { status: string; count: number }[];
   repairs: { asset: { assetName: string } }[];
@@ -102,11 +117,15 @@ function KpiCard({
   value,
   hint,
   accent,
+  metricKey,
+  onExplain,
 }: {
   label: string;
   value: number | string;
   hint?: string;
   accent?: "default" | "brand" | "sky" | "amber" | "rose";
+  metricKey?: string;
+  onExplain?: (metricKey: string, label: string) => void;
 }) {
   const bar =
     accent === "brand"
@@ -118,12 +137,36 @@ function KpiCard({
           : accent === "rose"
             ? "bg-rose-500"
             : "bg-black/80";
+  const clickable = Boolean(metricKey && onExplain);
   return (
-    <div className="kpi-card p-4">
+    <div
+      className={`kpi-card p-4 ${clickable ? "cursor-pointer transition hover:ring-2 hover:ring-brand/30 hover:shadow-md" : ""}`}
+      onClick={clickable ? () => onExplain!(metricKey!, label) : undefined}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onExplain!(metricKey!, label);
+              }
+            }
+          : undefined
+      }
+      title={clickable ? "Click to ask Handicaper for a breakdown" : undefined}
+    >
       <div className={`mb-3 h-1 w-10 rounded-full ${bar}`} />
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-black/45">
-        {label}
-      </p>
+      <div className="flex items-start justify-between gap-1">
+        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-black/45">
+          {label}
+        </p>
+        {clickable ? (
+          <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-brand/50">
+            AI
+          </span>
+        ) : null}
+      </div>
       <p className="mt-1 font-heading text-3xl font-bold tabular-nums text-black">
         {value}
       </p>
@@ -145,6 +188,17 @@ export default function DashboardPage() {
   const [assetGeo, setAssetGeo] = useState<AssetGeoReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [handicaperOpen, setHandicaperOpen] = useState(false);
+  const [handicaperReq, setHandicaperReq] =
+    useState<HandicaperRequest | null>(null);
+
+  const openHandicaper = useCallback(
+    (metricKey: string, metricLabel: string) => {
+      setHandicaperReq({ metricKey, metricLabel, page: "dashboard" });
+      setHandicaperOpen(true);
+    },
+    []
+  );
 
   useEffect(() => {
     async function softLoad<T>(url: string): Promise<{ data: T | null; error: string | null }> {
@@ -206,13 +260,25 @@ export default function DashboardPage() {
   const kpis = useMemo(() => {
     const rows = stock?.stock ?? [];
     const c = countsByCode(rows);
-    const newStock = c.new_stock ?? 0;
-    const refurbished = c.refurbished ?? 0;
+    const available = stock?.available;
+    const computers = available?.hardware ?? {
+      new_stock: 0,
+      refurbished: 0,
+      total: 0,
+    };
+    const cardReaders = available?.usb_hid_msr ?? {
+      new_stock: 0,
+      refurbished: 0,
+      total: 0,
+    };
     return {
       total: stock?.total ?? 0,
-      newStock,
-      refurbished,
-      available: newStock + refurbished,
+      computersAvailable: computers.total,
+      computersNew: computers.new_stock,
+      computersRefurbished: computers.refurbished,
+      cardReadersAvailable: cardReaders.total,
+      cardReadersNew: cardReaders.new_stock,
+      cardReadersRefurbished: cardReaders.refurbished,
       deployed: c.deployed ?? 0,
       inRepair: c.repair ?? 0,
       writtenOff: c.written_off ?? 0,
@@ -292,6 +358,7 @@ export default function DashboardPage() {
   }
 
   return (
+    <>
     <main className="mx-auto max-w-7xl space-y-8 p-6">
         {loadError ? (
           <div
@@ -336,35 +403,53 @@ export default function DashboardPage() {
           <h2 className="font-heading mb-3 text-xs font-bold uppercase tracking-[0.15em] text-black/55">
             Key metrics
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <KpiCard
               label="Total registered"
               value={kpis.total}
               hint="All lifecycle stages"
+              metricKey="totalRegistered"
+              onExplain={openHandicaper}
             />
             <KpiCard
-              label="Available to distribute"
-              value={kpis.available}
-              hint={`New ${kpis.newStock} · Refurb ${kpis.refurbished}`}
+              label="Terminals / Computers / AIO available"
+              value={kpis.computersAvailable}
+              hint={`New ${kpis.computersNew} · Refurb ${kpis.computersRefurbished}`}
               accent="brand"
+              metricKey="computersAvailable"
+              onExplain={openHandicaper}
+            />
+            <KpiCard
+              label="Card readers available"
+              value={kpis.cardReadersAvailable}
+              hint={`New ${kpis.cardReadersNew} · Refurb ${kpis.cardReadersRefurbished}`}
+              accent="amber"
+              metricKey="cardReadersAvailable"
+              onExplain={openHandicaper}
             />
             <KpiCard
               label="Deployed"
               value={kpis.deployed}
               hint="In the field / at site"
               accent="sky"
+              metricKey="deployed"
+              onExplain={openHandicaper}
             />
             <KpiCard
               label="In repair"
               value={kpis.inRepair}
               hint="Asset status: repairs"
               accent="amber"
+              metricKey="inRepair"
+              onExplain={openHandicaper}
             />
             <KpiCard
               label="Written off"
               value={kpis.writtenOff}
               hint="Removed from active use"
               accent="rose"
+              metricKey="writtenOff"
+              onExplain={openHandicaper}
             />
           </div>
         </section>
@@ -1010,6 +1095,11 @@ export default function DashboardPage() {
           ) : null}
         </section>
       </main>
-    
+      <HandicaperModal
+        open={handicaperOpen}
+        request={handicaperReq}
+        onClose={() => setHandicaperOpen(false)}
+      />
+    </>
   );
 }
