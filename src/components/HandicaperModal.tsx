@@ -20,6 +20,7 @@ type HandicaperResponse = {
   summary: string;
   breakdown: BreakdownRow[];
   note?: string;
+  aiSummary?: string;
 };
 
 type Props = {
@@ -119,6 +120,17 @@ export function HandicaperModal({ open, request, onClose }: Props) {
               <p className="mt-2 text-sm leading-relaxed text-black/70">
                 {result.summary}
               </p>
+
+              {result.aiSummary ? (
+                <div className="mt-3 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-brand/60">
+                    Handicaper AI insight
+                  </p>
+                  <p className="text-sm leading-relaxed text-black/80">
+                    {result.aiSummary}
+                  </p>
+                </div>
+              ) : null}
 
               {result.breakdown.length > 0 ? (
                 <div className="mt-4 rounded-xl border border-black/10 bg-black/[0.02]">

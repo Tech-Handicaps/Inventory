@@ -19,6 +19,7 @@
     "brand:upload-supabase": "npx tsx scripts/upload-brand-logo.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "@prisma/client": "^6",
     "@react-pdf/renderer": "^4.3.2",
     "@sparticuz/chromium": "^133.0.0",
@@ -28,6 +29,7 @@
     "lucide-react": "^1.25.0",
     "next": "16.2.0",
     "nodemailer": "^8.0.5",
+    "openai": "^7.5.0",
     "puppeteer-core": "^24.43.1",
     "react": "19.2.4",
     "react-chartjs-2": "^5",

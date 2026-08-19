@@ -6,6 +6,7 @@ import {
   reportAssetTypeLabel,
   type ReportAssetTypeId,
 } from "@/lib/reports/asset-types";
+import { generateAiSummary } from "@/lib/ai/handicaper";
 
 export const dynamic = "force-dynamic";
 
@@ -230,7 +231,16 @@ export async function POST(request: NextRequest) {
     });
 
     const result = handler(assets);
-    return NextResponse.json(result);
+
+    const aiSummary = await generateAiSummary({
+      metricLabel: body.metricLabel ?? metricKey,
+      dataJson: JSON.stringify(result, null, 2),
+    });
+
+    return NextResponse.json({
+      ...result,
+      ...(aiSummary ? { aiSummary } : {}),
+    });
   } catch (e) {
     console.error("POST /api/ai/handicaper/explain", e);
     return NextResponse.json(
