@@ -8,6 +8,7 @@ const FINANCE_API_PREFIX = "/api/finance/";
 const EMAIL_SETTINGS_PATH = "/api/settings/email-notifications";
 /** Session role for nav — must be reachable by reports_only */
 const ME_PATH = "/api/me";
+const HANDICAPER_PREFIX = "/api/ai/handicaper/";
 const ADMIN_PREFIX = "/api/admin/";
 
 /**
@@ -38,6 +39,7 @@ export function apiAccessAllowedForRole(
 
   if (role === "reports_only") {
     if (pathname === ME_PATH) return true;
+    if (pathname.startsWith(HANDICAPER_PREFIX)) return true;
     return pathname.startsWith(REPORTS_PREFIX);
   }
 

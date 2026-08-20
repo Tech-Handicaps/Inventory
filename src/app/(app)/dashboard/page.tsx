@@ -1,11 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CategoryBarChart } from "@/components/charts/CategoryBarChart";
-import {
-  HandicaperModal,
-  type HandicaperRequest,
-} from "@/components/HandicaperModal";
+import { useHandicaper } from "@/components/HandicaperProvider";
 import { DataSourceDonutChart } from "@/components/charts/DataSourceDonutChart";
 import {
   capSlicesForDonut,
@@ -188,17 +185,7 @@ export default function DashboardPage() {
   const [assetGeo, setAssetGeo] = useState<AssetGeoReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [handicaperOpen, setHandicaperOpen] = useState(false);
-  const [handicaperReq, setHandicaperReq] =
-    useState<HandicaperRequest | null>(null);
-
-  const openHandicaper = useCallback(
-    (metricKey: string, metricLabel: string) => {
-      setHandicaperReq({ metricKey, metricLabel, page: "dashboard" });
-      setHandicaperOpen(true);
-    },
-    []
-  );
+  const { openMetric } = useHandicaper();
 
   useEffect(() => {
     async function softLoad<T>(url: string): Promise<{ data: T | null; error: string | null }> {
@@ -409,7 +396,7 @@ export default function DashboardPage() {
               value={kpis.total}
               hint="All lifecycle stages"
               metricKey="totalRegistered"
-              onExplain={openHandicaper}
+              onExplain={openMetric}
             />
             <KpiCard
               label="Terminals / Computers / AIO available"
@@ -417,7 +404,7 @@ export default function DashboardPage() {
               hint={`New ${kpis.computersNew} · Refurb ${kpis.computersRefurbished}`}
               accent="brand"
               metricKey="computersAvailable"
-              onExplain={openHandicaper}
+              onExplain={openMetric}
             />
             <KpiCard
               label="Card readers available"
@@ -425,7 +412,7 @@ export default function DashboardPage() {
               hint={`New ${kpis.cardReadersNew} · Refurb ${kpis.cardReadersRefurbished}`}
               accent="amber"
               metricKey="cardReadersAvailable"
-              onExplain={openHandicaper}
+              onExplain={openMetric}
             />
             <KpiCard
               label="Deployed"
@@ -433,7 +420,7 @@ export default function DashboardPage() {
               hint="In the field / at site"
               accent="sky"
               metricKey="deployed"
-              onExplain={openHandicaper}
+              onExplain={openMetric}
             />
             <KpiCard
               label="In repair"
@@ -441,7 +428,7 @@ export default function DashboardPage() {
               hint="Asset status: repairs"
               accent="amber"
               metricKey="inRepair"
-              onExplain={openHandicaper}
+              onExplain={openMetric}
             />
             <KpiCard
               label="Written off"
@@ -449,7 +436,7 @@ export default function DashboardPage() {
               hint="Removed from active use"
               accent="rose"
               metricKey="writtenOff"
-              onExplain={openHandicaper}
+              onExplain={openMetric}
             />
           </div>
         </section>
@@ -1095,11 +1082,6 @@ export default function DashboardPage() {
           ) : null}
         </section>
       </main>
-      <HandicaperModal
-        open={handicaperOpen}
-        request={handicaperReq}
-        onClose={() => setHandicaperOpen(false)}
-      />
     </>
   );
 }

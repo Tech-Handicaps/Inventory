@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { HandicaperProvider } from "@/components/HandicaperProvider";
 import { useAppRole } from "@/components/RoleProvider";
 import { useToast } from "@/components/ToastProvider";
 import { isNavLinkVisible, hasFullNavAccess, type NavKey } from "@/lib/auth/nav-access";
@@ -238,7 +239,8 @@ export function AppShell({ children }: Props) {
   }, [open]);
 
   return (
-    <div className="min-h-screen lg:flex">
+    <HandicaperProvider>
+      <div className="min-h-screen lg:flex">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-brand/10 lg:block">
         <SidebarPanel current={current} />
@@ -292,5 +294,6 @@ export function AppShell({ children }: Props) {
         <div className="app-canvas min-w-0 flex-1">{children}</div>
       </div>
     </div>
+    </HandicaperProvider>
   );
 }
