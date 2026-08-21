@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { displayNameFromUser } from "@/lib/auth/display-name";
-import { buildHandicaperInventoryContext } from "@/lib/ai/handicaper-context";
+import { buildHandicaperInventoryContext, wantsStockBreakdown } from "@/lib/ai/handicaper-context";
+import {
+  buildAssetRegistryExportRows,
+  sanitizeHandicaperExportReply,
+  wantsAssetRegistryExport,
+} from "@/lib/ai/handicaper-exports";
+import {
+  buildClubMovementReply,
+  buildClubMovementSnapshot,
+  clubNotFoundReply,
+  listClubNames,
+  resolveClubFromMessage,
+  wantsClubMovement,
+} from "@/lib/ai/handicaper-club-movement";
 import {
   generateHandicaperChatReply,
   type ChatMessage,
@@ -30,15 +43,68 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const context = await buildHandicaperInventoryContext();
+    const page = typeof body.page === "string" ? body.page : undefined;
+    const clubMatch = await resolveClubFromMessage(message);
+    const includeClubMovement = wantsClubMovement(message, clubMatch);
+    const includeStockBreakdown =
+      !includeClubMovement && wantsStockBreakdown(message);
+    const includeAssetRegistry =
+      !includeClubMovement &&
+      wantsAssetRegistryExport(message, page);
+
+    const contextPromise = buildHandicaperInventoryContext();
+    const assetExportPromise = includeAssetRegistry
+      ? buildAssetRegistryExportRows()
+      : Promise.resolve(null);
+    const clubMovementPromise =
+      includeClubMovement && clubMatch
+        ? buildClubMovementSnapshot(clubMatch.id, clubMatch.name)
+        : Promise.resolve(null);
+    const clubNamesPromise =
+      includeClubMovement && !clubMatch
+        ? listClubNames()
+        : Promise.resolve(null);
+
+    const [context, assetExportRows, clubMovement, clubNames] =
+      await Promise.all([
+        contextPromise,
+        assetExportPromise,
+        clubMovementPromise,
+        clubNamesPromise,
+      ]);
+
     const displayName = displayNameFromUser(auth.user);
 
-    const reply = await generateHandicaperChatReply({
+    if (includeClubMovement && !clubMatch) {
+      return NextResponse.json({
+        reply: clubNotFoundReply(displayName, clubNames ?? []),
+        displayName,
+        clubNotFound: true,
+        availableClubs: clubNames ?? [],
+      });
+    }
+
+    // Club movement: answer from live snapshot (LLM was inventing "no hardware")
+    if (includeClubMovement && clubMovement) {
+      const reply = buildClubMovementReply(clubMovement, displayName);
+      return NextResponse.json({
+        reply,
+        displayName,
+        clubMovement,
+      });
+    }
+
+    let reply = await generateHandicaperChatReply({
       message,
-      page: typeof body.page === "string" ? body.page : undefined,
+      page,
       history: Array.isArray(body.history) ? body.history : [],
       displayName,
       context,
+      attachments: {
+        stockBreakdown: includeStockBreakdown,
+        assetRegistry: includeAssetRegistry,
+        assetCount: assetExportRows?.length,
+      },
     });
 
     if (!reply) {
@@ -51,7 +117,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ reply, displayName });
+    if (includeAssetRegistry && assetExportRows) {
+      reply = sanitizeHandicaperExportReply(
+        reply,
+        "assets",
+        assetExportRows.length,
+        displayName
+      );
+    } else if (includeStockBreakdown && context.stockByModel.length > 0) {
+      reply = sanitizeHandicaperExportReply(
+        reply,
+        "stock",
+        context.stockByModel.length,
+        displayName
+      );
+    }
+
+    return NextResponse.json({
+      reply,
+      displayName,
+      ...(includeStockBreakdown
+        ? { stockBreakdown: context.stockByModel }
+        : {}),
+      ...(includeAssetRegistry && assetExportRows
+        ? { assetExport: assetExportRows }
+        : {}),
+    });
   } catch (e) {
     console.error("POST /api/ai/handicaper/chat", e);
     return NextResponse.json(

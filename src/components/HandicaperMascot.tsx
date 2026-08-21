@@ -1,7 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { MascotWelcomeBubble } from "@/components/MascotWelcomeBubble";
+import {
+  buildHandicaperWelcome,
+  buildMascotShortGreeting,
+} from "@/lib/handicaper/welcome";
+import { cancelHandicaperSpeech } from "@/lib/handicaper/voice";
 
 type Props = {
   displayName?: string | null;
@@ -9,10 +15,10 @@ type Props = {
 };
 
 const IDLE_PROMPTS = [
-  "Still here? Need any help with inventory?",
-  "Hey — ask me about assets, stock, or reports!",
-  "Tap me if you have a question about the system.",
-  "I can explain metrics or answer inventory questions.",
+  "Still here? Ask me about stock, clubs, or exports!",
+  "Need a stock breakdown or CSV? Tap me.",
+  "I can explain dashboard metrics — just click.",
+  "Try: asset movement for a golf club by name.",
 ];
 
 function pageLabel(pathname: string): string {
@@ -24,13 +30,8 @@ function pageLabel(pathname: string): string {
   return "Inventory";
 }
 
-function buildGreeting(displayName: string | null | undefined, page: string): string {
-  const who = displayName?.trim() || "there";
-  const area = pageLabel(page);
-  return `Hi ${who}! Welcome to the HNA Inventory system. I'm Handicaper — happy to help on ${area}. Click me to ask anything.`;
-}
-
 type Phase = "strolling" | "idle" | "dismissed";
+type BubbleMode = "welcome" | "hint" | null;
 
 const SPRITE_FRAMES = 4;
 const SPRITE_NATURAL_W = 1536;
@@ -41,20 +42,53 @@ const DISPLAY_W = Math.round((FRAME_NATURAL_W / SPRITE_NATURAL_H) * DISPLAY_H);
 const STROLL_DURATION = 9000;
 const WALK_FRAME_MS = 160;
 const IDLE_FRAME = 1;
+const WELCOME_BUBBLE_MS = 22000;
 
 export function HandicaperMascot({ displayName, onOpenChat }: Props) {
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("strolling");
-  const [bubble, setBubble] = useState<string | null>(null);
+  const [bubbleMode, setBubbleMode] = useState<BubbleMode>(null);
+  const [hintText, setHintText] = useState<string | null>(null);
   const [bubbleVisible, setBubbleVisible] = useState(false);
   const [frame, setFrame] = useState(0);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasGreeted = useRef(false);
+  const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasWelcomed = useRef(false);
 
-  const showBubble = useCallback((text: string, duration = 10000) => {
-    setBubble(text);
+  const welcome = useMemo(
+    () => buildHandicaperWelcome(displayName),
+    [displayName]
+  );
+
+  const hideBubble = useCallback(() => {
+    cancelHandicaperSpeech();
+    setBubbleVisible(false);
+    setBubbleMode(null);
+    setHintText(null);
+    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
+  }, []);
+
+  const showWelcome = useCallback(() => {
+    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
+    setBubbleMode("welcome");
+    setHintText(null);
     setBubbleVisible(true);
-    setTimeout(() => setBubbleVisible(false), duration);
+    bubbleTimer.current = setTimeout(() => {
+      setBubbleVisible(false);
+      setBubbleMode(null);
+    }, WELCOME_BUBBLE_MS);
+  }, []);
+
+  const showHint = useCallback((text: string, duration = 8000) => {
+    if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
+    setBubbleMode("hint");
+    setHintText(text);
+    setBubbleVisible(true);
+    bubbleTimer.current = setTimeout(() => {
+      setBubbleVisible(false);
+      setBubbleMode(null);
+      setHintText(null);
+    }, duration);
   }, []);
 
   useEffect(() => {
@@ -70,39 +104,55 @@ export function HandicaperMascot({ displayName, onOpenChat }: Props) {
     const t = setTimeout(() => {
       setFrame(IDLE_FRAME);
       setPhase("idle");
-      if (!hasGreeted.current) {
-        hasGreeted.current = true;
-        showBubble(buildGreeting(displayName, pathname), 12000);
+      if (!hasWelcomed.current) {
+        hasWelcomed.current = true;
+        showWelcome();
       }
     }, STROLL_DURATION);
     return () => clearTimeout(t);
-  }, [phase, showBubble, displayName, pathname]);
+  }, [phase, showWelcome]);
 
   useEffect(() => {
     if (phase !== "idle") return;
     idleTimer.current = setTimeout(() => {
-      const who = displayName?.trim() || "there";
+      if (bubbleVisible && bubbleMode === "welcome") return;
       const prompt =
         IDLE_PROMPTS[Math.floor(Math.random() * IDLE_PROMPTS.length)] ??
-        `Need help, ${who}?`;
-      showBubble(prompt, 8000);
+        buildMascotShortGreeting(displayName, pageLabel(pathname));
+      showHint(prompt, 8000);
     }, 60000);
     return () => {
       if (idleTimer.current) clearTimeout(idleTimer.current);
     };
-  }, [phase, bubbleVisible, showBubble, displayName]);
+  }, [
+    phase,
+    bubbleVisible,
+    bubbleMode,
+    showHint,
+    displayName,
+    pathname,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
+    },
+    []
+  );
 
   const handleClick = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    setBubbleVisible(false);
+    hideBubble();
     onOpenChat();
-  }, [onOpenChat]);
+  }, [hideBubble, onOpenChat]);
 
-  const dismiss = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setBubbleVisible(false);
-    setPhase("dismissed");
-  }, []);
+  const dismiss = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      hideBubble();
+    },
+    [hideBubble]
+  );
 
   if (phase === "dismissed") return null;
 
@@ -113,7 +163,11 @@ export function HandicaperMascot({ displayName, onOpenChat }: Props) {
       className={`fixed bottom-4 z-40 ${phase === "strolling" ? "mascot-stroll" : ""}`}
       style={phase === "idle" ? { right: 32 } : undefined}
     >
-      {bubble && bubbleVisible && phase === "idle" && (
+      {bubbleVisible && phase === "idle" && bubbleMode === "welcome" ? (
+        <MascotWelcomeBubble welcome={welcome} onDismiss={dismiss} />
+      ) : null}
+
+      {bubbleVisible && phase === "idle" && bubbleMode === "hint" && hintText ? (
         <div className="mascot-bubble absolute -top-24 right-0 w-72 rounded-xl border border-black/10 bg-white px-4 py-3 shadow-xl">
           <button
             type="button"
@@ -123,10 +177,10 @@ export function HandicaperMascot({ displayName, onOpenChat }: Props) {
           >
             ✕
           </button>
-          <p className="text-xs leading-relaxed text-black/80">{bubble}</p>
+          <p className="text-xs leading-relaxed text-black/80">{hintText}</p>
           <div className="absolute -bottom-2 right-8 h-3 w-3 rotate-45 border-b border-r border-black/10 bg-white" />
         </div>
-      )}
+      ) : null}
 
       <button
         type="button"

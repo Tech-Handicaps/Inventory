@@ -569,6 +569,57 @@ body {
   animation: bubbleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+.mascot-bubble-welcome {
+  animation: bubbleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.mascot-type-cursor {
+  animation: mascotCursorBlink 0.75s step-end infinite;
+}
+
+@keyframes mascotCursorBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.mascot-speak-dots {
+  align-items: center;
+}
+
+.mascot-speak-dot {
+  display: block;
+  height: 4px;
+  width: 4px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--brand) 55%, transparent);
+  animation: mascotSpeakDot 1.1s ease-in-out infinite;
+}
+
+.mascot-speak-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.mascot-speak-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes mascotSpeakDot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
 @keyframes bubbleIn {
   0% { opacity: 0; transform: scale(0.8) translateY(8px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
@@ -585,7 +636,10 @@ body {
   .mascot-stroll,
   .mascot-walk-bob,
   .mascot-bob,
-  .mascot-bubble {
+  .mascot-bubble,
+  .mascot-bubble-welcome,
+  .mascot-type-cursor,
+  .mascot-speak-dot {
     animation: none;
     transition: none;
   }

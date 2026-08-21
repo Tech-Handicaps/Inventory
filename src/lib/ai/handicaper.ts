@@ -3,6 +3,7 @@
  */
 
 import type { HandicaperInventoryContext } from "@/lib/ai/handicaper-context";
+import type { ClubMovementSnapshot } from "@/lib/ai/handicaper-club-movement";
 
 const METRIC_SYSTEM_PROMPT = `You are "Handicaper", an AI assistant embedded in the Handicaps Network Africa (HNA) Inventory Management System. Your job is to explain inventory metrics to operations and finance staff in clear, concise language.
 
@@ -20,12 +21,27 @@ You help operations, technicians, and finance staff understand:
 - Asset counts, lifecycle status (new stock, deployed, repair, refurbished, written off)
 - Terminals, computers, AIO vs card readers (USB HID MSR)
 - Fleet composition, SKU/model mix, clubs, repairs, write-offs
+- **In-stock breakdown**: use \`stockByModel\` — every manufacturer/model in new stock or refurbished, with new vs refurb counts and asset type
 - How to use the app: Dashboard (metrics), Hardware board (Kanban), All assets (table), Reports (PDFs)
+
+**CSV exports (built into this chat — you provide them; do NOT send users elsewhere):**
+- **Stock by model** — when the user asks for models in stock / stock breakdown; a table + Download CSV button appears below your message.
+- **Full asset registry** — when the user asks to export all / registered assets; a Download CSV button appears for every asset row (status, model, club, serial, etc.).
+- **Club movement** — when the user asks about hardware at a golf club (active vs written-off, replacement pairs, chronological timeline); tables + timeline + Download CSV appear below.
+- **Metric breakdown** — when explaining a dashboard KPI card.
 
 Rules:
 - Answer using ONLY the live inventory snapshot provided — never invent asset counts or names.
+- When \`clubMovementSnapshot\` is provided, summarise active vs retired hardware at that club, call out replacement pairs, and narrate the key chronological movement story from \`timeline\` (old terminal written off → new unit deployed, etc.). Point to the tables / timeline / Download CSV below.
+- NEVER say you cannot generate or download CSV when an export is attached to this response (see \`responseAttachments\` below).
+- NEVER tell users to look for Export/Download buttons on the All assets page or in Reports — those UI controls do not exist; exports happen here in Handicaper chat only.
+- For club questions without a matched club in the snapshot, ask for the full club name and mention known clubs if listed in \`clubMatchHint\`.
+- When asked for models in stock, available stock, or a stock breakdown, list items from \`stockByModel\` (group by asset type if helpful).
+- If \`stockByModel\` is empty, say nothing is currently in new stock or refurbished.
 - If the data does not contain the answer, say so and suggest where in the app to look (e.g. All assets, Reports).
-- Be concise: 2-5 sentences unless the user asks for detail.
+- For breakdown requests, use a clear list or table format with make/model, new, refurb, and total.
+- When you show a stock breakdown, tell the user they can download it as CSV using the button below the table (or that it will download automatically if they asked for CSV).
+- Be concise for simple questions; use full detail when the user asks for a breakdown.
 - Professional but warm — you represent HNA's inventory team.
 - The user may be on any page; use the "current page" hint when relevant.`;
 
@@ -45,6 +61,15 @@ export type ChatInput = {
   page?: string;
   history?: ChatMessage[];
   context: HandicaperInventoryContext;
+  /** Tells the model which CSV exports are attached to this response. */
+  attachments?: {
+    stockBreakdown?: boolean;
+    assetRegistry?: boolean;
+    assetCount?: number;
+    clubMovement?: boolean;
+    clubMovementSnapshot?: ClubMovementSnapshot;
+    clubMatchHint?: string[];
+  };
 };
 
 async function callOpenAi(
@@ -117,7 +142,44 @@ export async function generateHandicaperChatReply(
     ? `The user's first name is ${input.displayName}.`
     : "";
 
-  const system = `${CHAT_SYSTEM_PROMPT}\n\n${nameHint}\n${pageHint}\n\nLive inventory snapshot (JSON):\n${contextJson}`;
+  let attachmentHint = "";
+  const att = input.attachments;
+  if (
+    att?.stockBreakdown ||
+    att?.assetRegistry ||
+    att?.clubMovement ||
+    att?.clubMatchHint
+  ) {
+    const parts: string[] = [];
+    if (att.stockBreakdown) {
+      parts.push(
+        "stockByModel CSV export is attached — confirm the breakdown briefly and point to Download CSV below"
+      );
+    }
+    if (att.assetRegistry && att.assetCount != null) {
+      parts.push(
+        `full asset registry CSV export is attached (${att.assetCount} assets) — confirm and point to Download CSV below`
+      );
+    }
+    if (att.clubMovement && att.clubMovementSnapshot) {
+      const s = att.clubMovementSnapshot;
+      parts.push(
+        `club movement for ${s.clubName} is attached (${s.active.length} active, ${s.retired.length} retired, ${s.replacementPairs.length} replacement pairs, ${s.timelineTotal} timeline events — ${s.timeline.length} shown) — summarise the site story from the timeline and point to tables / Download CSV below`
+      );
+    }
+    if (parts.length > 0) {
+      attachmentHint = `\n\nresponseAttachments: ${parts.join("; ")}`;
+    }
+    if (att.clubMatchHint?.length) {
+      attachmentHint += `\n\nclubMatchHint (no club matched — suggest one of these): ${att.clubMatchHint.join(", ")}`;
+    }
+  }
+
+  const clubJson = att?.clubMovementSnapshot
+    ? `\n\nclubMovementSnapshot (JSON):\n${JSON.stringify(att.clubMovementSnapshot, null, 2)}`
+    : "";
+
+  const system = `${CHAT_SYSTEM_PROMPT}\n\n${nameHint}\n${pageHint}${attachmentHint}${clubJson}\n\nLive inventory snapshot (JSON):\n${contextJson}`;
 
   const history = (input.history ?? []).slice(-6).map((m) => ({
     role: m.role,
@@ -132,9 +194,13 @@ export async function generateHandicaperChatReply(
   const openai = await callOpenAi(
     system,
     messages.map((m) => ({ role: m.role, content: m.content })),
-    500
+    input.attachments?.clubMovement ? 1100 : 800
   );
   if (openai) return openai;
 
-  return callAnthropic(system, messages, 500);
+  return callAnthropic(
+    system,
+    messages,
+    input.attachments?.clubMovement ? 1100 : 800
+  );
 }

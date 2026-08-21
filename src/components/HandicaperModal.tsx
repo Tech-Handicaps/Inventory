@@ -1,6 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  csvFilename,
+  downloadCsv,
+  rowsToCsv,
+  wantsCsvExport,
+} from "@/lib/csv/download-csv";
+import { buildModalWelcomeMessage } from "@/lib/handicaper/welcome";
 
 export type HandicaperRequest = {
   mode?: "metric" | "chat";
@@ -28,6 +35,73 @@ type ChatMessage = {
   content: string;
 };
 
+type StockBreakdownRow = {
+  label: string;
+  assetType: string;
+  newStock: number;
+  refurbished: number;
+  total: number;
+};
+
+type AssetExportRow = {
+  assetName: string;
+  status: string;
+  category: string;
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  club: string;
+  tags: string;
+  dataSource: string;
+  deviceLocation: string;
+  dateUpdated: string;
+};
+
+type ClubMovementUnit = {
+  assetName: string;
+  status: string;
+  statusCode: string;
+  model: string;
+  serialNumber: string;
+  category: string;
+  lastUpdated: string;
+  writeOffReference?: string;
+  writeOffReason?: string;
+  replacementRequested?: boolean;
+  replacementAssetName?: string;
+  replacementMakeModel?: string;
+  replacementSerialNumber?: string;
+};
+
+type ClubReplacementPair = {
+  retiredAssetName: string;
+  retiredModel: string;
+  retiredSerial: string;
+  writeOffReference: string;
+  replacementAssetName: string;
+  replacementModel: string;
+  replacementSerial: string;
+};
+
+type ClubMovementEvent = {
+  id: string;
+  at: string;
+  assetName: string;
+  actionType: string;
+  summary: string;
+};
+
+type ClubMovementSnapshot = {
+  clubId: string;
+  clubName: string;
+  active: ClubMovementUnit[];
+  retired: ClubMovementUnit[];
+  replacementPairs: ClubReplacementPair[];
+  timeline: ClubMovementEvent[];
+  timelineTotal: number;
+  generatedAt: string;
+};
+
 type Props = {
   open: boolean;
   request: HandicaperRequest | null;
@@ -36,8 +110,310 @@ type Props = {
 };
 
 function welcomeMessage(name: string | null | undefined): string {
-  const who = name ? name : "there";
-  return `Hi ${who}! Welcome to the HNA Inventory system. I'm Handicaper — ask me about assets, stock levels, deployments, repairs, or anything on this page.`;
+  return buildModalWelcomeMessage(name);
+}
+
+function downloadStockBreakdownCsv(rows: StockBreakdownRow[]): void {
+  const csv = rowsToCsv(
+    ["Model", "Asset type", "New stock", "Refurbished", "Total"],
+    rows.map((row) => [
+      row.label,
+      row.assetType,
+      row.newStock,
+      row.refurbished,
+      row.total,
+    ])
+  );
+  downloadCsv(csvFilename("stock-by-model"), csv);
+}
+
+function downloadAssetRegistryCsv(rows: AssetExportRow[]): void {
+  const csv = rowsToCsv(
+    [
+      "Asset name",
+      "Status",
+      "Category",
+      "Manufacturer",
+      "Model",
+      "Serial number",
+      "Club",
+      "Tags",
+      "Data source",
+      "Location",
+      "Last updated",
+    ],
+    rows.map((row) => [
+      row.assetName,
+      row.status,
+      row.category,
+      row.manufacturer,
+      row.model,
+      row.serialNumber,
+      row.club,
+      row.tags,
+      row.dataSource,
+      row.deviceLocation,
+      row.dateUpdated,
+    ])
+  );
+  downloadCsv(csvFilename("asset-registry"), csv);
+}
+
+function downloadClubMovementCsv(snapshot: ClubMovementSnapshot): void {
+  const unitRows = (section: string, units: ClubMovementUnit[]) =>
+    units.map((u) => [
+      section,
+      u.assetName,
+      u.status,
+      u.model,
+      u.serialNumber,
+      u.category,
+      u.lastUpdated,
+      u.writeOffReference ?? "",
+      u.replacementAssetName ?? "",
+    ]);
+
+  const pairRows = snapshot.replacementPairs.map((p) => [
+    "Replacement pair",
+    `${p.retiredAssetName} → ${p.replacementAssetName}`,
+    p.writeOffReference,
+    `${p.retiredModel} → ${p.replacementModel}`,
+    `${p.retiredSerial} → ${p.replacementSerial}`,
+    "",
+    "",
+    p.writeOffReference,
+    "",
+  ]);
+
+  const timelineRows = snapshot.timeline.map((e) => [
+    "Timeline",
+    e.assetName,
+    e.actionType,
+    e.summary,
+    "",
+    "",
+    e.at.slice(0, 10),
+    "",
+    "",
+  ]);
+
+  const csv = rowsToCsv(
+    [
+      "Section",
+      "Asset name",
+      "Status / action",
+      "Model / summary",
+      "Serial",
+      "Category",
+      "Date",
+      "Write-off ref",
+      "Replacement (planned or matched)",
+    ],
+    [
+      ...unitRows("Active", snapshot.active),
+      ...unitRows("Written off", snapshot.retired),
+      ...pairRows,
+      ...timelineRows,
+    ]
+  );
+  const slug = snapshot.clubName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  downloadCsv(csvFilename(`${slug || "club"}-movement`), csv);
+}
+
+function ClubUnitTable({
+  units,
+  variant,
+}: {
+  units: ClubMovementUnit[];
+  variant: "active" | "retired";
+}) {
+  if (units.length === 0) {
+    return (
+      <p className="px-3 py-2 text-xs text-black/45">
+        {variant === "active"
+          ? "No active hardware linked to this club."
+          : "No written-off units linked to this club."}
+      </p>
+    );
+  }
+
+  return (
+    <table className="w-full text-xs">
+      <thead>
+        <tr className="border-b border-black/10 text-[10px] font-bold uppercase tracking-wide text-black/45">
+          <th className="px-3 py-2 text-left">Asset</th>
+          <th className="px-2 py-2 text-left">Status</th>
+          <th className="px-2 py-2 text-left">Model</th>
+          <th className="px-3 py-2 text-left">Serial</th>
+        </tr>
+      </thead>
+      <tbody>
+        {units.map((u) => (
+          <tr
+            key={u.assetName}
+            className="border-b border-black/5 last:border-0"
+          >
+            <td className="px-3 py-2 font-medium text-black/80">{u.assetName}</td>
+            <td className="px-2 py-2 text-black/55">{u.status}</td>
+            <td className="px-2 py-2 text-black/55">{u.model}</td>
+            <td className="px-3 py-2 text-black/45">{u.serialNumber || "—"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function ClubMovementPanel({
+  snapshot,
+  onDownload,
+}: {
+  snapshot: ClubMovementSnapshot;
+  onDownload: () => void;
+}) {
+  const timeline = snapshot.timeline ?? [];
+  const timelineTotal = snapshot.timelineTotal ?? timeline.length;
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-black/10 bg-black/[0.02]">
+        <div className="flex items-center justify-between gap-2 border-b border-black/10 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+            {snapshot.clubName} · Club movement
+          </p>
+          <CsvDownloadButton label="Download CSV" onClick={onDownload} />
+        </div>
+        <p className="border-b border-black/10 px-3 py-2 text-xs text-black/55">
+          {snapshot.active.length} active · {snapshot.retired.length} written off
+          {snapshot.replacementPairs.length > 0
+            ? ` · ${snapshot.replacementPairs.length} replacement pair${snapshot.replacementPairs.length === 1 ? "" : "s"} linked`
+            : ""}
+          {timelineTotal > 0
+            ? ` · ${timelineTotal} timeline event${timelineTotal === 1 ? "" : "s"}`
+            : ""}
+        </p>
+        <p className="border-b border-black/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-brand/60">
+          Currently assigned
+        </p>
+        <ClubUnitTable units={snapshot.active} variant="active" />
+        <p className="border-y border-black/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-800/70">
+          Written off / retired
+        </p>
+        <ClubUnitTable units={snapshot.retired} variant="retired" />
+      </div>
+      {snapshot.replacementPairs.length > 0 ? (
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/50">
+          <p className="border-b border-amber-200/80 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-amber-900/70">
+            Replacement pairs
+          </p>
+          <ul className="divide-y divide-amber-200/60 text-xs">
+            {snapshot.replacementPairs.map((p) => (
+              <li key={p.writeOffReference} className="px-3 py-2 leading-relaxed">
+                <span className="font-medium text-black/75">{p.retiredAssetName}</span>
+                <span className="text-black/40"> → </span>
+                <span className="font-medium text-black/75">{p.replacementAssetName}</span>
+                <span className="mt-0.5 block text-[10px] text-black/45">
+                  {p.writeOffReference} · {p.retiredModel} replaced by {p.replacementModel}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {timeline.length > 0 ? (
+        <div className="rounded-xl border border-black/10 bg-white">
+          <div className="border-b border-black/10 px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+              Movement timeline
+            </p>
+            <p className="mt-0.5 text-[10px] text-black/40">
+              {timelineTotal > timeline.length
+                ? `Showing latest ${timeline.length} of ${timelineTotal} events · oldest → newest`
+                : `${timeline.length} event${timeline.length === 1 ? "" : "s"} · oldest → newest`}
+            </p>
+          </div>
+          <ol className="relative max-h-64 space-y-0 overflow-y-auto border-l-2 border-brand/20 py-3 pl-5 pr-3 ml-3">
+            {timeline.map((e) => (
+              <li key={e.id} className="relative pb-3 last:pb-0">
+                <span
+                  className="absolute -left-[calc(0.5rem+6px)] top-1.5 h-2 w-2 rounded-full border-2 border-brand bg-white"
+                  aria-hidden
+                />
+                <time
+                  dateTime={e.at}
+                  className="text-[10px] font-medium tabular-nums text-black/40"
+                >
+                  {new Date(e.at).toLocaleString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
+                <p className="text-xs font-medium text-black/80">{e.summary}</p>
+                <p className="text-[10px] text-black/40">
+                  {e.assetName}
+                  <span className="mx-1 text-black/25">·</span>
+                  {e.actionType}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-black/10 px-3 py-4 text-center text-xs text-black/45">
+          No movement history recorded for this club yet.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function downloadMetricBreakdownCsv(
+  title: string,
+  rows: BreakdownRow[]
+): void {
+  const csv = rowsToCsv(
+    ["Item", "Detail", "Count"],
+    rows.map((row) => [row.label, row.detail ?? "", row.count])
+  );
+  downloadCsv(csvFilename(title), csv);
+}
+
+function CsvDownloadButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-black/55 transition hover:border-brand/30 hover:text-brand"
+    >
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+        aria-hidden
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+        />
+      </svg>
+      {label}
+    </button>
+  );
 }
 
 export function HandicaperModal({
@@ -54,6 +430,13 @@ export function HandicaperModal({
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [stockBreakdown, setStockBreakdown] = useState<StockBreakdownRow[] | null>(
+    null
+  );
+  const [assetExport, setAssetExport] = useState<AssetExportRow[] | null>(null);
+  const [clubMovement, setClubMovement] = useState<ClubMovementSnapshot | null>(
+    null
+  );
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const isChat = request?.mode === "chat" || !request?.metricKey;
@@ -87,6 +470,9 @@ export function HandicaperModal({
       setChatMessages([{ role: "assistant", content: welcomeMessage(displayName) }]);
       setChatInput("");
       setChatError(null);
+      setStockBreakdown(null);
+      setAssetExport(null);
+      setClubMovement(null);
       setMetricResult(null);
       setMetricError(null);
     } else {
@@ -130,12 +516,33 @@ export function HandicaperModal({
           history: chatMessages.filter((m) => m.role === "user" || m.role === "assistant"),
         }),
       });
-      const j = (await r.json()) as { reply?: string; error?: string };
+      const j = (await r.json()) as {
+        reply?: string;
+        error?: string;
+        stockBreakdown?: StockBreakdownRow[];
+        assetExport?: AssetExportRow[];
+        clubMovement?: ClubMovementSnapshot;
+      };
       if (!r.ok) throw new Error(j.error ?? "Handicaper could not respond");
       setChatMessages([
         ...nextHistory,
         { role: "assistant", content: j.reply ?? "I couldn't generate a reply." },
       ]);
+      const breakdown = j.stockBreakdown ?? null;
+      const assets = j.assetExport ?? null;
+      const club = j.clubMovement ?? null;
+      setStockBreakdown(breakdown);
+      setAssetExport(assets);
+      setClubMovement(club);
+      if (wantsCsvExport(text)) {
+        if (club) {
+          downloadClubMovementCsv(club);
+        } else if (assets && assets.length > 0) {
+          downloadAssetRegistryCsv(assets);
+        } else if (breakdown && breakdown.length > 0) {
+          downloadStockBreakdownCsv(breakdown);
+        }
+      }
     } catch (e) {
       setChatError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -208,6 +615,75 @@ export function HandicaperModal({
                   {chatError}
                 </div>
               ) : null}
+              {clubMovement ? (
+                <ClubMovementPanel
+                  snapshot={clubMovement}
+                  onDownload={() => downloadClubMovementCsv(clubMovement)}
+                />
+              ) : null}
+              {assetExport && assetExport.length > 0 ? (
+                <div className="rounded-xl border border-black/10 bg-black/[0.02]">
+                  <div className="flex items-center justify-between gap-2 border-b border-black/10 px-3 py-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+                      Asset registry · {assetExport.length} assets
+                    </p>
+                    <CsvDownloadButton
+                      label="Download CSV"
+                      onClick={() => downloadAssetRegistryCsv(assetExport)}
+                    />
+                  </div>
+                  <p className="px-3 py-2 text-xs leading-relaxed text-black/55">
+                    Full export with status, category, manufacturer, model, serial
+                    number, club, tags, and location.
+                  </p>
+                </div>
+              ) : null}
+              {stockBreakdown && stockBreakdown.length > 0 ? (
+                <div className="rounded-xl border border-black/10 bg-black/[0.02]">
+                  <div className="flex items-center justify-between gap-2 border-b border-black/10 px-3 py-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+                      In stock by model
+                    </p>
+                    <CsvDownloadButton
+                      label="Download CSV"
+                      onClick={() => downloadStockBreakdownCsv(stockBreakdown)}
+                    />
+                  </div>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-black/10 text-[10px] font-bold uppercase tracking-wide text-black/45">
+                        <th className="px-3 py-2 text-left">Model</th>
+                        <th className="px-2 py-2 text-left">Type</th>
+                        <th className="px-2 py-2 text-right">New</th>
+                        <th className="px-2 py-2 text-right">Refurb</th>
+                        <th className="px-3 py-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockBreakdown.map((row) => (
+                        <tr
+                          key={`${row.assetType}-${row.label}`}
+                          className="border-b border-black/5 last:border-0"
+                        >
+                          <td className="px-3 py-2 font-medium text-black/80">
+                            {row.label}
+                          </td>
+                          <td className="px-2 py-2 text-black/50">{row.assetType}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">
+                            {row.newStock}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums">
+                            {row.refurbished}
+                          </td>
+                          <td className="px-3 py-2 text-right font-bold tabular-nums">
+                            {row.total}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
               <div ref={chatEndRef} />
             </div>
           ) : metricLoading ? (
@@ -239,6 +715,20 @@ export function HandicaperModal({
               ) : null}
               {metricResult.breakdown.length > 0 ? (
                 <div className="mt-4 rounded-xl border border-black/10 bg-black/[0.02]">
+                  <div className="flex items-center justify-between gap-2 border-b border-black/10 px-3 py-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+                      Breakdown
+                    </p>
+                    <CsvDownloadButton
+                      label="Download CSV"
+                      onClick={() =>
+                        downloadMetricBreakdownCsv(
+                          metricResult.title,
+                          metricResult.breakdown
+                        )
+                      }
+                    />
+                  </div>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-black/10 text-[10px] font-bold uppercase tracking-wide text-black/45">
@@ -288,7 +778,7 @@ export function HandicaperModal({
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask about inventory, assets, stock…"
+                placeholder="Ask about stock, clubs, CSV export…"
                 className="min-w-0 flex-1 rounded-xl border border-black/15 px-3 py-2 text-sm outline-none ring-brand/30 focus:ring-2"
                 disabled={chatLoading}
               />

@@ -5,6 +5,14 @@ import {
 } from "@/lib/reports/asset-types";
 import { resolveAssetSkuModelLabel } from "@/lib/inventory/device-template-label";
 
+export type StockModelRow = {
+  label: string;
+  assetType: string;
+  newStock: number;
+  refurbished: number;
+  total: number;
+};
+
 export type HandicaperInventoryContext = {
   generatedAt: string;
   totals: {
@@ -15,6 +23,8 @@ export type HandicaperInventoryContext = {
     terminalsComputersAio: { newStock: number; refurbished: number; total: number };
     cardReaders: { newStock: number; refurbished: number; total: number };
   };
+  /** Every make/model in new stock or refurbished — use for stock breakdown questions. */
+  stockByModel: StockModelRow[];
   assetTypes: { type: string; count: number }[];
   topModels: { label: string; count: number }[];
   topCategories: { category: string; count: number }[];
@@ -86,19 +96,35 @@ export async function buildHandicaperInventoryContext(): Promise<HandicaperInven
 
   const typeCounts = new Map<string, number>();
   const modelCounts = new Map<string, number>();
+  const stockByModelMap = new Map<
+    string,
+    StockModelRow & { key: string }
+  >();
 
   for (const a of assets) {
     const typeId = classifyReportAssetType(a.category, a.tags);
-    typeCounts.set(
-      reportAssetTypeLabel(typeId),
-      (typeCounts.get(reportAssetTypeLabel(typeId)) ?? 0) + 1
-    );
+    const typeLabel = reportAssetTypeLabel(typeId);
+    typeCounts.set(typeLabel, (typeCounts.get(typeLabel) ?? 0) + 1);
 
     const modelLabel = resolveAssetSkuModelLabel(a);
     modelCounts.set(modelLabel, (modelCounts.get(modelLabel) ?? 0) + 1);
 
     const code = a.status.code;
     if (code === "new_stock" || code === "refurbished") {
+      const stockKey = `${typeLabel}::${modelLabel}`;
+      const row = stockByModelMap.get(stockKey) ?? {
+        key: stockKey,
+        label: modelLabel,
+        assetType: typeLabel,
+        newStock: 0,
+        refurbished: 0,
+        total: 0,
+      };
+      if (code === "new_stock") row.newStock += 1;
+      if (code === "refurbished") row.refurbished += 1;
+      row.total += 1;
+      stockByModelMap.set(stockKey, row);
+
       const bucket =
         typeId === "usb_hid_msr"
           ? available.cardReaders
@@ -112,6 +138,10 @@ export async function buildHandicaperInventoryContext(): Promise<HandicaperInven
       }
     }
   }
+
+  const stockByModel = [...stockByModelMap.values()]
+    .map(({ key: _key, ...row }) => row)
+    .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
 
   const recentActivity = [...assets]
     .sort(
@@ -133,6 +163,7 @@ export async function buildHandicaperInventoryContext(): Promise<HandicaperInven
       byStatus: [...byStatusMap.values()].sort((a, b) => b.count - a.count),
     },
     available,
+    stockByModel,
     assetTypes: [...typeCounts.entries()]
       .map(([type, count]) => ({ type, count }))
       .sort((a, b) => b.count - a.count),
@@ -152,4 +183,26 @@ export async function buildHandicaperInventoryContext(): Promise<HandicaperInven
     recentActivity,
     clubsWithAssets: clubCount,
   };
+}
+
+/** Detect when the user is asking for an in-stock model breakdown. */
+export function wantsStockBreakdown(message: string): boolean {
+  const m = message.toLowerCase();
+  if (m.includes("stock by model") || m.includes("models in stock")) return true;
+  if (m.includes("breakdown") && (m.includes("stock") || m.includes("model"))) {
+    return true;
+  }
+  if (
+    (m.includes("in stock") || m.includes("available")) &&
+    (m.includes("model") || m.includes("breakdown") || m.includes("what"))
+  ) {
+    return true;
+  }
+  if (
+    (m.includes("csv") || m.includes("export") || m.includes("spreadsheet")) &&
+    (m.includes("stock") || m.includes("model"))
+  ) {
+    return true;
+  }
+  return false;
 }
