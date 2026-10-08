@@ -38,7 +38,6 @@ const OCTOBER_2025: Record<string, LegacyQty> = {
   "gigatek-msr250hk": { newStock: 7, repairedUsed: 1, toAssess: 4 },
   "partner-msr213u": { toAssess: 2 },
   "mecer-card-reader-bracket": { newStock: 32 },
-  "mecer-ust-tp01": { newStock: 11 },
 };
 
 /** November changes against October. December matches November. */
@@ -46,7 +45,6 @@ const NOVEMBER_2025: Record<string, LegacyQty> = {
   ...OCTOBER_2025,
   "dell-optiplex-7440": { toAssess: 2 },
   "posiflex-ps-3316e": { newStock: 11, toAssess: 1 },
-  "mecer-ust-tp01": { newStock: 11, toAssess: 1 },
 };
 
 const SOURCE_MONTHS: {
@@ -72,13 +70,7 @@ const SOURCE_MONTHS: {
 ];
 
 /** Months with no workbook. Counts repeat the December 2025 take. */
-export const CARRIED_FORWARD_MONTHS = [
-  "2026-01",
-  "2026-02",
-  "2026-03",
-  "2026-04",
-  "2026-05",
-] as const;
+export const CARRIED_FORWARD_MONTHS = ["2026-01", "2026-02", "2026-03"] as const;
 
 const CARRIED_FROM = "2025-12";
 
@@ -152,11 +144,15 @@ function linesFor(qty: Record<string, LegacyQty>): LegacyMonthEndLine[] {
   );
 }
 
+const DONGLE_NOTE =
+  "Mecer UST-TP01 is kept on the form and counted as zero. Its New, Repaired/Used, and To assess cells are formulas pointing at the Posiflex PS-3316E row, so publishing them would count the Posiflex quantity twice.";
+
 const SOURCE_NOTE =
-  "Imported from the prior-company workbook, sheet Actual. The second sheet was an old in-house template with no month-end quantities and was not imported. The workbook has no serial numbers, so this is a quantity record only and is not on the live hardware board.";
+  "Imported from the prior-company workbook, sheet Actual. The second sheet was an old in-house template with no month-end quantities and was not imported. The workbook has no serial numbers, so this is a quantity record only and is not on the live hardware board. " +
+  DONGLE_NOTE;
 
 const CARRIED_NOTE =
-  "No stock-take workbook was supplied for this month. Quantities are copied from the December 2025 prior-company stock take so accounts has a report for each month through May 2026, when this system started capturing stock. This is not the live register.";
+  "No stock-take workbook was supplied for this month. Quantities are copied from the December 2025 prior-company stock take so accounts has a file for January, February, and March 2026. April 2026 is not part of this copy. This system recorded its first asset on 18 April 2026, so the prior-company series stops at March. This is not the live register.";
 
 export function buildLegacyMonthEndDrafts(): LegacyMonthEndDraft[] {
   const sourced = SOURCE_MONTHS.map((month) => ({
@@ -236,6 +232,82 @@ export function draftFromStoredReport(report: {
     notes: report.notes ?? "",
     lines: [...report.lines].sort((a, b) => a.sortOrder - b.sortOrder),
   };
+}
+
+const COMPOSITION_FIELDS = [
+  ["newStock", "New stock"],
+  ["repairedUsed", "Repaired/Used"],
+  ["toAssess", "To assess"],
+] as const;
+
+export type LegacyCompositionField = (typeof COMPOSITION_FIELDS)[number][0];
+
+export type LegacyCompositionLine = {
+  groupLabel: string;
+  manufacturer: string;
+  model: string;
+  category: string;
+  quantity: number;
+};
+
+export type LegacyColumnComposition = {
+  field: LegacyCompositionField;
+  label: string;
+  total: number;
+  /** Largest lines first, so the models that make the total look large are visible. */
+  lines: LegacyCompositionLine[];
+  groupTotals: { groupLabel: string; quantity: number }[];
+};
+
+export function composeLegacyColumn(
+  lines: LegacyMonthEndLine[],
+  field: LegacyCompositionField
+): LegacyColumnComposition {
+  const label = COMPOSITION_FIELDS.find((entry) => entry[0] === field)?.[1] ?? field;
+  const contributors = lines
+    .filter((line) => line[field] > 0)
+    .map((line) => ({
+      groupLabel: line.groupLabel,
+      manufacturer: line.manufacturer,
+      model: line.model,
+      category: line.category,
+      quantity: line[field],
+    }))
+    .sort(
+      (a, b) =>
+        b.quantity - a.quantity ||
+        a.groupLabel.localeCompare(b.groupLabel) ||
+        a.model.localeCompare(b.model)
+    );
+  const grouped = new Map<string, number>();
+  for (const line of contributors) {
+    grouped.set(line.groupLabel, (grouped.get(line.groupLabel) ?? 0) + line.quantity);
+  }
+  const groupTotals = [...grouped.entries()]
+    .map(([groupLabel, quantity]) => ({ groupLabel, quantity }))
+    .sort((a, b) => b.quantity - a.quantity || a.groupLabel.localeCompare(b.groupLabel));
+  return {
+    field,
+    label,
+    total: contributors.reduce((sum, line) => sum + line.quantity, 0),
+    lines: contributors,
+    groupTotals,
+  };
+}
+
+export function compositionHeadline(column: LegacyColumnComposition): string {
+  const top = column.lines[0];
+  if (!top) return "";
+  const name = [top.manufacturer, top.model].filter(Boolean).join(" ");
+  return `${top.quantity} of the ${column.total} ${column.label.toLowerCase()} are ${name} (${top.category}).`;
+}
+
+export function composeLegacyColumns(
+  lines: LegacyMonthEndLine[]
+): LegacyColumnComposition[] {
+  return COMPOSITION_FIELDS.map((entry) => composeLegacyColumn(lines, entry[0])).filter(
+    (column) => column.total > 0
+  );
 }
 
 export function summarizeLegacyLines(

@@ -361,8 +361,26 @@ export function buildMonthlyReconcileEmail(params: {
   /** e.g. "For month ending July 2026" */
   monthEndingLabel: string;
   appUrl: string;
+  /** Official scheduled send. A manual test leaves this off. */
+  includeMonthOnMonth?: boolean;
+  /** Official scheduled send. A manual test leaves this off. */
+  includeYearly?: boolean;
 }): { subject: string; html: string } {
   const subject = `Finance reconciliation — ${params.monthEndingLabel}`;
+  const monthOnMonth = params.includeMonthOnMonth
+    ? `<p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
+      A third attachment — <strong>Finance month-on-month</strong> — lists each official finance month kept so far, and the change from the previous stored month. Prior-company quantities stay on their own report. The handover is the join between the two series.
+    </p>`
+    : "";
+  const yearly = params.includeYearly
+    ? `<p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
+      A fourth attachment — <strong>Finance yearly</strong> — puts 2025 and 2026 in separate blocks. 2025 is the December workbook. 2026 is the latest official finance pack kept for that year. The blocks are not subtracted.
+    </p>`
+    : "";
+  const closing =
+    params.includeMonthOnMonth || params.includeYearly
+      ? "The reconcile and breakdown are point-in-time snapshots of the live inventory register. The comparison landscapes use only official packs that were kept, plus the December 2025 workbook on the yearly sheet."
+      : "Both reports are point-in-time snapshots of the live inventory register.";
   const body = `
     <p style="margin:0 0 16px 0;font-size:15px;color:#111;">${esc(params.greeting)}</p>
     <p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
@@ -377,8 +395,10 @@ export function buildMonthlyReconcileEmail(params: {
       every individual asset grouped by status (new stock, refurbished, written off)
       with manufacturer, model, and serial number for detailed audit reference.
     </p>
+    ${monthOnMonth}
+    ${yearly}
     <p style="margin:0 0 0 0;font-size:14px;line-height:1.55;color:${MUTED};">
-      Both reports are point-in-time snapshots of the live inventory register.
+      ${closing}
     </p>
   `;
   return {

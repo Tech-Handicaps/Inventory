@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { prisma } from "@/lib/prisma";
 import {
+  composeLegacyColumns,
   monthKeyLabel,
   summarizeLegacyLines,
   type LegacyMonthEndLine,
@@ -9,7 +10,7 @@ import {
 
 /**
  * GET /api/reports/legacy-month-end
- * Prior-company quantity stock takes (Oct 2025–May 2026). Not the live register.
+ * Prior-company quantity stock takes (Oct 2025–Mar 2026). Not the live register.
  */
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
           sourceFileName: report.sourceFileName,
           carriedForwardFromMonthKey: report.carriedForwardFromMonthKey,
           ...totals,
+          composition: composeLegacyColumns(report.lines as LegacyMonthEndLine[]),
         };
       }),
     });

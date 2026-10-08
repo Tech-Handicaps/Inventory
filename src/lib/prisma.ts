@@ -49,6 +49,9 @@ function prismaClientNeedsRefresh(client: PrismaClient): boolean {
   if (typeof (client as { userProfile?: unknown }).userProfile === "undefined") {
     return true;
   }
+  if (typeof (client as { financeMonthPack?: unknown }).financeMonthPack === "undefined") {
+    return true;
+  }
   const profileFields = runtimeFieldNames(client, "UserProfile");
   if (
     profileFields.length > 0 &&
@@ -67,6 +70,14 @@ function prismaClientNeedsRefresh(client: PrismaClient): boolean {
     (!emailSettingsFields.includes("scheduleReconcileEnabled") ||
       !emailSettingsFields.includes("scheduleReconcileDayOfMonth") ||
       !emailSettingsFields.includes("scheduleReconcileLastSentMonth"))
+  ) {
+    return true;
+  }
+  const packFields = runtimeFieldNames(client, "FinanceMonthPack");
+  if (
+    packFields.length > 0 &&
+    !packFields.includes("monthOnMonthStoragePath") ||
+    !packFields.includes("yearlyStoragePath")
   ) {
     return true;
   }

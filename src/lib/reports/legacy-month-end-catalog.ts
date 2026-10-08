@@ -333,5 +333,7 @@ export const LEGACY_STOCK_SKUS: LegacySku[] = [
     category: "Accessory",
     tags: ["Accessory", "WiFi Dongle"],
     typeNotes: "Mecer UST-TP01 USB 802.11ac Wi-Fi nano dongle.",
+    lineNotes:
+      "Not counted. New, Repaired/Used, and To assess on the workbook are formulas pointing at the Posiflex PS-3316E row, so those cells repeat the Posiflex quantity. Stored as zero.",
   },
 ];

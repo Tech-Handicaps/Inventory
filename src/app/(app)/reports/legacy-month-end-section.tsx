@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { LegacyColumnComposition } from "@/lib/reports/legacy-month-end";
+import { StockCompositionBlock } from "./stock-composition-block";
 
 type MonthRow = {
   monthKey: string;
@@ -13,6 +15,7 @@ type MonthRow = {
   toAssess: number;
   usable: number;
   units: number;
+  composition: LegacyColumnComposition[];
 };
 
 function pdfHref(monthKey: string, download = false) {
@@ -26,7 +29,7 @@ export function LegacyMonthEndSection() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/reports/legacy-month-end")
+    fetch("/api/reports/legacy-month-end", { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error("Could not load prior month-end stock");
         return res.json() as Promise<{ months: MonthRow[] }>;
@@ -52,10 +55,11 @@ export function LegacyMonthEndSection() {
         </h2>
         <p className="mt-1 max-w-3xl text-sm text-black/60">
           Quantity stock takes from the previous process, October 2025 through
-          May 2026. October, November, and December come from the workbooks.
-          January through May repeat the December count so accounts has a file
-          for each month before this system&apos;s own capture. These rows are
-          not serialised assets and do not sit on the hardware board.
+          March 2026. October, November, and December come from the workbooks.
+          January, February, and March repeat the December count. April is not
+          a copy of December: this system recorded its first asset on 18 April
+          2026. These rows are not serialised assets and do not sit on the
+          hardware board.
         </p>
       </header>
 
@@ -124,6 +128,32 @@ export function LegacyMonthEndSection() {
           </table>
         </div>
       )}
+      {months && months.length > 0 ? (
+        <CompositionMonths months={months} />
+      ) : null}
     </section>
+  );
+}
+
+function CompositionMonths({ months }: { months: MonthRow[] }) {
+  const shown: MonthRow[] = [];
+  let previous = "";
+  for (const month of months) {
+    const signature = JSON.stringify(month.composition ?? []);
+    if (signature === previous) continue;
+    previous = signature;
+    shown.push(month);
+  }
+  return (
+    <div className="space-y-8">
+      {shown.map((month) => (
+        <StockCompositionBlock
+          key={month.monthKey}
+          title={`What the ${month.label} totals are made of`}
+          note="Only the models with a quantity in that column. They add up to the headline number. Months that repeat this mix are not listed again."
+          columns={month.composition ?? []}
+        />
+      ))}
+    </div>
   );
 }

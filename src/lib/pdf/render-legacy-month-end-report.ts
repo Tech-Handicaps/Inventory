@@ -7,9 +7,12 @@ import {
 import { reportAssetTypeLabel } from "@/lib/reports/asset-types";
 import type { ReportAssetTypeId } from "@/lib/reports/asset-types";
 import {
+  composeLegacyColumns,
+  compositionHeadline,
   legacyLineUnits,
   monthKeyLabel,
   summarizeLegacyLines,
+  type LegacyColumnComposition,
   type LegacyMonthEndDraft,
   type LegacyMonthEndLine,
 } from "@/lib/reports/legacy-month-end";
@@ -129,6 +132,10 @@ export async function renderLegacyMonthEndPdf(
       </tbody>
     </table>
 
+    <h2>What the totals are made of</h2>
+    <p class="note">Only lines with a quantity in that column. They add up to the total. Zero lines stay on the itemised form below and are not repeated here.</p>
+    ${legacyCompositionHtml(composeLegacyColumns(draft.lines))}
+
     <h2>Itemised — same lines as the stock-take form</h2>
     <table class="list legacy">
       <thead>
@@ -168,6 +175,46 @@ export async function renderLegacyMonthEndPdf(
     }),
     { landscape: true }
   );
+}
+
+export function legacyCompositionHtml(columns: LegacyColumnComposition[]): string {
+  return columns
+    .map((column) => {
+      const rows = column.lines
+        .map((line) => {
+          const name = [line.manufacturer, line.model].filter(Boolean).join(" ");
+          return `<tr>
+            <td>${escHtml(line.groupLabel)}</td>
+            <td>${escHtml(name)}</td>
+            <td>${escHtml(line.category)}</td>
+            ${cell(line.quantity)}
+          </tr>`;
+        })
+        .join("");
+      const groups = column.groupTotals
+        .map((group) => `${group.groupLabel} ${group.quantity}`)
+        .join(", ");
+      return `<h3>${escHtml(column.label)} — ${escHtml(String(column.total))}</h3>
+        <p class="note">${escHtml(compositionHeadline(column))} By section: ${escHtml(groups)}.</p>
+        <table class="list legacy">
+          <thead>
+            <tr>
+              <th>Section</th>
+              <th>Make / model</th>
+              <th>Type</th>
+              <th class="num">Quantity</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+            <tr class="total">
+              <td colspan="3"><strong>Total ${escHtml(column.label.toLowerCase())}</strong></td>
+              ${cell(column.total)}
+            </tr>
+          </tbody>
+        </table>`;
+    })
+    .join("");
 }
 
 function lineRow(line: LegacyMonthEndLine): string {

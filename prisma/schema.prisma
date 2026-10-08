@@ -278,6 +278,48 @@ model MonthEndStockLine {
   @@index([reportId, sortOrder])
 }
 
+/// Official finance pack for one report month. The first successful scheduled send wins.
+model FinanceMonthPack {
+  id                   String   @id @default(cuid())
+  /// Month printed on the PDF, `YYYY-MM`. Not the month the job happened to run.
+  monthKey             String   @unique
+  monthLabel           String
+  monthEndingLabel     String
+  sentAt               DateTime @default(now())
+  recipientCount       Int
+  newStock             Int
+  refurbished          Int
+  /// New stock + refurbished.
+  usable               Int
+  deployed             Int
+  assessment           Int
+  inRepair             Int
+  writtenOff           Int
+  /// Every serialised asset on the register at send time.
+  register             Int
+  reconcileStoragePath    String
+  breakdownStoragePath    String
+  /// Landscape of stored finance months attached to this pack.
+  monthOnMonthStoragePath String
+  /// Landscape yearly sheet attached to this pack.
+  yearlyStoragePath       String
+  lines                   FinanceMonthPackLine[]
+}
+
+/// Make and model counts frozen with the official pack. Not a second copy of the PDF.
+model FinanceMonthPackLine {
+  id         String           @id @default(cuid())
+  packId     String
+  pack       FinanceMonthPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  /// new_stock | refurbished | written_off
+  statusCode String
+  makeModel  String
+  count      Int
+  sortOrder  Int
+
+  @@index([packId, sortOrder])
+}
+
 // App access role (see src/lib/auth/roles.ts). Stored values: admin | reports_only | accountant
 // (legacy: management | accounts | operations — normalized when resolved).
 // super_admin is granted only via SUPER_ADMIN_EMAILS env, not persisted as a special row value.
@@ -357,6 +399,7 @@ model EmailNotificationSettings {
   /// Day of month (1–28) in Africa/Johannesburg — default 1st.
   scheduleReconcileDayOfMonth  Int      @default(1)
   /// Last successful send month key `YYYY-MM` (idempotency for cron retries).
+  /// Month printed on the official finance PDF (YYYY-MM). A manual test is not stored here.
   scheduleReconcileLastSentMonth String?
   updatedAt            DateTime @updatedAt
 }

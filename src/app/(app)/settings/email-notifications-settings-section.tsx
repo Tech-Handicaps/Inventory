@@ -531,10 +531,11 @@ export function EmailNotificationsSettingsSection() {
 
           {data.scheduleReconcileLastSentMonth ? (
             <p className="text-xs text-black/50">
-              Last scheduled send:{" "}
+              Last official report month:{" "}
               <strong className="text-black/70">
                 {data.scheduleReconcileLastSentMonth}
               </strong>
+              . This is the month printed on the PDF. A manual test is not recorded here.
             </p>
           ) : (
             <p className="text-xs text-black/50">

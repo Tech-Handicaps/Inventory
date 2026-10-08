@@ -1,5 +1,5 @@
 /**
- * Archive the prior-company month-end stock takes (Oct 2025–May 2026)
+ * Archive the prior-company month-end stock takes (Oct 2025–Mar 2026)
  * and add any missing device templates for those models.
  *
  * Does not create serialised assets. Safe to run again: each month is replaced,
@@ -82,6 +82,11 @@ async function main() {
       console.log(`Stored ${draft.monthKey} (${draft.lines.length} lines)`);
     }
 
+    const removed = await prisma.monthEndStockReport.deleteMany({
+      where: { monthKey: { notIn: drafts.map((draft) => draft.monthKey) } },
+    });
+    console.log(`Removed months no longer in the prior-company set: ${removed.count}`);
+
     let created = 0;
     let skipped = 0;
     for (const sku of LEGACY_STOCK_SKUS) {
@@ -115,7 +120,7 @@ async function main() {
       data: {
         actionType: "report.legacy_month_end_imported",
         notes:
-          "Imported prior-company month-end stock takes for Oct 2025–May 2026. Quantity records only; live assets were not created.",
+          "Imported prior-company month-end stock takes for Oct 2025–Mar 2026. January through March repeat December. April and May copies were removed. Quantity records only; live assets were not created.",
         metadata: {
           months: drafts.map((draft) => draft.monthKey),
           templatesCreated: created,

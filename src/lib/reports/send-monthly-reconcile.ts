@@ -6,6 +6,8 @@ import {
 import { sendPersonalizedFinanceEmails } from "@/lib/email/send-personalized-finance";
 import { buildMonthlyReconcileEmail } from "@/lib/email/templates/hna-finance-email";
 import { loadLogoForPdf } from "@/lib/pdf/load-logo";
+import { renderFinanceMonthOnMonthPdf } from "@/lib/pdf/render-finance-month-on-month";
+import { renderFinanceYearlyPdf } from "@/lib/pdf/render-finance-yearly";
 import { renderReconcileReportPdf } from "@/lib/pdf/render-reconcile-report";
 import { prisma } from "@/lib/prisma";
 import {
@@ -14,6 +16,17 @@ import {
   stockStatusInclude,
 } from "@/lib/reports/stock-reconcile";
 import { renderStockBreakdownPdf } from "@/lib/pdf/render-stock-breakdown-report";
+import {
+  financePackSnapshot,
+  shouldKeepOfficialPack,
+} from "@/lib/reports/finance-month-pack";
+import {
+  buildFinanceMonthOnMonth,
+  financePositionFromSnapshot,
+} from "@/lib/reports/finance-month-on-month";
+import { loadStoredFinancePositions, loadDecember2025Workbook } from "@/lib/reports/load-finance-month-positions";
+import { buildFinanceYearly } from "@/lib/reports/finance-yearly";
+import { storeOfficialFinancePack } from "@/lib/reports/store-finance-month-pack";
 
 const TZ = "Africa/Johannesburg";
 
@@ -66,6 +79,27 @@ export function johannesburgNowParts(now = new Date()): {
 }
 
 /**
+ * The month printed on the PDF. A scheduled run closes the previous month.
+ * A manual test prints the current month and is not the official file.
+ */
+export function reconcileReportMonth(
+  mode: MonthlyReconcileSendMode,
+  now = new Date()
+): {
+  monthKey: string;
+  monthLabel: string;
+  monthEndingLabel: string;
+} {
+  if (mode === "cron") return previousMonthLabel(now);
+  const current = johannesburgNowParts(now);
+  return {
+    monthKey: current.monthKey,
+    monthLabel: current.monthLabel,
+    monthEndingLabel: `For month ending ${current.monthLabel}`,
+  };
+}
+
+/**
  * For scheduled (cron) reports the label should reference the *previous* month
  * because the cron fires on the 1st of the new month to close off the prior
  * period — e.g. cron fires 1 Aug → "For month ending July 2026".
@@ -90,24 +124,19 @@ export function previousMonthLabel(now = new Date()): {
 }
 
 async function buildReconcilePdfs(
-  mode: MonthlyReconcileSendMode
+  mode: MonthlyReconcileSendMode,
+  now = new Date()
 ): Promise<{
   reconcileBuffer: Buffer;
   breakdownBuffer: Buffer;
+  reconcileReport: ReturnType<typeof buildStockReconcileReport>;
+  breakdownReport: ReturnType<typeof buildStockBreakdownReport>;
   monthLabel: string;
   monthEndingLabel: string;
   monthKey: string;
   generatedAt: string;
 }> {
-  const isCron = mode === "cron";
-  const prev = previousMonthLabel();
-  const cur = johannesburgNowParts();
-
-  const reportMonthLabel = isCron ? prev.monthLabel : cur.monthLabel;
-  const reportMonthKey = isCron ? prev.monthKey : cur.monthKey;
-  const monthEndingLabel = isCron
-    ? prev.monthEndingLabel
-    : `For month ending ${cur.monthLabel}`;
+  const reportMonth = reconcileReportMonth(mode, now);
 
   const assets = await prisma.asset.findMany({
     include: stockStatusInclude,
@@ -120,14 +149,14 @@ async function buildReconcilePdfs(
   const [reconcileBuffer, breakdownBuffer] = await Promise.all([
     renderReconcileReportPdf({
       title: "Monthly Stock Reconcile Report",
-      subtitle: `Finance reconciliation — ${monthEndingLabel} · stock and full register by asset type`,
+      subtitle: `Finance reconciliation — ${reportMonth.monthEndingLabel} · stock and full register by asset type`,
       generatedAt,
       logoSource,
       report: reconcileReport,
     }),
     renderStockBreakdownPdf({
       title: "Stock Breakdown by Make / Model",
-      subtitle: `${monthEndingLabel} · new stock, refurbished, and written-off itemised`,
+      subtitle: `${reportMonth.monthEndingLabel} · new stock, refurbished, and written-off itemised`,
       generatedAt,
       logoSource,
       report: breakdownReport,
@@ -137,17 +166,19 @@ async function buildReconcilePdfs(
   return {
     reconcileBuffer,
     breakdownBuffer,
-    monthLabel: reportMonthLabel,
-    monthEndingLabel,
-    monthKey: reportMonthKey,
+    reconcileReport,
+    breakdownReport,
+    monthLabel: reportMonth.monthLabel,
+    monthEndingLabel: reportMonth.monthEndingLabel,
+    monthKey: reportMonth.monthKey,
     generatedAt,
   };
 }
 
 /**
  * Send Monthly Stock Reconcile to finance recipients.
- * Cron mode: only on configured day-of-month, once per month (idempotent).
- * Manual test: always sends (does not update last-sent month unless cron).
+ * Cron mode: only on the configured day, once per report month printed on the PDF.
+ * Manual test: sends the current month and does not record an official file.
  */
 export async function sendMonthlyReconcileReport(options: {
   mode: MonthlyReconcileSendMode;
@@ -156,7 +187,11 @@ export async function sendMonthlyReconcileReport(options: {
   force?: boolean;
 }): Promise<MonthlyReconcileSendResult> {
   const settings = await getEmailNotificationSettings();
-  const { day, monthKey, monthLabel } = johannesburgNowParts();
+  const now = new Date();
+  const { day } = johannesburgNowParts(now);
+  const reportMonth = reconcileReportMonth(options.mode, now);
+  const monthKey = reportMonth.monthKey;
+  const monthLabel = reportMonth.monthLabel;
 
   if (options.mode === "cron" || !options.force) {
     if (!settings.scheduleReconcileEnabled) {
@@ -173,7 +208,7 @@ export async function sendMonthlyReconcileReport(options: {
         monthLabel,
       };
     }
-    if (settings.scheduleReconcileLastSentMonth === monthKey) {
+    if (settings.scheduleReconcileLastSentMonth === reportMonth.monthKey) {
       return {
         ok: true,
         skipped: "already_sent_this_month",
@@ -223,7 +258,42 @@ export async function sendMonthlyReconcileReport(options: {
   }
 
   try {
-    const pdf = await buildReconcilePdfs(options.mode);
+    const pdf = await buildReconcilePdfs(options.mode, now);
+    let monthOnMonthBuffer: Buffer | null = null;
+    let yearlyBuffer: Buffer | null = null;
+    if (options.mode === "cron") {
+      const snapshot = financePackSnapshot(pdf.reconcileReport, pdf.breakdownReport);
+      const stored = await loadStoredFinancePositions();
+      const current = financePositionFromSnapshot(
+        pdf.monthKey,
+        pdf.monthEndingLabel,
+        snapshot
+      );
+      const positions = stored.some((row) => row.monthKey === current.monthKey)
+        ? stored
+        : [...stored, current];
+      const [logoSource, december2025] = await Promise.all([
+        loadLogoForPdf(),
+        loadDecember2025Workbook(),
+      ]);
+      const [monthOnMonth, yearly] = await Promise.all([
+        renderFinanceMonthOnMonthPdf({
+          report: buildFinanceMonthOnMonth(positions),
+          generatedAt: pdf.generatedAt,
+          logoSource,
+        }),
+        renderFinanceYearlyPdf({
+          report: buildFinanceYearly({
+            december2025,
+            financePositions: positions,
+          }),
+          generatedAt: pdf.generatedAt,
+          logoSource,
+        }),
+      ]);
+      monthOnMonthBuffer = monthOnMonth;
+      yearlyBuffer = yearly;
+    }
     const attachments = [
       {
         filename: `hna-monthly-stock-reconcile-${pdf.monthKey}.pdf`,
@@ -235,6 +305,24 @@ export async function sendMonthlyReconcileReport(options: {
         content: pdf.breakdownBuffer,
         contentType: "application/pdf",
       },
+      ...(monthOnMonthBuffer
+        ? [
+            {
+              filename: `hna-finance-month-on-month-${pdf.monthKey}.pdf`,
+              content: monthOnMonthBuffer,
+              contentType: "application/pdf",
+            },
+          ]
+        : []),
+      ...(yearlyBuffer
+        ? [
+            {
+              filename: `hna-finance-yearly-${pdf.monthKey}.pdf`,
+              content: yearlyBuffer,
+              contentType: "application/pdf",
+            },
+          ]
+        : []),
     ];
 
     const result = await sendPersonalizedFinanceEmails(
@@ -246,6 +334,8 @@ export async function sendMonthlyReconcileReport(options: {
           monthLabel: pdf.monthLabel,
           monthEndingLabel: pdf.monthEndingLabel,
           appUrl: appBaseUrl(),
+          includeMonthOnMonth: Boolean(monthOnMonthBuffer),
+          includeYearly: Boolean(yearlyBuffer),
         }),
       { attachments, monthLabel: pdf.monthLabel }
     );
@@ -261,15 +351,80 @@ export async function sendMonthlyReconcileReport(options: {
       };
     }
 
-    if (options.mode === "cron") {
+    let packKept: { stored: boolean; alreadyKept: boolean } | null = null;
+    if (
+      shouldKeepOfficialPack({
+        mode: options.mode,
+        sent: result.sent,
+        alreadyKept: false,
+      })
+    ) {
+      const existing = await prisma.financeMonthPack.findUnique({
+        where: { monthKey: pdf.monthKey },
+        select: { id: true },
+      });
+      if (
+        shouldKeepOfficialPack({
+          mode: options.mode,
+          sent: result.sent,
+          alreadyKept: Boolean(existing),
+        })
+      ) {
+        try {
+          if (!monthOnMonthBuffer || !yearlyBuffer) {
+            throw new Error("The finance comparison PDFs were not prepared");
+          }
+          packKept = await storeOfficialFinancePack({
+            monthKey: pdf.monthKey,
+            monthLabel: pdf.monthLabel,
+            monthEndingLabel: pdf.monthEndingLabel,
+            recipientCount: result.sent,
+            reconcilePdf: pdf.reconcileBuffer,
+            breakdownPdf: pdf.breakdownBuffer,
+            monthOnMonthPdf: monthOnMonthBuffer,
+            yearlyPdf: yearlyBuffer,
+            reconcile: pdf.reconcileReport,
+            breakdown: pdf.breakdownReport,
+          });
+        } catch (storeError) {
+          const message =
+            storeError instanceof Error
+              ? storeError.message
+              : "Failed to store the official finance pack";
+          await createAuditLog({
+            userId: options.userId ?? null,
+            actionType: "report.monthly_reconcile_email",
+            notes: `Monthly reconcile emailed — ${pdf.monthEndingLabel}, but the pack was not stored`,
+            metadata: {
+              mode: options.mode,
+              monthKey: pdf.monthKey,
+              official: true,
+              stored: false,
+              sent: result.sent,
+              failed: result.failed,
+            },
+          });
+          return {
+            ok: false,
+            monthKey,
+            monthLabel,
+            sent: result.sent,
+            failed: result.failed,
+            error: message,
+          };
+        }
+      } else {
+        packKept = { stored: false, alreadyKept: true };
+      }
+
       await prisma.emailNotificationSettings.upsert({
         where: { id: "singleton" },
         create: {
           id: "singleton",
-          scheduleReconcileLastSentMonth: monthKey,
+          scheduleReconcileLastSentMonth: pdf.monthKey,
           scheduleReconcileEnabled: true,
         },
-        update: { scheduleReconcileLastSentMonth: monthKey },
+        update: { scheduleReconcileLastSentMonth: pdf.monthKey },
       });
     }
 
@@ -279,8 +434,10 @@ export async function sendMonthlyReconcileReport(options: {
       notes: `Monthly reconcile emailed — ${pdf.monthEndingLabel} (${result.sent} sent, ${result.failed} failed)`,
       metadata: {
         mode: options.mode,
-        monthKey,
-        reportMonthKey: pdf.monthKey,
+        monthKey: pdf.monthKey,
+        official: options.mode === "cron",
+        stored: packKept?.stored ?? false,
+        alreadyKept: packKept?.alreadyKept ?? false,
         reportMonthLabel: pdf.monthLabel,
         monthEndingLabel: pdf.monthEndingLabel,
         sent: result.sent,

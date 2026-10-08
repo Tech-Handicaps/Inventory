@@ -1,6 +1,11 @@
 "use client";
 
+import { FinanceMonthOnMonthSection } from "./finance-month-on-month-section";
+import { FinanceYearlySection } from "./finance-yearly-section";
+import { FinancePacksSection } from "./finance-packs-section";
+import { HandoverSection } from "./handover-section";
 import { LegacyMonthEndSection } from "./legacy-month-end-section";
+import { MonthOnMonthSection } from "./month-on-month-section";
 import { ReportsLifecycleSlot } from "./reports-lifecycle-slot";
 import { PageHeader } from "@/components/ui/PageHeader";
 
@@ -10,6 +15,8 @@ type ReportDef = {
   title: string;
   description: string;
   audience: string;
+  /** When set, Open and Download use this path instead of the shared PDF route. */
+  openPath?: string;
 };
 
 type ReportGroup = {
@@ -33,6 +40,42 @@ const REPORT_GROUPS: ReportGroup[] = [
         description:
           "Matrix by asset type: New stock, Refurbished, and Total stock, plus a full lifecycle breakdown for audit. Point-in-time snapshot for finance.",
         audience: "Finance · Accounting",
+      },
+      {
+        id: "finance-month-on-month",
+        type: "finance_month_on_month",
+        title: "Finance month-on-month",
+        description:
+          "Stored official finance months only. The opening line points to the prior-company reports and the handover. Workbook columns are not on this landscape.",
+        audience: "Auditors · Accounts",
+        openPath: "/api/reports/finance-month-on-month/pdf",
+      },
+      {
+        id: "finance-yearly",
+        type: "finance_yearly",
+        title: "Finance yearly",
+        description:
+          "2025 is the December workbook, in its own block. 2026 is the latest stored finance month, in its own block. The blocks are not subtracted.",
+        audience: "Auditors · Accounts",
+        openPath: "/api/reports/finance-yearly/pdf",
+      },
+      {
+        id: "month-on-month",
+        type: "month_on_month",
+        title: "Prior-company month-on-month",
+        description:
+          "October 2025 through March 2026, prior-company quantities only. The live register is not on this landscape.",
+        audience: "Auditors · Accounts",
+        openPath: "/api/reports/month-on-month/pdf",
+      },
+      {
+        id: "handover",
+        type: "handover",
+        title: "Stock report handover",
+        description:
+          "Dates joining the two series, then each old line sorted as named on both sides, quantity only, or register only. The totals are not added.",
+        audience: "Auditors · Accounts",
+        openPath: "/api/reports/handover/pdf",
       },
     ],
   },
@@ -146,8 +189,10 @@ function pdfUrl(type: string, download = false) {
 }
 
 function ReportTile({ report }: { report: ReportDef }) {
-  const openHref = pdfUrl(report.type);
-  const downloadHref = pdfUrl(report.type, true);
+  const openHref = report.openPath ?? pdfUrl(report.type);
+  const downloadHref = report.openPath
+    ? `${report.openPath}?download=1`
+    : pdfUrl(report.type, true);
   return (
     <article className="section-card section-card-interactive group relative flex flex-col overflow-hidden">
       <div
@@ -199,8 +244,23 @@ export default function ReportsPage() {
             <a href="#pdf-library" className="filter-pill filter-pill-active">
               PDF library
             </a>
+            <a href="#finance-packs" className="filter-pill filter-pill-inactive">
+              Finance packs
+            </a>
+            <a href="#finance-month-on-month" className="filter-pill filter-pill-inactive">
+              Finance month on month
+            </a>
+            <a href="#finance-yearly" className="filter-pill filter-pill-inactive">
+              Yearly
+            </a>
+            <a href="#month-on-month" className="filter-pill filter-pill-inactive">
+              Prior month on month
+            </a>
             <a href="#prior-months" className="filter-pill filter-pill-inactive">
               Prior months
+            </a>
+            <a href="#handover" className="filter-pill filter-pill-inactive">
+              Handover
             </a>
             <a href="#lifecycle" className="filter-pill filter-pill-inactive">
               Asset lifecycle
@@ -244,7 +304,17 @@ export default function ReportsPage() {
           ))}
         </section>
 
+        <FinancePacksSection />
+
+        <FinanceMonthOnMonthSection />
+
+        <FinanceYearlySection />
+
+        <MonthOnMonthSection />
+
         <LegacyMonthEndSection />
+
+        <HandoverSection />
 
         {/* Lifecycle */}
         <ReportsLifecycleSlot />
