@@ -25,4 +25,5 @@ export const AUDIT_ACTION_TYPES = [
   "integration.zoho.oauth_connected",
   "integration.zoho_desk.oauth_connected",
   "integration.xero.sync_triggered",
+  "report.legacy_month_end_imported",
 ] as const;

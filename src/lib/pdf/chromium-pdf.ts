@@ -167,6 +167,7 @@ export function pdfDocumentChrome(params: {
   bodyHtml: string;
   logoDataUrl?: string | null;
   watermarkText?: string | null;
+  landscape?: boolean;
 }): string {
   const watermark = params.watermarkText?.trim()
     ? `<div class="watermark" aria-hidden="true">${escHtml(params.watermarkText.trim())}</div>`
@@ -181,7 +182,7 @@ export function pdfDocumentChrome(params: {
   <meta charset="utf-8" />
   <title>${escHtml(params.title)}</title>
   <style>
-    @page { size: A4; margin: 0; }
+    @page { size: ${params.landscape ? "A4 landscape" : "A4"}; margin: 0; }
     * { box-sizing: border-box; }
     body {
       margin: 0;

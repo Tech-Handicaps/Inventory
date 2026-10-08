@@ -237,6 +237,47 @@ model AuditLog {
   metadata   Json?    // flexible extra data
 }
 
+/// Prior-company month-end quantity stock take. Not a live serialised asset.
+/// Source workbooks had no serial numbers, so these rows stay off the hardware board.
+model MonthEndStockReport {
+  id                         String   @id @default(cuid())
+  /// Calendar month, `YYYY-MM` (Africa/Johannesburg month-end).
+  monthKey                   String   @unique
+  periodEnding               DateTime
+  /// source_file | carried_forward
+  sourceKind                 String
+  sourceFileName             String?
+  carriedForwardFromMonthKey String?
+  notes                      String?
+  importedAt                 DateTime @default(now())
+  lines                      MonthEndStockLine[]
+}
+
+model MonthEndStockLine {
+  id             String              @id @default(cuid())
+  reportId       String
+  report         MonthEndStockReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  sortOrder      Int
+  /// Section on the source stock-take form (Terminals, Modems, …).
+  groupLabel     String
+  manufacturer   String
+  model          String
+  category       String
+  tags           String[]            @default([])
+  /// hardware | usb_hid_msr | other — same classifier as the live reconcile report.
+  financeType    String
+  /// What the model actually is (researched), kept with the archived line.
+  typeNotes      String?
+  newStock       Int                 @default(0)
+  repairedUsed   Int                 @default(0)
+  toAssess       Int                 @default(0)
+  toDispose      Int                 @default(0)
+  warrantyRepair Int                 @default(0)
+  lineNotes      String?
+
+  @@index([reportId, sortOrder])
+}
+
 // App access role (see src/lib/auth/roles.ts). Stored values: admin | reports_only | accountant
 // (legacy: management | accounts | operations — normalized when resolved).
 // super_admin is granted only via SUPER_ADMIN_EMAILS env, not persisted as a special row value.

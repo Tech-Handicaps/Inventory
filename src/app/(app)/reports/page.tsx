@@ -1,5 +1,6 @@
 "use client";
 
+import { LegacyMonthEndSection } from "./legacy-month-end-section";
 import { ReportsLifecycleSlot } from "./reports-lifecycle-slot";
 import { PageHeader } from "@/components/ui/PageHeader";
 
@@ -198,6 +199,9 @@ export default function ReportsPage() {
             <a href="#pdf-library" className="filter-pill filter-pill-active">
               PDF library
             </a>
+            <a href="#prior-months" className="filter-pill filter-pill-inactive">
+              Prior months
+            </a>
             <a href="#lifecycle" className="filter-pill filter-pill-inactive">
               Asset lifecycle
             </a>
@@ -239,6 +243,8 @@ export default function ReportsPage() {
             </div>
           ))}
         </section>
+
+        <LegacyMonthEndSection />
 
         {/* Lifecycle */}
         <ReportsLifecycleSlot />

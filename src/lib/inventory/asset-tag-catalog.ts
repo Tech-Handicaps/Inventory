@@ -33,7 +33,20 @@ export const ASSET_TAG_GROUPS: AssetTagGroup[] = [
   },
   {
     label: "Infrastructure",
-    tags: ["Network", "Switch", "Router", "Access Point", "AV Equipment"],
+    tags: [
+      "Network",
+      "Switch",
+      "Router",
+      "Mobile Router",
+      "USB Modem",
+      "Access Point",
+      "WiFi Dongle",
+      "AV Equipment",
+    ],
+  },
+  {
+    label: "Other depot items",
+    tags: ["Mini PC", "Compute Stick", "Accessory"],
   },
 ];
 
