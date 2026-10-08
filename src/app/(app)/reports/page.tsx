@@ -1,5 +1,6 @@
 "use client";
 
+import { AuditorIndexSection } from "./auditor-index-section";
 import { FinanceMonthOnMonthSection } from "./finance-month-on-month-section";
 import { FinanceYearlySection } from "./finance-yearly-section";
 import { FinancePacksSection } from "./finance-packs-section";
@@ -241,7 +242,10 @@ export default function ReportsPage() {
           description="Printable inventory PDFs for finance reconciliation, stock by asset type, audits, and accounting — plus per-asset movement history from the audit trail."
         >
           <nav className="flex flex-wrap gap-2" aria-label="Reports sections">
-            <a href="#pdf-library" className="filter-pill filter-pill-active">
+            <a href="#auditor-index" className="filter-pill filter-pill-active">
+              Auditor index
+            </a>
+            <a href="#pdf-library" className="filter-pill filter-pill-inactive">
               PDF library
             </a>
             <a href="#finance-packs" className="filter-pill filter-pill-inactive">
@@ -267,6 +271,8 @@ export default function ReportsPage() {
             </a>
           </nav>
         </PageHeader>
+
+        <AuditorIndexSection />
 
         {/* PDF library */}
         <section id="pdf-library" className="scroll-mt-6 space-y-8">
