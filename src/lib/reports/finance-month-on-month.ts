@@ -1,3 +1,4 @@
+import { ALL_REPORT_ASSET_TYPES } from "@/lib/reports/asset-types";
 import type { FinancePackSnapshot } from "@/lib/reports/finance-month-pack";
 
 export const FINANCE_MONTH_ON_MONTH_COLUMNS = [
@@ -33,6 +34,20 @@ export type FinanceMonthPosition = {
   writtenOff: number;
   register: number;
   lines: { statusCode: string; makeModel: string; count: number }[];
+  types: FinanceTypeTotals[];
+};
+
+export type FinanceTypeTotals = {
+  assetType: string;
+  label: string;
+  newStock: number;
+  refurbished: number;
+  usable: number;
+  deployed: number;
+  assessment: number;
+  inRepair: number;
+  writtenOff: number;
+  register: number;
 };
 
 export type FinanceMonthOnMonthRow = {
@@ -61,11 +76,34 @@ export type FinanceModelMovement = {
   delta: number;
 };
 
+export type FinanceTypeMonthRow = {
+  monthKey: string;
+  monthEndingLabel: string;
+  newStock: number;
+  refurbished: number;
+  usable: number;
+  deployed: number;
+  assessment: number;
+  inRepair: number;
+  writtenOff: number;
+  register: number;
+  usableChange: number | null;
+  registerChange: number | null;
+};
+
+export type FinanceTypeBlock = {
+  assetType: string;
+  label: string;
+  months: FinanceTypeMonthRow[];
+};
+
 export type FinanceMonthOnMonthReport = {
   introduction: string[];
   movementNote: string;
+  typeNote: string;
   months: FinanceMonthOnMonthRow[];
   movements: FinanceModelMovement[];
+  typeBlocks: FinanceTypeBlock[];
 };
 
 export function formatFinanceChange(value: number): string {
@@ -87,6 +125,39 @@ export function financePositionFromSnapshot(
       makeModel: line.makeModel,
       count: line.count,
     })),
+    types: snapshot.typeTotals.map((row) => ({
+      assetType: row.assetType,
+      label: row.label,
+      newStock: row.newStock,
+      refurbished: row.refurbished,
+      usable: row.usable,
+      deployed: row.deployed,
+      assessment: row.assessment,
+      inRepair: row.inRepair,
+      writtenOff: row.writtenOff,
+      register: row.register,
+    })),
+  };
+}
+
+function typeTotalsFor(
+  position: FinanceMonthPosition,
+  assetType: string
+): FinanceTypeTotals {
+  const found = position.types.find((row) => row.assetType === assetType);
+  if (found) return found;
+  const label = ALL_REPORT_ASSET_TYPES.find((type) => type.id === assetType)?.label ?? assetType;
+  return {
+    assetType,
+    label,
+    newStock: 0,
+    refurbished: 0,
+    usable: 0,
+    deployed: 0,
+    assessment: 0,
+    inRepair: 0,
+    writtenOff: 0,
+    register: 0,
   };
 }
 
@@ -125,7 +196,7 @@ export function buildFinanceMonthOnMonth(
 
   const introduction = [
     "Prior-company quantities for October 2025 through March 2026 are on the prior-company month-on-month report. The handover is the join between that series and this register. The totals are not added.",
-    "This landscape lists only official finance packs that were emailed and kept. A month that was never stored is left out. Change is this position minus the previous stored position. Usable stock is new stock plus refurbished.",
+    "This landscape lists only official finance packs that were emailed and kept. A month that was never stored is left out. Change is this position minus the previous stored position. Usable stock is new stock plus refurbished. Hardware, USB HID Magnetic Stripe Readers, and other stay in separate totals and are not added together.",
   ];
   if (months.length === 0) {
     introduction.push(
@@ -187,11 +258,37 @@ export function buildFinanceMonthOnMonth(
     movements.push(...changed);
   }
 
+  const typeBlocks: FinanceTypeBlock[] = ALL_REPORT_ASSET_TYPES.map((type) => ({
+    assetType: type.id,
+    label: type.label,
+    months: months.map((month, index) => {
+      const current = typeTotalsFor(month, type.id);
+      const previous = index === 0 ? null : typeTotalsFor(months[index - 1], type.id);
+      return {
+        monthKey: month.monthKey,
+        monthEndingLabel: month.monthEndingLabel,
+        newStock: current.newStock,
+        refurbished: current.refurbished,
+        usable: current.usable,
+        deployed: current.deployed,
+        assessment: current.assessment,
+        inRepair: current.inRepair,
+        writtenOff: current.writtenOff,
+        register: current.register,
+        usableChange: previous ? current.usable - previous.usable : null,
+        registerChange: previous ? current.register - previous.register : null,
+      };
+    }),
+  }));
+
   return {
     introduction,
     movementNote:
       "Make and model changes cover new stock, refurbished, and written off. Those are the counts kept with each pack. Deployed serials stay on that month's stock breakdown.",
+    typeNote:
+      "Each block is one asset type. A change is against the previous stored month of that same type.",
     months: rows,
     movements,
+    typeBlocks: months.length === 0 ? [] : typeBlocks,
   };
 }

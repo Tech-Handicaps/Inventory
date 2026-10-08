@@ -45,6 +45,8 @@ export type StockReconcileReport = {
   stockGrandTotal: Pick<StockReconcileRow, "newStock" | "refurbished" | "totalStock">;
   fullStatusRows: FullStatusReconcileRow[];
   fullStatusGrandTotal: Omit<FullStatusReconcileRow, "assetTypeId" | "assetTypeLabel">;
+  /** Hardware, USB readers, and other. The printed reconcile keeps other off the main grid. */
+  typeRows: FullStatusReconcileRow[];
   uncategorizedCount: number;
 };
 
@@ -115,6 +117,7 @@ export function buildStockReconcileReport(
 
   const stockRows = RECONCILE_ASSET_TYPES.map((t) => stockByType.get(t.id)!);
   const fullStatusRows = RECONCILE_ASSET_TYPES.map((t) => fullByType.get(t.id)!);
+  const typeRows = ALL_REPORT_ASSET_TYPES.map((t) => fullByType.get(t.id)!);
 
   const otherFull = fullByType.get("other")!;
 
@@ -157,6 +160,7 @@ export function buildStockReconcileReport(
     stockGrandTotal,
     fullStatusRows,
     fullStatusGrandTotal,
+    typeRows,
     uncategorizedCount: otherFull.grandTotal,
   };
 }

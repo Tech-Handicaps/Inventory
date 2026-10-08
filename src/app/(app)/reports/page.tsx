@@ -145,7 +145,7 @@ const REPORT_GROUPS: ReportGroup[] = [
         type: "deployed",
         title: "Deployed — field",
         description:
-          "Assets currently deployed, with category breakdown and a full row listing.",
+          "Today's deployed units. A stored month's serials are on Official finance packs, taken at send time.",
         audience: "Operations · Management",
       },
       {

@@ -1,4 +1,11 @@
+import {
+  ALL_REPORT_ASSET_TYPES,
+  classifyReportAssetType,
+  reportAssetTypeLabel,
+  type ReportAssetTypeId,
+} from "@/lib/reports/asset-types";
 import type {
+  AssetForReconcile,
   StockBreakdownReport,
   StockReconcileReport,
 } from "@/lib/reports/stock-reconcile";
@@ -23,14 +30,39 @@ export type FinancePackModelCount = {
   sortOrder: number;
 };
 
+export type FinancePackTypeTotals = {
+  assetType: string;
+  label: string;
+  sortOrder: number;
+  newStock: number;
+  refurbished: number;
+  usable: number;
+  deployed: number;
+  assessment: number;
+  inRepair: number;
+  writtenOff: number;
+  register: number;
+};
+
+export type FinanceFieldUnit = {
+  assetType: ReportAssetTypeId;
+  label: string;
+  manufacturer: string;
+  model: string;
+  serialNumber: string;
+  sortOrder: number;
+};
+
 export type FinancePackSnapshot = {
   totals: FinancePackTotals;
   lines: FinancePackModelCount[];
+  typeTotals: FinancePackTypeTotals[];
+  fieldUnits: FinanceFieldUnit[];
 };
 
 export function financePackStoragePath(
   monthKey: string,
-  kind: "reconcile" | "breakdown" | "month-on-month" | "yearly"
+  kind: "reconcile" | "breakdown" | "month-on-month" | "yearly" | "field"
 ): string {
   const file =
     kind === "reconcile"
@@ -39,8 +71,40 @@ export function financePackStoragePath(
         ? "hna-stock-breakdown.pdf"
         : kind === "month-on-month"
           ? "hna-finance-month-on-month.pdf"
-          : "hna-finance-yearly.pdf";
+          : kind === "yearly"
+            ? "hna-finance-yearly.pdf"
+            : "hna-finance-field-listing.pdf";
   return `${monthKey}/${file}`;
+}
+
+/**
+ * Deployed units at the moment the pack is built. Hardware, USB readers, and
+ * other stay in separate groups. Units that are not deployed are left out.
+ */
+export function financeFieldListing(assets: AssetForReconcile[]): FinanceFieldUnit[] {
+  const rank = new Map(ALL_REPORT_ASSET_TYPES.map((type, index) => [type.id, index]));
+  const rows = assets
+    .filter((asset) => asset.status.code === "deployed")
+    .map((asset) => {
+      const assetType = classifyReportAssetType(asset.category, asset.tags);
+      return {
+        assetType,
+        label: reportAssetTypeLabel(assetType),
+        manufacturer: asset.manufacturer?.trim() || "Unknown",
+        model: asset.model?.trim() || "Unknown",
+        serialNumber: asset.serialNumber?.trim() || "",
+      };
+    })
+    .sort((a, b) => {
+      const byType = (rank.get(a.assetType) ?? 9) - (rank.get(b.assetType) ?? 9);
+      if (byType !== 0) return byType;
+      const byMake = a.manufacturer.localeCompare(b.manufacturer);
+      if (byMake !== 0) return byMake;
+      const byModel = a.model.localeCompare(b.model);
+      if (byModel !== 0) return byModel;
+      return a.serialNumber.localeCompare(b.serialNumber);
+    });
+  return rows.map((row, sortOrder) => ({ ...row, sortOrder }));
 }
 
 /**
@@ -57,7 +121,8 @@ export function shouldKeepOfficialPack(input: {
 
 export function financePackSnapshot(
   reconcile: StockReconcileReport,
-  breakdown: StockBreakdownReport
+  breakdown: StockBreakdownReport,
+  assets: AssetForReconcile[] = []
 ): FinancePackSnapshot {
   const totals = reconcile.fullStatusGrandTotal;
   const lines: FinancePackModelCount[] = [];
@@ -85,5 +150,19 @@ export function financePackSnapshot(
       register: totals.grandTotal,
     },
     lines,
+    typeTotals: reconcile.typeRows.map((row, sortOrder) => ({
+      assetType: row.assetTypeId,
+      label: row.assetTypeLabel,
+      sortOrder,
+      newStock: row.newStock,
+      refurbished: row.refurbished,
+      usable: row.totalStock,
+      deployed: row.deployed,
+      assessment: row.assessment,
+      inRepair: row.repair,
+      writtenOff: row.writtenOff,
+      register: row.grandTotal,
+    })),
+    fieldUnits: financeFieldListing(assets),
   };
 }

@@ -10,6 +10,8 @@ import {
   type FinanceModelMovement,
   type FinanceMonthOnMonthReport,
   type FinanceMonthOnMonthRow,
+  type FinanceTypeBlock,
+  type FinanceTypeMonthRow,
 } from "@/lib/reports/finance-month-on-month";
 
 export type FinanceMonthOnMonthPdfInput = {
@@ -42,6 +44,51 @@ function monthRow(row: FinanceMonthOnMonthRow): string {
     ${signed(row.usableChange)}
     ${signed(row.registerChange)}
   </tr>`;
+}
+
+function typeMonthRow(row: FinanceTypeMonthRow): string {
+  return `<tr>
+    <td>${escHtml(row.monthEndingLabel)}</td>
+    ${num(row.newStock)}
+    ${num(row.refurbished)}
+    ${num(row.usable)}
+    ${num(row.deployed)}
+    ${num(row.assessment)}
+    ${num(row.inRepair)}
+    ${num(row.writtenOff)}
+    ${num(row.register)}
+    ${signed(row.usableChange)}
+    ${signed(row.registerChange)}
+  </tr>`;
+}
+
+function typeBlockTable(
+  block: FinanceTypeBlock,
+  headers: readonly string[]
+): string {
+  const [newStock, refurbished, usable, deployed, assessment, inRepairs, writtenOff, register, usableChange, registerChange] =
+    headers;
+  return `<h2>${escHtml(block.label)}</h2>
+    <table class="list audit">
+      <thead>
+        <tr>
+          <th>Month ending</th>
+          <th class="num">${escHtml(newStock)}</th>
+          <th class="num">${escHtml(refurbished)}</th>
+          <th class="num">${escHtml(usable)}</th>
+          <th class="num">${escHtml(deployed)}</th>
+          <th class="num">${escHtml(assessment)}</th>
+          <th class="num">${escHtml(inRepairs)}</th>
+          <th class="num">${escHtml(writtenOff)}</th>
+          <th class="num">${escHtml(register)}</th>
+          <th class="num">${escHtml(usableChange)}</th>
+          <th class="num">${escHtml(registerChange)}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${block.months.map(typeMonthRow).join("")}
+      </tbody>
+    </table>`;
 }
 
 function movementRow(movement: FinanceModelMovement): string {
@@ -94,6 +141,13 @@ export async function renderFinanceMonthOnMonthPdf(
       </tbody>
     </table>`;
 
+  const typeTables =
+    report.typeBlocks.length === 0
+      ? ""
+      : `<h2>Asset types</h2>
+    <p class="note">${escHtml(report.typeNote)}</p>
+    ${report.typeBlocks.map((block) => typeBlockTable(block, FINANCE_MONTH_ON_MONTH_COLUMNS)).join("")}`;
+
   const movementBody =
     report.movements.length === 0
       ? report.months.length < 2
@@ -130,6 +184,7 @@ export async function renderFinanceMonthOnMonthPdf(
     <p class="subtitle">Official finance packs only. Generated ${escHtml(input.generatedAt)}</p>
     ${introduction}
     ${monthTable}
+    ${typeTables}
     ${movementTable}
     <p class="footer">Handicaps Network Africa Inventory · Finance month-on-month · stored official packs only</p>
     <style>

@@ -35,6 +35,7 @@ function position(
     writtenOff: 0,
     register,
     lines: [],
+    types: [],
   };
 }
 

@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/reports/finance-packs/pdf?month=2026-09&kind=reconcile|breakdown|month-on-month|yearly&download=1
+ * GET /api/reports/finance-packs/pdf?month=2026-09&kind=reconcile|breakdown|month-on-month|yearly|field&download=1
  */
 export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
@@ -23,10 +23,14 @@ export async function GET(request: NextRequest) {
     kind !== "reconcile" &&
     kind !== "breakdown" &&
     kind !== "month-on-month" &&
-    kind !== "yearly"
+    kind !== "yearly" &&
+    kind !== "field"
   ) {
     return NextResponse.json(
-      { error: "Kind must be reconcile, breakdown, month-on-month, or yearly" },
+      {
+        error:
+          "Kind must be reconcile, breakdown, month-on-month, yearly, or field",
+      },
       { status: 400 }
     );
   }
@@ -49,7 +53,9 @@ export async function GET(request: NextRequest) {
           ? pack.breakdownStoragePath
           : kind === "month-on-month"
             ? pack.monthOnMonthStoragePath
-            : pack.yearlyStoragePath;
+            : kind === "yearly"
+              ? pack.yearlyStoragePath
+              : pack.fieldListingStoragePath;
     const supabase = createSupabaseAdmin();
     const { data, error } = await supabase.storage
       .from(FINANCE_PACK_BUCKET)
@@ -70,7 +76,9 @@ export async function GET(request: NextRequest) {
           ? `hna-stock-breakdown-${month}.pdf`
           : kind === "month-on-month"
             ? `hna-finance-month-on-month-${month}.pdf`
-            : `hna-finance-yearly-${month}.pdf`;
+            : kind === "yearly"
+              ? `hna-finance-yearly-${month}.pdf`
+              : `hna-finance-field-listing-${month}.pdf`;
     const asAttachment = request.nextUrl.searchParams.has("download");
     const disposition = asAttachment
       ? `attachment; filename="${filename}"`

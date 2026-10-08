@@ -6,6 +6,7 @@ import {
 import { sendPersonalizedFinanceEmails } from "@/lib/email/send-personalized-finance";
 import { buildMonthlyReconcileEmail } from "@/lib/email/templates/hna-finance-email";
 import { loadLogoForPdf } from "@/lib/pdf/load-logo";
+import { renderFinanceFieldListingPdf } from "@/lib/pdf/render-finance-field-listing";
 import { renderFinanceMonthOnMonthPdf } from "@/lib/pdf/render-finance-month-on-month";
 import { renderFinanceYearlyPdf } from "@/lib/pdf/render-finance-yearly";
 import { renderReconcileReportPdf } from "@/lib/pdf/render-reconcile-report";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/reports/stock-reconcile";
 import { renderStockBreakdownPdf } from "@/lib/pdf/render-stock-breakdown-report";
 import {
+  financeFieldListing,
   financePackSnapshot,
   shouldKeepOfficialPack,
 } from "@/lib/reports/finance-month-pack";
@@ -131,6 +133,7 @@ async function buildReconcilePdfs(
   breakdownBuffer: Buffer;
   reconcileReport: ReturnType<typeof buildStockReconcileReport>;
   breakdownReport: ReturnType<typeof buildStockBreakdownReport>;
+  fieldUnits: ReturnType<typeof financeFieldListing>;
   monthLabel: string;
   monthEndingLabel: string;
   monthKey: string;
@@ -143,6 +146,7 @@ async function buildReconcilePdfs(
   });
   const reconcileReport = buildStockReconcileReport(assets);
   const breakdownReport = buildStockBreakdownReport(assets);
+  const fieldUnits = financeFieldListing(assets);
   const logoSource = await loadLogoForPdf();
   const generatedAt = new Date().toLocaleString("en-ZA", { timeZone: TZ });
 
@@ -168,6 +172,7 @@ async function buildReconcilePdfs(
     breakdownBuffer,
     reconcileReport,
     breakdownReport,
+    fieldUnits,
     monthLabel: reportMonth.monthLabel,
     monthEndingLabel: reportMonth.monthEndingLabel,
     monthKey: reportMonth.monthKey,
@@ -261,6 +266,7 @@ export async function sendMonthlyReconcileReport(options: {
     const pdf = await buildReconcilePdfs(options.mode, now);
     let monthOnMonthBuffer: Buffer | null = null;
     let yearlyBuffer: Buffer | null = null;
+    let fieldListingBuffer: Buffer | null = null;
     if (options.mode === "cron") {
       const snapshot = financePackSnapshot(pdf.reconcileReport, pdf.breakdownReport);
       const stored = await loadStoredFinancePositions();
@@ -276,7 +282,7 @@ export async function sendMonthlyReconcileReport(options: {
         loadLogoForPdf(),
         loadDecember2025Workbook(),
       ]);
-      const [monthOnMonth, yearly] = await Promise.all([
+      const [monthOnMonth, yearly, fieldListing] = await Promise.all([
         renderFinanceMonthOnMonthPdf({
           report: buildFinanceMonthOnMonth(positions),
           generatedAt: pdf.generatedAt,
@@ -290,9 +296,16 @@ export async function sendMonthlyReconcileReport(options: {
           generatedAt: pdf.generatedAt,
           logoSource,
         }),
+        renderFinanceFieldListingPdf({
+          monthEndingLabel: pdf.monthEndingLabel,
+          units: pdf.fieldUnits,
+          generatedAt: pdf.generatedAt,
+          logoSource,
+        }),
       ]);
       monthOnMonthBuffer = monthOnMonth;
       yearlyBuffer = yearly;
+      fieldListingBuffer = fieldListing;
     }
     const attachments = [
       {
@@ -371,7 +384,7 @@ export async function sendMonthlyReconcileReport(options: {
         })
       ) {
         try {
-          if (!monthOnMonthBuffer || !yearlyBuffer) {
+          if (!monthOnMonthBuffer || !yearlyBuffer || !fieldListingBuffer) {
             throw new Error("The finance comparison PDFs were not prepared");
           }
           packKept = await storeOfficialFinancePack({
@@ -383,8 +396,10 @@ export async function sendMonthlyReconcileReport(options: {
             breakdownPdf: pdf.breakdownBuffer,
             monthOnMonthPdf: monthOnMonthBuffer,
             yearlyPdf: yearlyBuffer,
+            fieldListingPdf: fieldListingBuffer,
             reconcile: pdf.reconcileReport,
             breakdown: pdf.breakdownReport,
+            fieldUnits: pdf.fieldUnits,
           });
         } catch (storeError) {
           const message =

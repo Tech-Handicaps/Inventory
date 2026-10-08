@@ -52,6 +52,18 @@ function prismaClientNeedsRefresh(client: PrismaClient): boolean {
   if (typeof (client as { financeMonthPack?: unknown }).financeMonthPack === "undefined") {
     return true;
   }
+  if (
+    typeof (client as { financeMonthPackType?: unknown }).financeMonthPackType ===
+    "undefined"
+  ) {
+    return true;
+  }
+  if (
+    typeof (client as { financeMonthPackFieldUnit?: unknown })
+      .financeMonthPackFieldUnit === "undefined"
+  ) {
+    return true;
+  }
   const profileFields = runtimeFieldNames(client, "UserProfile");
   if (
     profileFields.length > 0 &&
@@ -76,8 +88,9 @@ function prismaClientNeedsRefresh(client: PrismaClient): boolean {
   const packFields = runtimeFieldNames(client, "FinanceMonthPack");
   if (
     packFields.length > 0 &&
-    !packFields.includes("monthOnMonthStoragePath") ||
-    !packFields.includes("yearlyStoragePath")
+    (!packFields.includes("monthOnMonthStoragePath") ||
+      !packFields.includes("yearlyStoragePath") ||
+      !packFields.includes("fieldListingStoragePath"))
   ) {
     return true;
   }

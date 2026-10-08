@@ -303,7 +303,50 @@ model FinanceMonthPack {
   monthOnMonthStoragePath String
   /// Landscape yearly sheet attached to this pack.
   yearlyStoragePath       String
+  /// Deployed units by make, model, and serial at send time.
+  fieldListingStoragePath String
   lines                   FinanceMonthPackLine[]
+  types                   FinanceMonthPackType[]
+  fieldUnits              FinanceMonthPackFieldUnit[]
+}
+
+/// Deployed serials frozen with the official pack. Not a live library print.
+model FinanceMonthPackFieldUnit {
+  id           String           @id @default(cuid())
+  packId       String
+  pack         FinanceMonthPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  /// hardware | usb_hid_msr | other
+  assetType    String
+  label        String
+  manufacturer String
+  model        String
+  /// Blank when the register had no serial at send time.
+  serialNumber String
+  sortOrder    Int
+
+  @@index([packId, sortOrder])
+}
+
+/// Hardware, USB reader, and other totals frozen with the official pack.
+model FinanceMonthPackType {
+  id          String           @id @default(cuid())
+  packId      String
+  pack        FinanceMonthPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  /// hardware | usb_hid_msr | other
+  assetType   String
+  label       String
+  sortOrder   Int
+  newStock    Int
+  refurbished Int
+  usable      Int
+  deployed    Int
+  assessment  Int
+  inRepair    Int
+  writtenOff  Int
+  register    Int
+
+  @@unique([packId, assetType])
+  @@index([packId, sortOrder])
 }
 
 /// Make and model counts frozen with the official pack. Not a second copy of the PDF.

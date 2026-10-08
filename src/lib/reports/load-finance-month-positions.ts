@@ -10,7 +10,10 @@ import {
 export async function loadStoredFinancePositions(): Promise<FinanceMonthPosition[]> {
   const packs = await prisma.financeMonthPack.findMany({
     orderBy: { monthKey: "asc" },
-    include: { lines: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      lines: { orderBy: { sortOrder: "asc" } },
+      types: { orderBy: { sortOrder: "asc" } },
+    },
   });
   return packs.map((pack) => ({
     monthKey: pack.monthKey,
@@ -27,6 +30,18 @@ export async function loadStoredFinancePositions(): Promise<FinanceMonthPosition
       statusCode: line.statusCode,
       makeModel: line.makeModel,
       count: line.count,
+    })),
+    types: pack.types.map((row) => ({
+      assetType: row.assetType,
+      label: row.label,
+      newStock: row.newStock,
+      refurbished: row.refurbished,
+      usable: row.usable,
+      deployed: row.deployed,
+      assessment: row.assessment,
+      inRepair: row.inRepair,
+      writtenOff: row.writtenOff,
+      register: row.register,
     })),
   }));
 }

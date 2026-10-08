@@ -19,9 +19,10 @@ function position(
     | "writtenOff"
     | "register"
   >,
-  lines: FinanceMonthPosition["lines"] = []
+  lines: FinanceMonthPosition["lines"] = [],
+  types: FinanceMonthPosition["types"] = []
 ): FinanceMonthPosition {
-  return { monthKey, monthEndingLabel: label, ...totals, lines };
+  return { monthKey, monthEndingLabel: label, ...totals, lines, types };
 }
 
 const october = position(
@@ -83,6 +84,7 @@ describe("finance month-on-month", () => {
     expect(report.months[1].usableChange).toBe(-2);
     expect(report.months[1].registerChange).toBe(0);
     expect(report.introduction.join(" ")).not.toContain("2026-11");
+    expect(report.introduction.join(" ")).toContain("not added together");
     expect(report.movements).toEqual([
       {
         monthKey: "2026-12",
@@ -105,5 +107,97 @@ describe("finance month-on-month", () => {
         delta: -2,
       },
     ]);
+  });
+
+  it("keeps a USB reader change out of the hardware block", () => {
+    const report = buildFinanceMonthOnMonth([
+      position(
+        "2026-10",
+        "For month ending October 2026",
+        {
+          newStock: 17,
+          refurbished: 2,
+          usable: 19,
+          deployed: 114,
+          assessment: 0,
+          inRepair: 0,
+          writtenOff: 2,
+          register: 135,
+        },
+        [],
+        [
+          {
+            assetType: "hardware",
+            label: "Hardware",
+            newStock: 10,
+            refurbished: 2,
+            usable: 12,
+            deployed: 114,
+            assessment: 0,
+            inRepair: 0,
+            writtenOff: 2,
+            register: 128,
+          },
+          {
+            assetType: "usb_hid_msr",
+            label: "USB HID Magnetic Stripe Readers",
+            newStock: 7,
+            refurbished: 0,
+            usable: 7,
+            deployed: 0,
+            assessment: 0,
+            inRepair: 0,
+            writtenOff: 0,
+            register: 7,
+          },
+        ]
+      ),
+      position(
+        "2026-12",
+        "For month ending December 2026",
+        {
+          newStock: 15,
+          refurbished: 2,
+          usable: 17,
+          deployed: 116,
+          assessment: 0,
+          inRepair: 0,
+          writtenOff: 2,
+          register: 135,
+        },
+        [],
+        [
+          {
+            assetType: "hardware",
+            label: "Hardware",
+            newStock: 8,
+            refurbished: 2,
+            usable: 10,
+            deployed: 116,
+            assessment: 0,
+            inRepair: 0,
+            writtenOff: 2,
+            register: 128,
+          },
+          {
+            assetType: "usb_hid_msr",
+            label: "USB HID Magnetic Stripe Readers",
+            newStock: 7,
+            refurbished: 0,
+            usable: 7,
+            deployed: 0,
+            assessment: 0,
+            inRepair: 0,
+            writtenOff: 0,
+            register: 7,
+          },
+        ]
+      ),
+    ]);
+    const hardware = report.typeBlocks.find((block) => block.assetType === "hardware");
+    const readers = report.typeBlocks.find((block) => block.assetType === "usb_hid_msr");
+    expect(hardware?.months[1].usableChange).toBe(-2);
+    expect(readers?.months[1].usableChange).toBe(0);
+    expect(readers?.months[1].register).toBe(7);
   });
 });

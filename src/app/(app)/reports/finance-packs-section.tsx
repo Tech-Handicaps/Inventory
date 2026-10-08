@@ -20,7 +20,7 @@ type FinancePackMonth = {
 
 function pdfHref(
   monthKey: string,
-  kind: "reconcile" | "breakdown" | "month-on-month" | "yearly",
+  kind: "reconcile" | "breakdown" | "month-on-month" | "yearly" | "field",
   download = false
 ) {
   const base = `/api/reports/finance-packs/pdf?month=${encodeURIComponent(monthKey)}&kind=${kind}`;
@@ -71,7 +71,9 @@ export function FinancePacksSection() {
       ) : months.length === 0 ? (
         <p className="text-sm text-black/60">
           No official finance pack has been kept yet. The next scheduled send
-          stores that month.
+          stores that month, including the deployed serials as they stood then.
+          The Deployed PDF in the library is today&apos;s register, not a stored
+          month.
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
@@ -141,6 +143,14 @@ export function FinancePacksSection() {
                         className="text-sm font-medium text-brand hover:underline"
                       >
                         Yearly
+                      </a>
+                      <a
+                        href={pdfHref(month.monthKey, "field")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-brand hover:underline"
+                      >
+                        Field listing
                       </a>
                     </div>
                   </td>

@@ -119,6 +119,62 @@ export function FinanceMonthOnMonthSection() {
             </div>
           )}
 
+          {report.typeBlocks.length === 0 ? null : (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                  Asset types
+                </h3>
+                <p className="max-w-3xl text-sm leading-relaxed text-black/70">{report.typeNote}</p>
+              </div>
+              {report.typeBlocks.map((block) => (
+                <div key={block.assetType} className="space-y-2">
+                  <h4 className="text-sm font-medium text-black">{block.label}</h4>
+                  <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+                    <table className="w-full min-w-[1100px] text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-black/10">
+                          <th className="px-4 py-3 font-medium">Month ending</th>
+                          <th className="px-4 py-3 text-right font-medium">New</th>
+                          <th className="px-4 py-3 text-right font-medium">Refurbished</th>
+                          <th className="px-4 py-3 text-right font-medium">Usable</th>
+                          <th className="px-4 py-3 text-right font-medium">Deployed</th>
+                          <th className="px-4 py-3 text-right font-medium">Assessment</th>
+                          <th className="px-4 py-3 text-right font-medium">In repairs</th>
+                          <th className="px-4 py-3 text-right font-medium">Written off</th>
+                          <th className="px-4 py-3 text-right font-medium">Register</th>
+                          <th className="px-4 py-3 text-right font-medium">Usable vs previous stored</th>
+                          <th className="px-4 py-3 text-right font-medium">Register vs previous stored</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {block.months.map((month) => (
+                          <tr key={month.monthKey} className="border-b border-black/5">
+                            <td className="px-4 py-3 font-medium">{month.monthEndingLabel}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{month.newStock}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{month.refurbished}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{month.usable}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{month.deployed}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{month.assessment}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{month.inRepair}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{month.writtenOff}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{month.register}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">
+                              {changeCell(month.usableChange)}
+                            </td>
+                            <td className="px-4 py-3 text-right tabular-nums">
+                              {changeCell(month.registerChange)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {report.months.length === 0 ? null : (
             <div className="space-y-3">
               <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">

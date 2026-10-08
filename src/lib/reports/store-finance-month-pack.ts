@@ -21,8 +21,10 @@ export type StoreFinancePackInput = {
   breakdownPdf: Buffer;
   monthOnMonthPdf: Buffer;
   yearlyPdf: Buffer;
+  fieldListingPdf: Buffer;
   reconcile: StockReconcileReport;
   breakdown: StockBreakdownReport;
+  fieldUnits: FinancePackSnapshot["fieldUnits"];
 };
 
 export type StoreFinancePackResult = {
@@ -68,7 +70,8 @@ async function insertPack(
   reconcilePath: string,
   breakdownPath: string,
   monthOnMonthPath: string,
-  yearlyPath: string
+  yearlyPath: string,
+  fieldListingPath: string
 ): Promise<StoreFinancePackResult> {
   try {
     await prisma.financeMonthPack.create({
@@ -82,7 +85,10 @@ async function insertPack(
         breakdownStoragePath: breakdownPath,
         monthOnMonthStoragePath: monthOnMonthPath,
         yearlyStoragePath: yearlyPath,
+        fieldListingStoragePath: fieldListingPath,
         lines: { create: snapshot.lines },
+        types: { create: snapshot.typeTotals },
+        fieldUnits: { create: input.fieldUnits },
       },
     });
     return { stored: true, alreadyKept: false };
@@ -114,18 +120,21 @@ export async function storeOfficialFinancePack(
   const breakdownPath = financePackStoragePath(input.monthKey, "breakdown");
   const monthOnMonthPath = financePackStoragePath(input.monthKey, "month-on-month");
   const yearlyPath = financePackStoragePath(input.monthKey, "yearly");
+  const fieldListingPath = financePackStoragePath(input.monthKey, "field");
 
   await ensurePrivateBucket();
   await uploadPdf(reconcilePath, input.reconcilePdf);
   await uploadPdf(breakdownPath, input.breakdownPdf);
   await uploadPdf(monthOnMonthPath, input.monthOnMonthPdf);
   await uploadPdf(yearlyPath, input.yearlyPdf);
+  await uploadPdf(fieldListingPath, input.fieldListingPdf);
   return insertPack(
     input,
     snapshot,
     reconcilePath,
     breakdownPath,
     monthOnMonthPath,
-    yearlyPath
+    yearlyPath,
+    fieldListingPath
   );
 }
