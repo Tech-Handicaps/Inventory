@@ -374,7 +374,7 @@ export function buildMonthlyReconcileEmail(params: {
     : "";
   const yearly = params.includeYearly
     ? `<p style="margin:0 0 12px 0;font-size:14px;line-height:1.55;color:#333;">
-      A fourth attachment — <strong>Finance yearly</strong> — puts 2025 and 2026 in separate blocks. 2025 is the December workbook. 2026 is the latest official finance pack kept for that year. The blocks are not subtracted.
+      A fourth attachment — <strong>Finance yearly</strong> — puts 2025 and 2026 in separate blocks. The blocks are not subtracted. The 2025 block is the December workbook, with terminals, monitors, PC sticks, modems, card readers, and accessories under the year totals. The 2026 block is the latest official finance pack kept for that year. Hardware and USB card readers add to that closing row. Other is shown on its own and is outside that row.
     </p>`
     : "";
   const closing =

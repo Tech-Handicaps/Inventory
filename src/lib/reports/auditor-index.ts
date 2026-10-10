@@ -52,13 +52,13 @@ export function buildAuditorIndex(): AuditorIndex {
         title: "Finance month-on-month",
         href: "#finance-month-on-month",
         covers:
-          "Stored official packs only. Hardware, USB HID Magnetic Stripe Readers, and other stay in separate totals and are not added together.",
+          "Stored official packs only. Hardware and USB HID Magnetic Stripe Readers add to the month row. Other is outside that row.",
       },
       {
         title: "Finance yearly",
         href: "#finance-yearly",
         covers:
-          "2025 is the December workbook, in its own block. 2026 is the latest stored finance month, in its own block. The blocks are not subtracted. 2026 is not closed until a December 2026 pack is stored.",
+          "2025 is the December workbook, in its own block, split into terminals, monitors, PC sticks, modems, card readers, and accessories. 2026 is the latest stored finance month, in its own block, split into hardware, USB HID Magnetic Stripe Readers, and other. Hardware and USB card readers add to the 2026 closing row. Other is outside that row. The blocks are not subtracted. 2026 is not closed until a December 2026 pack is stored.",
       },
     ],
   };

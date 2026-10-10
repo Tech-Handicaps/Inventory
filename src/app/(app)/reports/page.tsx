@@ -56,7 +56,7 @@ const REPORT_GROUPS: ReportGroup[] = [
         type: "finance_yearly",
         title: "Finance yearly",
         description:
-          "2025 is the December workbook, in its own block. 2026 is the latest stored finance month, in its own block. The blocks are not subtracted.",
+          "2025 is the December workbook, split into terminals, monitors, PC sticks, modems, card readers, and accessories. 2026 uses hardware, USB card readers, and other. The blocks are not subtracted.",
         audience: "Auditors · Accounts",
         openPath: "/api/reports/finance-yearly/pdf",
       },

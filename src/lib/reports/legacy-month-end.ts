@@ -310,6 +310,83 @@ export function composeLegacyColumns(
   );
 }
 
+/** Sections on the prior-company stock take. Later years do not use these headings. */
+export const WORKBOOK_GROUPS = [
+  "Terminals",
+  "Monitors",
+  "PC Sticks",
+  "Modems",
+  "Card Readers",
+  "Accessories",
+] as const;
+
+export type WorkbookQuantityRow = {
+  newStock: number;
+  repairedUsed: number;
+  usable: number;
+  toAssess: number;
+  toDispose: number;
+  warrantyRepair: number;
+  units: number;
+};
+
+export type WorkbookGroupRow = WorkbookQuantityRow & {
+  groupLabel: string;
+};
+
+function emptyQuantity(): WorkbookQuantityRow {
+  return {
+    newStock: 0,
+    repairedUsed: 0,
+    usable: 0,
+    toAssess: 0,
+    toDispose: 0,
+    warrantyRepair: 0,
+    units: 0,
+  };
+}
+
+function quantityFromLine(line: LegacyMonthEndLine): WorkbookQuantityRow {
+  const usable = line.newStock + line.repairedUsed;
+  return {
+    newStock: line.newStock,
+    repairedUsed: line.repairedUsed,
+    usable,
+    toAssess: line.toAssess,
+    toDispose: line.toDispose,
+    warrantyRepair: line.warrantyRepair,
+    units: usable + line.toAssess + line.toDispose + line.warrantyRepair,
+  };
+}
+
+/**
+ * One row per workbook section, in stock-take order. A section with no units
+ * stays on the page as zero so a reader can see it was not omitted. Any
+ * section name outside that list is appended so the rows still add to the year.
+ */
+export function workbookGroupRows(lines: LegacyMonthEndLine[]): WorkbookGroupRow[] {
+  const known = new Set<string>(WORKBOOK_GROUPS);
+  const extras = [...new Set(lines.map((line) => line.groupLabel))]
+    .filter((label) => !known.has(label))
+    .sort((a, b) => a.localeCompare(b));
+  return [...WORKBOOK_GROUPS, ...extras].map((groupLabel) => {
+    const totals = lines
+      .filter((line) => line.groupLabel === groupLabel)
+      .reduce((acc, line) => {
+        const row = quantityFromLine(line);
+        acc.newStock += row.newStock;
+        acc.repairedUsed += row.repairedUsed;
+        acc.usable += row.usable;
+        acc.toAssess += row.toAssess;
+        acc.toDispose += row.toDispose;
+        acc.warrantyRepair += row.warrantyRepair;
+        acc.units += row.units;
+        return acc;
+      }, emptyQuantity());
+    return { groupLabel, ...totals };
+  });
+}
+
 export function summarizeLegacyLines(
   lines: LegacyMonthEndLine[]
 ): LegacyMonthTotals {

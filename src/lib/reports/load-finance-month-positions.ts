@@ -61,5 +61,6 @@ export async function loadDecember2025Workbook(): Promise<DecemberWorkbookInput 
     sourceFileName: draft.sourceFileName,
     sourceKind: draft.sourceKind,
     totals: summarizeLegacyLines(draft.lines),
+    lines: draft.lines,
   };
 }

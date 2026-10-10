@@ -140,6 +140,16 @@ export function financePositionFromSnapshot(
   };
 }
 
+/**
+ * Hardware, USB card readers, and other, in report order. An empty type list
+ * means that pack was stored without the split, so the caller leaves it off
+ * rather than printing zeros under a real total.
+ */
+export function financePositionTypes(position: FinanceMonthPosition): FinanceTypeTotals[] {
+  if (position.types.length === 0) return [];
+  return ALL_REPORT_ASSET_TYPES.map((type) => typeTotalsFor(position, type.id));
+}
+
 function typeTotalsFor(
   position: FinanceMonthPosition,
   assetType: string
@@ -196,7 +206,7 @@ export function buildFinanceMonthOnMonth(
 
   const introduction = [
     "Prior-company quantities for October 2025 through March 2026 are on the prior-company month-on-month report. The handover is the join between that series and this register. The totals are not added.",
-    "This landscape lists only official finance packs that were emailed and kept. A month that was never stored is left out. Change is this position minus the previous stored position. Usable stock is new stock plus refurbished. Hardware, USB HID Magnetic Stripe Readers, and other stay in separate totals and are not added together.",
+    "This landscape lists only official finance packs that were emailed and kept. A month that was never stored is left out. Change is this position minus the previous stored position. Usable stock is new stock plus refurbished. Hardware and USB HID Magnetic Stripe Readers add to the month row. Other is listed on its own and is outside that row.",
   ];
   if (months.length === 0) {
     introduction.push(
@@ -286,7 +296,7 @@ export function buildFinanceMonthOnMonth(
     movementNote:
       "Make and model changes cover new stock, refurbished, and written off. Those are the counts kept with each pack. Deployed serials stay on that month's stock breakdown.",
     typeNote:
-      "Each block is one asset type. A change is against the previous stored month of that same type.",
+      "Each block is one heading. Hardware and USB HID Magnetic Stripe Readers add to the month row. Other is outside that row. A change is against the previous stored month of that same heading.",
     months: rows,
     movements,
     typeBlocks: months.length === 0 ? [] : typeBlocks,

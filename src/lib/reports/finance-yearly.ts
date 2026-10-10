@@ -1,8 +1,16 @@
-import type { LegacyMonthTotals } from "@/lib/reports/legacy-month-end";
+import {
+  workbookGroupRows,
+  type LegacyMonthEndLine,
+  type LegacyMonthTotals,
+  type WorkbookGroupRow,
+} from "@/lib/reports/legacy-month-end";
 import {
   buildFinanceMonthOnMonth,
+  financePositionTypes,
   type FinanceMonthOnMonthRow,
   type FinanceMonthPosition,
+  type FinanceTypeBlock,
+  type FinanceTypeTotals,
 } from "@/lib/reports/finance-month-on-month";
 
 export type WorkbookYearBlock = {
@@ -18,6 +26,8 @@ export type WorkbookYearBlock = {
   toDispose: number;
   warrantyRepair: number;
   units: number;
+  /** Workbook sections. They add back to the year row and are not used in 2026. */
+  groups: WorkbookGroupRow[];
 };
 
 export type FinanceYearClosing = {
@@ -31,6 +41,8 @@ export type FinanceYearClosing = {
   inRepair: number;
   writtenOff: number;
   register: number;
+  /** Empty when this pack was stored without an asset-type split. */
+  types: FinanceTypeTotals[];
 };
 
 export type FinanceYearBlock = {
@@ -39,6 +51,9 @@ export type FinanceYearBlock = {
   basis: string;
   closing: FinanceYearClosing | null;
   months: FinanceMonthOnMonthRow[];
+  /** Hardware, USB card readers, and other for each stored month of this year. */
+  typeBlocks: FinanceTypeBlock[];
+  typeNote: string;
 };
 
 export type FinanceYearlyReport = {
@@ -52,7 +67,14 @@ export type DecemberWorkbookInput = {
   sourceFileName: string | null;
   sourceKind: "source_file" | "carried_forward";
   totals: LegacyMonthTotals;
+  lines: LegacyMonthEndLine[];
 };
+
+export const WORKBOOK_GROUP_NOTE =
+  "These sections are the December 2025 workbook: terminals, monitors, PC sticks, modems, card readers, and accessories. Each column adds back to the 2025 row. Later years use this system's headings and do not keep these sections.";
+
+export const FINANCE_YEAR_TYPE_NOTE =
+  "Hardware and USB HID Magnetic Stripe Readers add to the 2026 closing row. Other is listed on its own and is outside that row. These headings are not the 2025 workbook sections.";
 
 const WORKBOOK_BASIS =
   "Basis: the December 2025 workbook, sheet Actual. This is a quantity stock take. It is not a position on this system's register.";
@@ -79,6 +101,7 @@ function closingFrom(row: FinanceMonthOnMonthRow): FinanceYearClosing {
     inRepair: row.inRepair,
     writtenOff: row.writtenOff,
     register: row.register,
+    types: [],
   };
 }
 
@@ -108,20 +131,32 @@ export function buildFinanceYearly(input: {
         toDispose: december.totals.toDispose,
         warrantyRepair: december.totals.warrantyRepair,
         units: december.totals.units,
+        groups: workbookGroupRows(december.lines),
       }
     : null;
 
-  const yearMonths = buildFinanceMonthOnMonth(
-    input.financePositions.filter((position) => position.monthKey.startsWith("2026-"))
-  ).months;
+  const yearPositions = input.financePositions.filter((position) =>
+    position.monthKey.startsWith("2026-")
+  );
+  const yearReport = buildFinanceMonthOnMonth(yearPositions);
+  const yearMonths = yearReport.months;
   const last = yearMonths[yearMonths.length - 1] ?? null;
-  const closing = last ? closingFrom(last) : null;
+  const lastPosition = last
+    ? yearPositions.find((position) => position.monthKey === last.monthKey) ?? null
+    : null;
+  const closing = last
+    ? {
+        ...closingFrom(last),
+        types: lastPosition ? financePositionTypes(lastPosition) : [],
+      }
+    : null;
   const closed = closing?.monthKey === "2026-12";
+  const hasTypes = yearPositions.some((position) => position.types.length > 0);
 
   const introduction = [
     "Each year is its own block. The blocks are not subtracted.",
-    "2025 is the December 2025 prior-company workbook. October and November of that year stay on the prior-company month-on-month report.",
-    "2026 is the latest official finance pack kept for that year. A month that was never stored is left out. The handover is the join between the two series.",
+    "2025 is the December 2025 prior-company workbook. October and November of that year stay on the prior-company month-on-month report. Under the 2025 row, terminals, monitors, PC sticks, modems, card readers, and accessories add back to that row.",
+    "2026 is the latest official finance pack kept for that year. A month that was never stored is left out. The handover is the join between the two series. Under the 2026 closing row, hardware and USB HID Magnetic Stripe Readers add to that row. Other is shown on its own and is outside the closing row.",
   ];
   if (!workbook2025) {
     introduction.push("The December 2025 workbook is not on file.");
@@ -136,6 +171,8 @@ export function buildFinanceYearly(input: {
       basis: financeBasis(closing, closed),
       closing,
       months: yearMonths,
+      typeBlocks: hasTypes ? yearReport.typeBlocks : [],
+      typeNote: FINANCE_YEAR_TYPE_NOTE,
     },
   };
 }

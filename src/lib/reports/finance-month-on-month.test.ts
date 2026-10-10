@@ -84,7 +84,7 @@ describe("finance month-on-month", () => {
     expect(report.months[1].usableChange).toBe(-2);
     expect(report.months[1].registerChange).toBe(0);
     expect(report.introduction.join(" ")).not.toContain("2026-11");
-    expect(report.introduction.join(" ")).toContain("not added together");
+    expect(report.introduction.join(" ")).toContain("outside that row");
     expect(report.movements).toEqual([
       {
         monthKey: "2026-12",
