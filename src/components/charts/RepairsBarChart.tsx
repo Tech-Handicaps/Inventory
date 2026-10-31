@@ -29,7 +29,7 @@ export function RepairsBarChart({ data }: { data: PipelineItem[] }) {
       {
         label: "Repairs",
         data: data.map((d) => d.count),
-        backgroundColor: "rgba(19, 157, 75, 0.78)",
+        backgroundColor: "rgba(70, 155, 86, 0.78)",
       },
     ],
   };

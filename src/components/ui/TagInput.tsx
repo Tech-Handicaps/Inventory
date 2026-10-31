@@ -85,12 +85,12 @@ export function TagInput({
 
   return (
     <div ref={wrapRef} className="relative">
-      <label htmlFor={inputId} className="text-xs font-medium text-black/70">
+      <label htmlFor={inputId} className="text-xs font-medium text-ink">
         {label}
         {required ? " (required)" : ""}
       </label>
       <div
-        className={`mt-1 flex min-h-[2.75rem] flex-wrap items-center gap-1.5 rounded-lg border border-black/15 bg-white px-2 py-2 ${
+        className={`mt-1 flex min-h-[2.75rem] flex-wrap items-center gap-1.5 rounded-lg border border-line bg-white px-2 py-2 ${
           disabled ? "opacity-60" : ""
         }`}
       >
@@ -104,7 +104,7 @@ export function TagInput({
               <button
                 type="button"
                 onClick={() => removeTag(tag)}
-                className="rounded-full text-brand-hover hover:bg-brand/10"
+                className="rounded-full text-brand-deep hover:bg-brand/10"
                 aria-label={`Remove ${tag}`}
               >
                 ×
@@ -143,13 +143,13 @@ export function TagInput({
         />
       </div>
       {hint ? (
-        <p className="mt-1.5 text-[11px] leading-relaxed text-black/50">{hint}</p>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted">{hint}</p>
       ) : null}
       {open && !disabled && (filtered.length > 0 || canAddCustom) ? (
         <ul
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 z-30 mt-1 max-h-48 overflow-y-auto rounded-lg border border-black/15 bg-white py-1 shadow-lg"
+          className="absolute left-0 right-0 z-30 mt-1 max-h-48 overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-lg"
         >
           {filtered.map((s) => (
             <li key={s}>
@@ -169,7 +169,7 @@ export function TagInput({
                 type="button"
                 role="option"
                 onClick={() => addTag(query.trim())}
-                className="block w-full px-3 py-2 text-left text-sm text-brand hover:bg-brand-muted/50"
+                className="block w-full px-3 py-2 text-left text-sm text-brand-deep hover:bg-brand-muted/50"
               >
                 Add &ldquo;{query.trim()}&rdquo;
               </button>

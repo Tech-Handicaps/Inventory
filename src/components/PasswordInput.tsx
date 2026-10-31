@@ -28,7 +28,7 @@ export function PasswordInput({
       <button
         type="button"
         onClick={() => setVisible((show) => !show)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-black/45 transition hover:bg-black/[0.04] hover:text-black/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted transition hover:bg-black/[0.04] hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
         aria-label={visible ? "Hide password" : "Show password"}
         aria-pressed={visible}
         aria-controls={id}

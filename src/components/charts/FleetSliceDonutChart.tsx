@@ -14,7 +14,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 type Slice = { name: string; count: number; percent: number };
 
 const PALETTE = [
-  "rgba(19, 157, 75, 0.88)",
+  "rgba(70, 155, 86, 0.88)",
   "rgba(15, 23, 42, 0.78)",
   "rgba(14, 165, 233, 0.82)",
   "rgba(124, 58, 237, 0.78)",

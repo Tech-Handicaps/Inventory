@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { TagInput } from "@/components/ui/TagInput";
+import { ADD_HARDWARE_EVENT, ADD_HARDWARE_HASH } from "@/lib/client/add-hardware";
 import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
 import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
@@ -52,6 +54,21 @@ async function apiErrorMessage(res: Response): Promise<string> {
 }
 
 export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props) {
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const reveal = () => {
+      const section = sectionRef.current;
+      if (!section) return;
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      section
+        .querySelector<HTMLElement>("select:not(:disabled), input:not(:disabled)")
+        ?.focus({ preventScroll: true });
+    };
+    if (window.location.hash === ADD_HARDWARE_HASH) reveal();
+    window.addEventListener(ADD_HARDWARE_EVENT, reveal);
+    return () => window.removeEventListener(ADD_HARDWARE_EVENT, reveal);
+  }, []);
   const [localStatuses, setLocalStatuses] = useState<Status[]>([]);
   const [statusesLoading, setStatusesLoading] = useState(false);
 
@@ -306,27 +323,25 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   return (
     <section
       id="register-hardware"
-      className="glass-card overflow-hidden ring-1 ring-brand/10"
+      ref={sectionRef}
+      className="glass-card scroll-mt-20 overflow-hidden"
     >
-      <div className="border-b border-black/10 bg-brand-muted/40 px-6 py-4">
-        <p className="font-heading text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
-          Capture assets
-        </p>
-        <h2 className="font-heading mt-1 text-lg font-bold uppercase tracking-wide text-black">
-          Register hardware
-        </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-black/70">
-          Each row on the board is a <strong>physical unit</strong>. Pick a{" "}
-          <strong>device template</strong> for consistent make/model/category, then
-          enter the <strong>serial</strong> (or service tag) so the unit is
-          identifiable.           Manage templates under{" "}
-          <strong>Settings → Device templates</strong> and club names under{" "}
-          <strong>Settings → Clubs</strong>.
-        </p>
+      <div className="border-b border-line px-6 py-4">
+        <div className="flex items-center gap-1.5">
+          <h2 className="font-heading text-lg font-semibold text-ink">Register hardware</h2>
+          <InfoTip label="About registering hardware">
+            Each row on the board is a <strong>physical unit</strong>. Pick a{" "}
+            <strong>device template</strong> for consistent make, model and category, then
+            enter the <strong>serial</strong> (or service tag) so the unit is identifiable.
+            Manage templates under <strong>Settings → Device templates</strong> and club
+            names under <strong>Settings → Clubs</strong>.
+          </InfoTip>
+        </div>
+        <p className="mt-1 text-sm text-muted">Pick a device template, then enter the serial number.</p>
       </div>
 
       {statusesLoading && statuses.length === 0 ? (
-        <div className="border-b border-black/10 bg-white px-6 py-4 text-sm text-black/60">
+        <div className="border-b border-line bg-white px-6 py-4 text-sm text-muted">
           Loading lifecycle stages…
         </div>
       ) : null}
@@ -371,14 +386,14 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
           {/* Left: device identity */}
           <div className="space-y-4">
             <fieldset className="space-y-6">
-              <legend className="font-heading text-xs font-bold uppercase tracking-[0.2em] text-black/50">
+              <legend className="font-heading text-xs font-bold text-muted">
                 1 · Device type
               </legend>
 
               <div className="relative">
                 <label
                   htmlFor="hw-template-filter"
-                  className="text-xs font-medium text-black/70"
+                  className="text-xs font-medium text-ink"
                 >
                   Find template
                 </label>
@@ -400,16 +415,16 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   onKeyDown={onTemplateFilterKeyDown}
                   placeholder="Type make or model — e.g. Posiflex, Dell…"
                   disabled={templatesLoading}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   autoComplete="off"
                 />
-                <p className="mt-1.5 text-[11px] text-black/45">
+                <p className="mt-1.5 text-xs text-muted">
                   Search saved templates, then click a match to fill make, model,
                   and specs. Press Enter for the first result.
                 </p>
                 {templateId && selectedTemplate ? (
                   <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-brand/25 bg-brand-muted/30 px-3 py-2">
-                    <p className="text-xs text-black/75">
+                    <p className="text-xs text-ink">
                       Selected:{" "}
                       <strong>{selectedTemplate.label}</strong> ·{" "}
                       {selectedTemplate.manufacturer} {selectedTemplate.model}
@@ -417,7 +432,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                     <button
                       type="button"
                       onClick={clearTemplateSelection}
-                      className="shrink-0 text-xs font-medium text-brand hover:underline"
+                      className="shrink-0 text-xs font-medium text-brand-deep hover:underline"
                     >
                       Clear
                     </button>
@@ -437,10 +452,10 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   <div
                     id="hw-template-results"
                     role="listbox"
-                    className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-black/15 bg-white py-1 shadow-lg"
+                    className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-lg"
                   >
                     {filteredTemplates.length === 0 ? (
-                      <p className="px-3 py-2 text-xs text-black/55">
+                      <p className="px-3 py-2 text-xs text-muted">
                         No templates match &ldquo;{templateFilter.trim()}&rdquo;.
                         Check spelling or add one in Settings.
                       </p>
@@ -454,11 +469,11 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                           className="block w-full px-3 py-2 text-left text-sm hover:bg-brand-muted/60"
                         >
                           <span className="font-medium">{t.label}</span>
-                          <span className="text-black/55">
+                          <span className="text-muted">
                             {" "}
                             · {t.manufacturer} {t.model}
                           </span>
-                          <span className="block text-[11px] text-black/45">
+                          <span className="block text-xs text-muted">
                             {t.category}
                           </span>
                         </button>
@@ -471,7 +486,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
               <div>
                 <label
                   htmlFor="hw-template"
-                  className="text-xs font-medium text-black/70"
+                  className="text-xs font-medium text-ink"
                 >
                   Or pick from list
                 </label>
@@ -480,7 +495,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   value={templateId}
                   onChange={(e) => applyTemplate(e.target.value)}
                   disabled={templatesLoading}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 >
                   <option value="">
                     {templatesLoading
@@ -497,31 +512,31 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
 
               {selectedTemplate ? (
                 <div className="rounded-lg border border-brand/30 bg-brand-muted/30 px-4 py-3 text-sm">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-brand">
+                  <p className="text-xs font-bold text-brand-deep">
                     From template
                   </p>
-                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-black/80">
-                    <dt className="text-black/45">Category</dt>
+                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-ink">
+                    <dt className="text-muted">Category</dt>
                     <dd>{selectedTemplate.category}</dd>
-                    <dt className="text-black/45">Manufacturer</dt>
+                    <dt className="text-muted">Manufacturer</dt>
                     <dd>{selectedTemplate.manufacturer}</dd>
-                    <dt className="text-black/45">Model</dt>
+                    <dt className="text-muted">Model</dt>
                     <dd>{selectedTemplate.model}</dd>
                     {selectedTemplate.processorName ? (
                       <>
-                        <dt className="text-black/45">Typical CPU</dt>
+                        <dt className="text-muted">Typical CPU</dt>
                         <dd>{selectedTemplate.processorName}</dd>
                       </>
                     ) : null}
                     {selectedTemplate.systemRam ? (
                       <>
-                        <dt className="text-black/45">Typical RAM</dt>
+                        <dt className="text-muted">Typical RAM</dt>
                         <dd>{selectedTemplate.systemRam}</dd>
                       </>
                     ) : null}
                     {selectedTemplate.systemGpu ? (
                       <>
-                        <dt className="text-black/45">Typical GPU</dt>
+                        <dt className="text-muted">Typical GPU</dt>
                         <dd>{selectedTemplate.systemGpu}</dd>
                       </>
                     ) : null}
@@ -529,18 +544,18 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                 </div>
               ) : null}
 
-              <div className="rounded-lg border border-black/10 bg-black/[0.02] p-4">
-                <p className="font-heading text-[10px] font-bold uppercase tracking-[0.2em] text-black/45">
+              <div className="rounded-lg border border-line bg-black/[0.02] p-4">
+                <p className="font-heading text-xs font-bold text-muted">
                   Hardware details (optional)
                 </p>
-                <p className="mt-1 text-xs text-black/50">
+                <p className="mt-1 text-xs text-muted">
                   Per-unit specs; device templates can pre-fill typical CPU / RAM / GPU.
                 </p>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <label
                       htmlFor="hw-location"
-                      className="text-xs font-medium text-black/70"
+                      className="text-xs font-medium text-ink"
                     >
                       Device location
                     </label>
@@ -549,13 +564,13 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                       value={deviceLocation}
                       onChange={(e) => setDeviceLocation(e.target.value)}
                       placeholder="Site, depot, or Assist department label"
-                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                     />
                   </div>
                   <div className="sm:col-span-2">
                     <label
                       htmlFor="hw-proc"
-                      className="text-xs font-medium text-black/70"
+                      className="text-xs font-medium text-ink"
                     >
                       Processor
                     </label>
@@ -564,13 +579,13 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                       value={processorName}
                       onChange={(e) => setProcessorName(e.target.value)}
                       placeholder="e.g. Intel Core i7-1365U"
-                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
                     <label
                       htmlFor="hw-ram"
-                      className="text-xs font-medium text-black/70"
+                      className="text-xs font-medium text-ink"
                     >
                       System RAM
                     </label>
@@ -579,13 +594,13 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                       value={systemRam}
                       onChange={(e) => setSystemRam(e.target.value)}
                       placeholder="e.g. 16 GB"
-                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
                     <label
                       htmlFor="hw-gpu"
-                      className="text-xs font-medium text-black/70"
+                      className="text-xs font-medium text-ink"
                     >
                       System GPU
                     </label>
@@ -594,7 +609,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                       value={systemGpu}
                       onChange={(e) => setSystemGpu(e.target.value)}
                       placeholder="e.g. Intel Iris Xe"
-                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
@@ -616,7 +631,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                 <div>
                   <label
                     htmlFor="hw-mfg"
-                    className="text-xs font-medium text-black/70"
+                    className="text-xs font-medium text-ink"
                   >
                     Manufacturer
                   </label>
@@ -625,13 +640,13 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                     value={manufacturer}
                     onChange={(e) => setManufacturer(e.target.value)}
                     placeholder="e.g. Dell"
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="hw-model"
-                    className="text-xs font-medium text-black/70"
+                    className="text-xs font-medium text-ink"
                   >
                     Model
                   </label>
@@ -640,7 +655,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     placeholder="e.g. Latitude 5540"
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   />
                 </div>
               </div>
@@ -650,14 +665,14 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
           {/* Right: this unit */}
           <div className="space-y-4">
             <fieldset className="space-y-6">
-              <legend className="font-heading text-xs font-bold uppercase tracking-[0.2em] text-black/50">
+              <legend className="font-heading text-xs font-bold text-muted">
                 2 · This unit
               </legend>
 
               <div>
                 <label
                   htmlFor="hw-serial"
-                  className="text-xs font-medium text-black/70"
+                  className="text-xs font-medium text-ink"
                 >
                   Serial / service tag
                 </label>
@@ -668,9 +683,9 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   placeholder="Unique per device; leave blank only if unknown"
                   autoCapitalize="characters"
                   spellCheck={false}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2.5 font-mono text-sm tracking-wide"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2.5 font-mono text-sm"
                 />
-                <p className="mt-1.5 text-xs text-black/45">
+                <p className="mt-1.5 text-xs text-muted">
                   Used to avoid duplicates and track warranty. Must be unique if
                   provided.
                 </p>
@@ -679,7 +694,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
               <div>
                 <label
                   htmlFor="hw-club"
-                  className="text-xs font-medium text-black/70"
+                  className="text-xs font-medium text-ink"
                 >
                   Club name
                 </label>
@@ -688,7 +703,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   value={clubId}
                   onChange={(e) => setClubId(e.target.value)}
                   disabled={clubsLoading}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 >
                   <option value="">
                     {clubsLoading ? "Loading clubs…" : "— None —"}
@@ -700,7 +715,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   ))}
                 </select>
                 {!clubsLoading && clubs.length === 0 ? (
-                  <p className="mt-1.5 text-xs text-black/45">
+                  <p className="mt-1.5 text-xs text-muted">
                     No clubs in Settings yet — optional until you add some.
                   </p>
                 ) : null}
@@ -709,7 +724,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
               <div>
                 <label
                   htmlFor="hw-name"
-                  className="text-xs font-medium text-black/70"
+                  className="text-xs font-medium text-ink"
                 >
                   Display name
                 </label>
@@ -718,14 +733,14 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   value={assetName}
                   onChange={(e) => setAssetName(e.target.value)}
                   placeholder="Short label on the card (e.g. from template)"
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="hw-stage"
-                  className="text-xs font-medium text-black/70"
+                  className="text-xs font-medium text-ink"
                 >
                   Initial stage
                 </label>
@@ -734,7 +749,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   value={effectiveStatusId}
                   onChange={(e) => setStatusId(e.target.value)}
                   disabled={statuses.length === 0}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {statuses.length === 0 ? (
                     <option value="">— No stages —</option>
@@ -747,18 +762,18 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                 </select>
               </div>
 
-              <div className="rounded-lg border border-black/10 bg-black/[0.02] px-3 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+              <div className="rounded-lg border border-line bg-black/[0.02] px-3 py-3">
+                <p className="text-xs font-bold text-muted">
                   Acquisition (optional)
                 </p>
-                <p className="mt-1 text-[11px] text-black/50">
+                <p className="mt-1 text-xs text-muted">
                   Capture as you receive hardware — powers age and warranty analytics on the dashboard.
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div>
                     <label
                       htmlFor="hw-purchase"
-                      className="text-xs font-medium text-black/70"
+                      className="text-xs font-medium text-ink"
                     >
                       Purchase date
                     </label>
@@ -767,13 +782,13 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                       type="date"
                       value={purchaseDate}
                       onChange={(e) => setPurchaseDate(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
                     <label
                       htmlFor="hw-warranty"
-                      className="text-xs font-medium text-black/70"
+                      className="text-xs font-medium text-ink"
                     >
                       Warranty end
                     </label>
@@ -782,7 +797,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                       type="date"
                       value={warrantyEndDate}
                       onChange={(e) => setWarrantyEndDate(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
@@ -791,15 +806,15 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-black/10 pt-6">
+        <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-line pt-6">
           <button
             type="submit"
             disabled={busy || !canSubmit}
-            className="font-heading rounded-lg bg-brand px-6 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+            className="btn-primary"
           >
             {busy ? "Saving…" : "Add to board"}
           </button>
-          <p className="text-xs text-black/45">
+          <p className="text-xs text-muted">
             You can move cards between columns after they appear.
           </p>
         </div>

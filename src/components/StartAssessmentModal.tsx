@@ -118,16 +118,16 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
       >
         <h2
           id="start-assessment-maintenance-title"
-          className="font-heading text-lg font-bold uppercase tracking-wide text-black"
+          className="font-heading text-lg font-bold text-ink"
         >
           Send for Assessment/Maintenance
         </h2>
-        <p className="mt-1 text-sm text-black/65">
+        <p className="mt-1 text-sm text-muted">
           Moves this unit into triage or light maintenance (e.g. software reload, OS refresh) before
           a formal repair record if needed.
 
           <span className="ml-2">
-            <span className="font-semibold text-black">{asset.assetName}</span>
+            <span className="font-semibold text-ink">{asset.assetName}</span>
           </span>
           {asset.serialNumber ? (
             <span className="ml-2 font-mono text-xs">
@@ -138,21 +138,21 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
 
         <form onSubmit={submit} className="mt-4 space-y-4">
           <label className="block">
-            <span className="text-xs font-medium text-black/70">
+            <span className="text-xs font-medium text-ink">
               Intake / triage notes (optional)
             </span>
             <textarea
               value={intakeNotes}
               onChange={(e) => setIntakeNotes(e.target.value)}
               rows={3}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
               placeholder="Symptoms, depot collection context, urgency, etc."
             />
           </label>
 
           {deskEnabled ? (
             <label className="block">
-              <span className="text-xs font-medium text-black/70">
+              <span className="text-xs font-medium text-ink">
                 Existing Zoho Desk ticket (optional)
               </span>
               <input
@@ -160,10 +160,10 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
                 value={existingDeskTicket}
                 onChange={(e) => setExistingDeskTicket(e.target.value)}
                 autoComplete="off"
-                className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+                className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
                 placeholder="Ticket id or URL fragment"
               />
-              <p className="mt-1 text-[11px] leading-snug text-black/55">
+              <p className="mt-1 text-xs leading-snug text-muted">
                 If set, intake context is appended as an <strong>internal</strong>
                 Desk comment (not visible on the portal to the requester).
               </p>
@@ -184,12 +184,12 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
                 }}
                 className="mt-1"
               />
-              <span className="text-sm text-black/80">
+              <span className="text-sm text-ink">
                 Create a <strong>new</strong> Zoho Desk ticket for this intake
               </span>
             </label>
           ) : (
-            <p className="rounded-lg bg-black/[0.04] px-3 py-2 text-xs text-black/55">
+            <p className="rounded-lg bg-black/[0.04] px-3 py-2 text-xs text-muted">
               Zoho Desk is not configured. Configure{" "}
               <strong>Settings → Zoho Desk API</strong> to link or create tickets
               from here.
@@ -206,14 +206,14 @@ export function StartAssessmentModal({ asset, onClose, onSuccess }: Props) {
             <button
               type="submit"
               disabled={saving}
-              className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+              className="btn-primary"
             >
               {saving ? "Saving…" : "Start intake"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-black/15 px-5 py-2.5 text-sm font-medium text-black/80 hover:bg-black/[0.04]"
+              className="rounded-lg border border-line px-5 py-2.5 text-sm font-medium text-ink hover:bg-black/[0.04]"
             >
               Cancel
             </button>

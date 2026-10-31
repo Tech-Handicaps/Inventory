@@ -115,7 +115,7 @@ export function ClubsSettingsSection() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-black/10 bg-white p-8 shadow-sm">
+      <div className="rounded-lg border border-line bg-white p-8">
         <SectionSkeleton label="Loading clubs" />
       </div>
     );
@@ -123,38 +123,37 @@ export function ClubsSettingsSection() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-        <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+      <div className="rounded-lg border border-line bg-white p-6">
+        <h2 className="font-heading text-lg font-bold text-ink">
           About clubs
         </h2>
-        <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
-        <p className="mt-4 text-sm leading-relaxed text-black/70">
+        <p className="mt-4 text-sm leading-relaxed text-ink">
           Maintain the official list of <strong>club names</strong> (sites or member clubs).
           On <strong>All assets</strong> and when registering hardware, each device can be
           assigned to one club so the registry stays consistent and easy to filter visually.
         </p>
       </div>
 
-      <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-        <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+      <section className="rounded-lg border border-line bg-white p-6">
+        <h3 className="font-heading text-sm font-bold text-ink">
           {editingId ? "Edit club" : "Add club"}
         </h3>
         <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-4">
           <div className="min-w-[240px] flex-1">
-            <label className="text-xs font-medium text-black/70">Club name</label>
+            <label className="text-xs font-medium text-ink">Club name</label>
             <input
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Atlantic Country Club"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
             />
           </div>
           <div className="flex flex-wrap gap-3">
             <button
               type="submit"
               disabled={saving}
-              className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+              className="btn-primary"
             >
               {saving ? "Saving…" : editingId ? "Update club" : "Add club"}
             </button>
@@ -162,7 +161,7 @@ export function ClubsSettingsSection() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="font-heading rounded-lg border-2 border-black bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-black"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -171,28 +170,28 @@ export function ClubsSettingsSection() {
         </form>
       </section>
 
-      <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-        <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+      <section className="rounded-lg border border-line bg-white p-6">
+        <h3 className="font-heading text-sm font-bold text-ink">
           Catalog ({clubs.length})
         </h3>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-black/10">
+              <tr className="border-b border-line">
                 <th className="py-2 pr-4 font-medium">Name</th>
                 <th className="py-2 font-medium" />
               </tr>
             </thead>
             <tbody>
               {visibleClubs.map((c) => (
-                <tr key={c.id} className="border-b border-black/5">
+                <tr key={c.id} className="border-b border-line">
                   <td className="py-2 pr-4 font-medium">{c.name}</td>
                   <td className="py-2 pr-0 text-right">
                     <div className="inline-flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => startEdit(c)}
-                        className="text-xs font-semibold uppercase text-brand hover:underline"
+                        className="text-xs font-semibold text-brand-deep hover:underline"
                       >
                         Edit
                       </button>
@@ -213,12 +212,12 @@ export function ClubsSettingsSection() {
             </tbody>
           </table>
           {sortedClubs.length === 0 ? (
-            <p className="py-8 text-center text-sm text-black/45">
+            <p className="py-8 text-center text-sm text-muted">
               No clubs yet. Add one using the form above.
             </p>
           ) : (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
-              <p className="text-xs text-black/55">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+              <p className="text-xs text-muted">
                 Showing {rangeStart}–{rangeEnd} of {sortedClubs.length}
               </p>
               <div className="flex items-center gap-1">
@@ -236,7 +235,7 @@ export function ClubsSettingsSection() {
                 >
                   ‹
                 </PaginationButton>
-                <span className="min-w-[5rem] px-2 text-center text-xs font-medium text-black/70">
+                <span className="min-w-[5rem] px-2 text-center text-xs font-medium text-ink">
                   Page {safePage + 1} of {totalPages}
                 </span>
                 <PaginationButton
@@ -290,7 +289,7 @@ function PaginationButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="font-heading flex h-8 w-8 items-center justify-center rounded-md border border-black/15 bg-white text-base leading-none text-black transition-colors hover:bg-brand-muted/40 disabled:cursor-not-allowed disabled:opacity-40"
+      className="font-heading flex h-8 w-8 items-center justify-center rounded-md border border-line bg-white text-base leading-none text-ink transition-colors hover:bg-brand-muted/40 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>

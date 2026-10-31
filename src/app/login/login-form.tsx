@@ -57,17 +57,17 @@ export function LoginForm() {
         <div className="mb-8 flex flex-col items-center text-center">
           <BrandLogo className="h-20 w-auto sm:h-24" priority />
           <span className="funky-badge mt-6">Handicaps Network Africa</span>
-          <h1 className="font-heading mt-3 text-2xl font-bold uppercase tracking-tight">
+          <h1 className="font-heading mt-3 text-2xl font-bold tracking-tight">
             <span className="brand-gradient-text">Sign in</span>
           </h1>
-          <p className="mt-2 text-sm text-black/60">
+          <p className="mt-2 text-sm text-muted">
             Inventory Tracker — use your username or email
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="glass-card space-y-5 p-8">
           {error ? (
-            <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200/60" role="alert">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200/60" role="alert">
               {error}
             </p>
           ) : null}
@@ -75,7 +75,7 @@ export function LoginForm() {
           <div>
             <label
               htmlFor="identifier"
-              className="text-xs font-semibold uppercase tracking-wide text-black/70"
+              className="text-xs font-semibold text-ink"
             >
               Username or email
             </label>
@@ -95,7 +95,7 @@ export function LoginForm() {
           <div>
             <label
               htmlFor="password"
-              className="text-xs font-semibold uppercase tracking-wide text-black/70"
+              className="text-xs font-semibold text-ink"
             >
               Password
             </label>
@@ -115,8 +115,8 @@ export function LoginForm() {
           </button>
         </form>
 
-        <p className="mt-8 text-center text-xs text-black/50">
-          <Link href="/" className="font-semibold text-brand hover:underline">
+        <p className="mt-8 text-center text-xs text-muted">
+          <Link href="/" className="font-semibold text-brand-deep hover:underline">
             Back to home
           </Link>
         </p>

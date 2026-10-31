@@ -125,12 +125,8 @@ export function SettingsTabsContent() {
   return (
     <>
       <section className="page-hero mb-6">
-        <div className="page-hero-blob page-hero-blob-a" aria-hidden />
-        <div className="relative">
-          <p className="page-eyebrow">Configuration</p>
-          <h1 className="page-title brand-gradient-text">Settings</h1>
-          <p className="page-description">{subtitle}</p>
-        </div>
+        <h1 className="page-title">Settings</h1>
+        <p className="page-description">{subtitle}</p>
       </section>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -153,7 +149,7 @@ export function SettingsTabsContent() {
                 tabIndex={selected ? 0 : -1}
                 onClick={() => selectTab(t.id)}
                 className={`nav-link w-full shrink-0 ${
-                  selected ? "nav-link-active" : "nav-link-inactive"
+                  selected ? "nav-link-active" : "tab-link-inactive"
                 }`}
               >
                 <span className="nav-icon-pill">
@@ -172,7 +168,7 @@ export function SettingsTabsContent() {
         </nav>
 
         <div className="min-w-0 flex-1">
-          <p className="font-heading mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-black/45 lg:hidden">
+          <p className="font-heading mb-3 text-xs font-bold text-muted lg:hidden">
             {activeLabel}
           </p>
           <div

@@ -13,7 +13,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 /** Lifecycle-aware colours (aligns with inventory column accents). */
 const STATUS_COLORS: Record<string, string> = {
-  new_stock: "rgba(19, 157, 75, 0.88)",
+  new_stock: "rgba(70, 155, 86, 0.88)",
   deployed: "rgba(14, 165, 233, 0.88)",
   assessment: "rgba(245, 158, 11, 0.9)",
   repair: "rgba(234, 88, 12, 0.9)",
@@ -23,7 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const FALLBACK = [
-  "rgba(19, 157, 75, 0.88)",
+  "rgba(70, 155, 86, 0.88)",
   "rgba(0, 0, 0, 0.72)",
   "rgba(245, 158, 11, 0.85)",
   "rgba(234, 88, 12, 0.85)",

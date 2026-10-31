@@ -1,13 +1,10 @@
-import { Montserrat, Roboto } from "next/font/google";
+import { Poppins } from "next/font/google";
 
-export const fontBody = Roboto({
+export const fontBody = Poppins({
   subsets: ["latin"],
-  variable: "--font-roboto",
-  weight: ["400", "500", "700"],
+  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700"],
 });
 
-export const fontHeading = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  weight: ["600", "700"],
-});
+/** Headings share the body face; kept as a separate export so existing imports keep working. */
+export const fontHeading = fontBody;

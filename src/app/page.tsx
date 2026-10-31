@@ -21,10 +21,10 @@ export default function HomePage() {
           <span className="funky-badge-dot" aria-hidden />
           Handicaps Network Africa
         </span>
-        <h1 className="font-heading mt-4 text-3xl font-bold uppercase tracking-tight sm:text-4xl">
+        <h1 className="font-heading mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
           <span className="brand-gradient-text">Hardware inventory</span>
         </h1>
-        <p className="mt-4 text-base leading-relaxed text-black/65">
+        <p className="mt-4 text-base leading-relaxed text-muted">
           Track hardware through each stage — new stock, field deployment,
           repairs, and refurbishment — with dashboards and finance-ready
           reports.

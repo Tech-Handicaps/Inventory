@@ -127,11 +127,11 @@ export function LogRepairModal({
       >
         <h2
           id="log-repair-title"
-          className="font-heading text-lg font-bold uppercase tracking-wide text-black"
+          className="font-heading text-lg font-bold text-ink"
         >
           Log repair
         </h2>
-        <p className="mt-1 text-sm text-black/65">
+        <p className="mt-1 text-sm text-muted">
           {asset.assetName}
           {asset.serialNumber ? (
             <span className="ml-2 font-mono text-xs">
@@ -152,21 +152,21 @@ export function LogRepairModal({
 
         <form onSubmit={submit} className="mt-4 space-y-4">
           <label className="block">
-            <span className="text-xs font-medium text-black/70">
+            <span className="text-xs font-medium text-ink">
               Technician notes (optional)
             </span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
               placeholder="Fault, parts requested, etc."
             />
           </label>
 
           {deskEnabled ? (
             <label className="block">
-              <span className="text-xs font-medium text-black/70">
+              <span className="text-xs font-medium text-ink">
                 Existing Zoho Desk ticket (optional)
               </span>
               <input
@@ -174,10 +174,10 @@ export function LogRepairModal({
                 value={existingDeskTicket}
                 onChange={(e) => setExistingDeskTicket(e.target.value)}
                 autoComplete="off"
-                className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+                className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
                 placeholder="e.g. 12345 or long id from the ticket URL"
               />
-              <p className="mt-1 text-[11px] leading-snug text-black/55">
+              <p className="mt-1 text-xs leading-snug text-muted">
                 If you enter a ticket, this repair is linked to it and we{" "}
                 <strong>do not</strong> create a new Desk ticket. Technician notes
                 (and a short inventory summary) are posted as an{" "}
@@ -194,7 +194,7 @@ export function LogRepairModal({
               onChange={(e) => setMoveToRepair(e.target.checked)}
               className="mt-1"
             />
-            <span className="text-sm text-black/80">
+            <span className="text-sm text-ink">
               Move asset to <strong>In Repairs</strong> lifecycle stage
             </span>
           </label>
@@ -213,13 +213,13 @@ export function LogRepairModal({
                 }}
                 className="mt-1"
               />
-              <span className="text-sm text-black/80">
+              <span className="text-sm text-ink">
                 Create a <strong>new</strong> Zoho Desk ticket (includes
                 inventory reference in the description)
               </span>
             </label>
           ) : (
-            <p className="rounded-lg bg-black/[0.04] px-3 py-2 text-xs text-black/55">
+            <p className="rounded-lg bg-black/[0.04] px-3 py-2 text-xs text-muted">
               Zoho Desk ticketing is not configured. Add org id and OAuth in{" "}
               <strong>Settings → Zoho Desk API</strong> to enable linking or new
               tickets.
@@ -236,14 +236,14 @@ export function LogRepairModal({
             <button
               type="submit"
               disabled={saving}
-              className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+              className="btn-primary"
             >
               {saving ? "Saving…" : "Create repair record"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-black/15 px-5 py-2.5 text-sm font-medium text-black/80 hover:bg-black/[0.04]"
+              className="rounded-lg border border-line px-5 py-2.5 text-sm font-medium text-ink hover:bg-black/[0.04]"
             >
               Cancel
             </button>

@@ -4,15 +4,17 @@ type Props = {
   /** Tailwind height class; width follows aspect ratio */
   className?: string;
   priority?: boolean;
+  /** White/green artwork for the charcoal sidebar. */
+  onDark?: boolean;
 };
 
-export function BrandLogo({ className = "h-11 w-auto", priority }: Props) {
+export function BrandLogo({ className = "h-11 w-auto", priority, onDark }: Props) {
   return (
     <Image
-      src="/brand/hna-logo.png"
+      src={onDark ? "/brand/hna-logo-on-dark.png" : "/brand/hna-logo.png"}
       alt="Handicaps Network Africa"
-      width={220}
-      height={64}
+      width={onDark ? 480 : 220}
+      height={onDark ? 184 : 64}
       className={`object-contain object-left ${className}`}
       priority={priority}
     />

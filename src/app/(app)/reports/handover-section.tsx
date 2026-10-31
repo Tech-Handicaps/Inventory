@@ -32,9 +32,9 @@ export function HandoverSection() {
 
   return (
     <section id="handover" className="scroll-mt-6 space-y-4">
-      <header className="border-b border-black/10 pb-4">
+      <header className="border-b border-line pb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+          <h2 className="font-heading text-lg font-bold text-ink">
             Stock report handover
           </h2>
           <div className="flex gap-2">
@@ -59,15 +59,15 @@ export function HandoverSection() {
         <SectionSkeleton label="Loading stock handover" />
       ) : (
         <>
-          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-black/70">
+          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-ink">
             {handover.paragraphs.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
           </div>
-          <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-lg border border-line bg-white">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10">
+                <tr className="border-b border-line">
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Series</th>
                   <th className="px-4 py-3 font-medium">What it records</th>
@@ -75,12 +75,12 @@ export function HandoverSection() {
               </thead>
               <tbody>
                 {handover.events.map((event) => (
-                  <tr key={event.dateLabel} className="border-b border-black/5">
+                  <tr key={event.dateLabel} className="border-b border-line">
                     <td className="px-4 py-3 font-medium whitespace-nowrap">
                       {event.dateLabel}
                     </td>
-                    <td className="px-4 py-3 text-black/70">{event.series}</td>
-                    <td className="px-4 py-3 text-black/70">{event.statement}</td>
+                    <td className="px-4 py-3 text-ink">{event.series}</td>
+                    <td className="px-4 py-3 text-ink">{event.statement}</td>
                   </tr>
                 ))}
               </tbody>
@@ -89,25 +89,25 @@ export function HandoverSection() {
           <div className="space-y-6">
             {handover.outcomes.map((outcome) => (
               <div key={outcome.id} className="space-y-2">
-                <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                <h3 className="font-heading text-sm font-bold text-ink">
                   {outcome.title}
                 </h3>
-                <p className="max-w-3xl text-sm leading-relaxed text-black/70">
+                <p className="max-w-3xl text-sm leading-relaxed text-ink">
                   {outcome.statement}
                 </p>
-                <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+                <div className="overflow-x-auto rounded-lg border border-line bg-white">
                   <table className="w-full min-w-[720px] text-left text-sm">
                     <thead>
-                      <tr className="border-b border-black/10">
+                      <tr className="border-b border-line">
                         <th className="px-4 py-3 font-medium">Name</th>
                         <th className="px-4 py-3 font-medium">Where it is counted</th>
                       </tr>
                     </thead>
                     <tbody>
                       {outcome.lines.map((line) => (
-                        <tr key={line.name} className="border-b border-black/5">
+                        <tr key={line.name} className="border-b border-line">
                           <td className="px-4 py-3 font-medium">{line.name}</td>
-                          <td className="px-4 py-3 text-black/70">{line.note}</td>
+                          <td className="px-4 py-3 text-ink">{line.note}</td>
                         </tr>
                       ))}
                     </tbody>

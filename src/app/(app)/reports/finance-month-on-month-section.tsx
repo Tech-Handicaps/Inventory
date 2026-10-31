@@ -44,9 +44,9 @@ export function FinanceMonthOnMonthSection() {
 
   return (
     <section id="finance-month-on-month" className="scroll-mt-6 space-y-4">
-      <header className="border-b border-black/10 pb-4">
+      <header className="border-b border-line pb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+          <h2 className="font-heading text-lg font-bold text-ink">
             Finance month-on-month
           </h2>
           <div className="flex gap-2">
@@ -71,17 +71,17 @@ export function FinanceMonthOnMonthSection() {
         <SectionSkeleton label="Loading finance month-on-month" />
       ) : (
         <>
-          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-black/70">
+          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-ink">
             {report.introduction.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
           </div>
 
           {report.months.length === 0 ? null : (
-            <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-lg border border-line bg-white">
               <table className="w-full min-w-[1100px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-black/10">
+                  <tr className="border-b border-line">
                     <th className="px-4 py-3 font-medium">Month ending</th>
                     <th className="px-4 py-3 text-right font-medium">New</th>
                     <th className="px-4 py-3 text-right font-medium">Refurbished</th>
@@ -97,7 +97,7 @@ export function FinanceMonthOnMonthSection() {
                 </thead>
                 <tbody>
                   {report.months.map((month) => (
-                    <tr key={month.monthKey} className="border-b border-black/5">
+                    <tr key={month.monthKey} className="border-b border-line">
                       <td className="px-4 py-3 font-medium">{month.monthEndingLabel}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{month.newStock}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{month.refurbished}</td>
@@ -123,18 +123,18 @@ export function FinanceMonthOnMonthSection() {
           {report.typeBlocks.length === 0 ? null : (
             <div className="space-y-6">
               <div className="space-y-2">
-                <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+                <h3 className="font-heading text-sm font-bold text-ink">
                   Asset types
                 </h3>
-                <p className="max-w-3xl text-sm leading-relaxed text-black/70">{report.typeNote}</p>
+                <p className="max-w-3xl text-sm leading-relaxed text-ink">{report.typeNote}</p>
               </div>
               {report.typeBlocks.map((block) => (
                 <div key={block.assetType} className="space-y-2">
-                  <h4 className="text-sm font-medium text-black">{block.label}</h4>
-                  <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+                  <h4 className="text-sm font-medium text-ink">{block.label}</h4>
+                  <div className="overflow-x-auto rounded-lg border border-line bg-white">
                     <table className="w-full min-w-[1100px] text-left text-sm">
                       <thead>
-                        <tr className="border-b border-black/10">
+                        <tr className="border-b border-line">
                           <th className="px-4 py-3 font-medium">Month ending</th>
                           <th className="px-4 py-3 text-right font-medium">New</th>
                           <th className="px-4 py-3 text-right font-medium">Refurbished</th>
@@ -150,7 +150,7 @@ export function FinanceMonthOnMonthSection() {
                       </thead>
                       <tbody>
                         {block.months.map((month) => (
-                          <tr key={month.monthKey} className="border-b border-black/5">
+                          <tr key={month.monthKey} className="border-b border-line">
                             <td className="px-4 py-3 font-medium">{month.monthEndingLabel}</td>
                             <td className="px-4 py-3 text-right tabular-nums">{month.newStock}</td>
                             <td className="px-4 py-3 text-right tabular-nums">{month.refurbished}</td>
@@ -178,23 +178,23 @@ export function FinanceMonthOnMonthSection() {
 
           {report.months.length === 0 ? null : (
             <div className="space-y-3">
-              <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+              <h3 className="font-heading text-sm font-bold text-ink">
                 Make and model changes
               </h3>
-              <p className="max-w-3xl text-sm leading-relaxed text-black/70">
+              <p className="max-w-3xl text-sm leading-relaxed text-ink">
                 {report.movementNote}
               </p>
               {report.movements.length === 0 ? (
-                <p className="text-sm text-black/60">
+                <p className="text-sm text-muted">
                   {report.months.length < 2
                     ? "The first stored month has no previous position to compare."
                     : "No make or model count changed from one stored month to the next."}
                 </p>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+                <div className="overflow-x-auto rounded-lg border border-line bg-white">
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead>
-                      <tr className="border-b border-black/10">
+                      <tr className="border-b border-line">
                         <th className="px-4 py-3 font-medium">Month</th>
                         <th className="px-4 py-3 font-medium">Make / model</th>
                         <th className="px-4 py-3 font-medium">Status</th>
@@ -207,7 +207,7 @@ export function FinanceMonthOnMonthSection() {
                       {report.movements.map((movement) => (
                         <tr
                           key={`${movement.monthKey}-${movement.statusCode}-${movement.makeModel}`}
-                          className="border-b border-black/5"
+                          className="border-b border-line"
                         >
                           <td className="px-4 py-3">{movement.monthEndingLabel}</td>
                           <td className="px-4 py-3">{movement.makeModel}</td>

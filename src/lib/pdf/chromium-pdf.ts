@@ -201,7 +201,7 @@ export function pdfDocumentChrome(params: {
       font-weight: 800;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: rgba(19, 157, 75, 0.14);
+      color: rgba(70, 155, 86, 0.14);
       white-space: nowrap;
       pointer-events: none;
       z-index: 0;
@@ -209,7 +209,7 @@ export function pdfDocumentChrome(params: {
     .sheet { position: relative; z-index: 1; overflow: visible; }
     .bar {
       height: 5px;
-      background: #139d4b;
+      background: #469b56;
       margin: -14mm -16mm 18px -16mm;
     }
     .brand {
@@ -231,7 +231,7 @@ export function pdfDocumentChrome(params: {
       font-weight: 800;
       font-size: 14px;
       text-transform: uppercase;
-      color: #139d4b;
+      color: #469b56;
       letter-spacing: 0.04em;
     }
     h1 {
@@ -244,7 +244,7 @@ export function pdfDocumentChrome(params: {
       margin: 0 0 8px 0;
       font-size: 14px;
       font-weight: 700;
-      color: #139d4b;
+      color: #469b56;
     }
     .subtitle { margin: 0 0 16px 0; color: #555; font-size: 10px; }
     .meta {
@@ -260,7 +260,7 @@ export function pdfDocumentChrome(params: {
     h2 {
       margin: 0 0 10px 0;
       font-size: 11px;
-      color: #139d4b;
+      color: #469b56;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
@@ -290,7 +290,7 @@ export function pdfDocumentChrome(params: {
       margin-bottom: 12px;
     }
     table.list th {
-      border-bottom: 1px solid #139d4b;
+      border-bottom: 1px solid #469b56;
       padding: 6px 4px;
       text-align: left;
       font-size: 7px;

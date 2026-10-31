@@ -162,7 +162,7 @@ export function DeviceTemplatesSettingsSection() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-black/10 bg-white p-8 shadow-sm">
+      <div className="rounded-lg border border-line bg-white p-8">
         <SectionSkeleton label="Loading device templates" />
       </div>
     );
@@ -170,11 +170,10 @@ export function DeviceTemplatesSettingsSection() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-        <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+      <div className="rounded-lg border border-line bg-white p-6">
+        <h2 className="font-heading text-lg font-bold text-ink">
           About device templates
         </h2>
-        <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
         {loadError ? (
           <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">
             {loadError}
@@ -187,7 +186,7 @@ export function DeviceTemplatesSettingsSection() {
             ) : null}
           </p>
         ) : null}
-        <p className="mt-4 text-sm leading-relaxed text-black/70">
+        <p className="mt-4 text-sm leading-relaxed text-ink">
           Define reusable device types (make, model, default category, optional typical
           CPU/RAM/GPU for that SKU). On the <strong>Hardware board</strong>, choose a
           template when adding an asset to pre-fill fields; you can still edit before
@@ -195,8 +194,8 @@ export function DeviceTemplatesSettingsSection() {
         </p>
       </div>
 
-      <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-        <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+      <section className="rounded-lg border border-line bg-white p-6">
+        <h3 className="font-heading text-sm font-bold text-ink">
           {editingId ? "Edit template" : "Add template"}
         </h3>
         <form
@@ -204,18 +203,18 @@ export function DeviceTemplatesSettingsSection() {
           className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         >
           <div className="sm:col-span-2 lg:col-span-3">
-            <p className="text-xs font-medium text-black/70">Catalog label</p>
-            <p className="mt-1 rounded-lg border border-black/10 bg-black/[0.02] px-3 py-2 text-sm text-black/80">
+            <p className="text-xs font-medium text-ink">Catalog label</p>
+            <p className="mt-1 rounded-lg border border-line bg-black/[0.02] px-3 py-2 text-sm text-ink">
               {labelPreview ||
                 displayDeviceTemplateLabel({ manufacturer, model, label: "" }) ||
                 "Enter manufacturer and model — label is generated automatically."}
             </p>
-            <p className="mt-1 text-xs text-black/50">
+            <p className="mt-1 text-xs text-muted">
               Built from manufacturer + model (not asset deployment names like HNA-CLUB-01).
             </p>
           </div>
           <div>
-            <label className="text-xs font-medium text-black/70">
+            <label className="text-xs font-medium text-ink">
               Manufacturer
             </label>
             <input
@@ -231,11 +230,11 @@ export function DeviceTemplatesSettingsSection() {
                   })
                 );
               }}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-black/70">Model</label>
+            <label className="text-xs font-medium text-ink">Model</label>
             <input
               required
               value={model}
@@ -249,7 +248,7 @@ export function DeviceTemplatesSettingsSection() {
                   })
                 );
               }}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
             />
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
@@ -264,54 +263,54 @@ export function DeviceTemplatesSettingsSection() {
             />
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
-            <label className="text-xs font-medium text-black/70">
+            <label className="text-xs font-medium text-ink">
               Notes (optional)
             </label>
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Specs, procurement notes…"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-black/70">
+            <label className="text-xs font-medium text-ink">
               Typical processor (optional)
             </label>
             <input
               value={processorName}
               onChange={(e) => setProcessorName(e.target.value)}
               placeholder="Pre-fills new assets"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-black/70">
+            <label className="text-xs font-medium text-ink">
               Typical RAM (optional)
             </label>
             <input
               value={systemRam}
               onChange={(e) => setSystemRam(e.target.value)}
               placeholder="e.g. 16 GB"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-black/70">
+            <label className="text-xs font-medium text-ink">
               Typical GPU (optional)
             </label>
             <input
               value={systemGpu}
               onChange={(e) => setSystemGpu(e.target.value)}
               placeholder="Pre-fills new assets"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
             />
           </div>
           <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-3">
             <button
               type="submit"
               disabled={saving}
-              className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+              className="btn-primary"
             >
               {saving ? "Saving…" : editingId ? "Update template" : "Add template"}
             </button>
@@ -319,7 +318,7 @@ export function DeviceTemplatesSettingsSection() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="font-heading rounded-lg border-2 border-black bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-black"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -328,14 +327,14 @@ export function DeviceTemplatesSettingsSection() {
         </form>
       </section>
 
-      <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-        <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+      <section className="rounded-lg border border-line bg-white p-6">
+        <h3 className="font-heading text-sm font-bold text-ink">
           Catalog ({templates.length})
         </h3>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-black/10">
+              <tr className="border-b border-line">
                 <th className="py-2 pr-4 font-medium">Label</th>
                 <th className="py-2 pr-4 font-medium">Manufacturer</th>
                 <th className="py-2 pr-4 font-medium">Model</th>
@@ -347,7 +346,7 @@ export function DeviceTemplatesSettingsSection() {
             </thead>
             <tbody>
               {templates.map((t) => (
-                <tr key={t.id} className="border-b border-black/5">
+                <tr key={t.id} className="border-b border-line">
                   <td className="py-2 pr-4 font-medium">
                     {displayDeviceTemplateLabel(t)}
                   </td>
@@ -356,18 +355,18 @@ export function DeviceTemplatesSettingsSection() {
                   <td className="py-2 pr-4">
                     {assetTagsForDisplay(t.tags, t.category).join(" · ")}
                   </td>
-                  <td className="py-2 pr-4 text-xs text-black/65">
+                  <td className="py-2 pr-4 text-xs text-muted">
                     {[t.processorName, t.systemRam, t.systemGpu]
                       .filter(Boolean)
                       .join(" · ") || "—"}
                   </td>
-                  <td className="py-2 pr-4 text-black/60">{t.notes ?? "—"}</td>
+                  <td className="py-2 pr-4 text-muted">{t.notes ?? "—"}</td>
                   <td className="py-2 pr-0 text-right">
                     <div className="inline-flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => startEdit(t)}
-                        className="text-xs font-semibold uppercase text-brand hover:underline"
+                        className="text-xs font-semibold text-brand-deep hover:underline"
                       >
                         Edit
                       </button>
@@ -388,7 +387,7 @@ export function DeviceTemplatesSettingsSection() {
             </tbody>
           </table>
           {templates.length === 0 && (
-            <p className="py-8 text-center text-sm text-black/45">
+            <p className="py-8 text-center text-sm text-muted">
               No templates yet. Add one using the form above.
             </p>
           )}

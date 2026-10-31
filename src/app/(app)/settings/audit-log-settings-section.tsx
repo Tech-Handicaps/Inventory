@@ -80,11 +80,10 @@ export function AuditLogSettingsSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+        <h2 className="font-heading text-lg font-bold text-ink">
           Audit log
         </h2>
-        <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
-        <p className="mt-4 text-sm leading-relaxed text-black/70">
+        <p className="mt-4 text-sm leading-relaxed text-ink">
           Immutable record of asset changes, device templates, repairs, and
           integration activity. Filter by action or date range.
         </p>
@@ -92,16 +91,16 @@ export function AuditLogSettingsSection() {
 
       <form
         onSubmit={applyFilters}
-        className="flex flex-wrap items-end gap-4 rounded-lg border border-black/10 bg-black/[0.02] p-4"
+        className="flex flex-wrap items-end gap-4 rounded-lg border border-line bg-black/[0.02] p-4"
       >
         <div>
-          <label className="block text-xs font-medium text-black/70">
+          <label className="block text-xs font-medium text-ink">
             Action type
           </label>
           <select
             value={actionType}
             onChange={(e) => setActionType(e.target.value)}
-            className="mt-1 min-w-[12rem] rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className="mt-1 min-w-[12rem] rounded-lg border border-line px-3 py-2 text-sm"
           >
             <option value="all">All</option>
             {AUDIT_ACTION_TYPES.map((a) => (
@@ -112,30 +111,30 @@ export function AuditLogSettingsSection() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-black/70">
+          <label className="block text-xs font-medium text-ink">
             From date
           </label>
           <input
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="mt-1 rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className="mt-1 rounded-lg border border-line px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-black/70">
+          <label className="block text-xs font-medium text-ink">
             To date
           </label>
           <input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="mt-1 rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className="mt-1 rounded-lg border border-line px-3 py-2 text-sm"
           />
         </div>
         <button
           type="submit"
-          className="font-heading rounded-lg bg-brand px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-brand-hover"
+          className="btn-primary"
         >
           Apply filters
         </button>
@@ -149,16 +148,16 @@ export function AuditLogSettingsSection() {
         <SectionSkeleton label="Loading audit log" />
       ) : (
         <>
-          <p className="text-xs text-black/55">
+          <p className="text-xs text-muted">
             {total === 0
               ? "No entries match your filters."
               : `Showing ${pageStart}–${pageEnd} of ${total}`}
           </p>
 
-          <div className="overflow-x-auto rounded-lg border border-black/10">
+          <div className="overflow-x-auto rounded-lg border border-line">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10 bg-black/[0.03]">
+                <tr className="border-b border-line bg-black/[0.03]">
                   <th className="py-2.5 pl-3 pr-2 font-medium">Time</th>
                   <th className="py-2.5 pr-2 font-medium">Action</th>
                   <th className="py-2.5 pr-2 font-medium">User</th>
@@ -169,17 +168,17 @@ export function AuditLogSettingsSection() {
               <tbody>
                 {items.map((row) => (
                   <Fragment key={row.id}>
-                    <tr className="border-b border-black/5 align-top">
-                      <td className="py-2.5 pl-3 pr-2 font-mono text-xs text-black/80 whitespace-nowrap">
+                    <tr className="border-b border-line align-top">
+                      <td className="py-2.5 pl-3 pr-2 font-mono text-xs text-ink whitespace-nowrap">
                         {formatDateTime(row.timestamp)}
                       </td>
-                      <td className="py-2.5 pr-2 font-mono text-xs text-black">
+                      <td className="py-2.5 pr-2 font-mono text-xs text-ink">
                         {row.actionType}
                       </td>
-                      <td className="max-w-[140px] truncate py-2.5 pr-2 font-mono text-xs text-black/70" title={row.userId ?? ""}>
+                      <td className="max-w-[140px] truncate py-2.5 pr-2 font-mono text-xs text-ink" title={row.userId ?? ""}>
                         {row.userId ?? "—"}
                       </td>
-                      <td className="max-w-[200px] py-2.5 pr-2 text-black/80">
+                      <td className="max-w-[200px] py-2.5 pr-2 text-ink">
                         {row.notes ?? "—"}
                       </td>
                       <td className="py-2.5 pr-3">
@@ -190,16 +189,16 @@ export function AuditLogSettingsSection() {
                               id === row.id ? null : row.id
                             )
                           }
-                          className="text-xs font-semibold uppercase text-brand hover:underline"
+                          className="text-xs font-semibold text-brand-deep hover:underline"
                         >
                           {expandedId === row.id ? "Hide" : "JSON"}
                         </button>
                       </td>
                     </tr>
                     {expandedId === row.id ? (
-                      <tr className="border-b border-black/5 bg-black/[0.02]">
+                      <tr className="border-b border-line bg-black/[0.02]">
                         <td colSpan={5} className="px-3 py-3">
-                          <pre className="max-h-48 overflow-auto font-mono text-xs text-black/85">
+                          <pre className="max-h-48 overflow-auto font-mono text-xs text-ink">
                             {JSON.stringify(row.metadata ?? null, null, 2)}
                           </pre>
                         </td>
@@ -217,7 +216,7 @@ export function AuditLogSettingsSection() {
                 type="button"
                 disabled={!canPrev}
                 onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
-                className="font-heading rounded-lg border border-black/15 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40"
+                className="font-heading rounded-lg border border-line bg-white px-4 py-2 text-xs font-bold disabled:opacity-40"
               >
                 Previous
               </button>
@@ -225,7 +224,7 @@ export function AuditLogSettingsSection() {
                 type="button"
                 disabled={!canNext}
                 onClick={() => setOffset((o) => o + PAGE_SIZE)}
-                className="font-heading rounded-lg border border-black/15 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide disabled:opacity-40"
+                className="font-heading rounded-lg border border-line bg-white px-4 py-2 text-xs font-bold disabled:opacity-40"
               >
                 Next
               </button>

@@ -99,15 +99,15 @@ export function AssistDevicePicker({
 
   return (
     <div className="space-y-3">
-      <div className="flex border-b border-black/10">
+      <div className="flex border-b border-line">
         <button
           type="button"
           disabled={disabled}
           onClick={() => switchTab("name")}
-          className={`flex-1 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide ${
+          className={`flex-1 px-2 py-1.5 text-xs font-bold ${
             tab === "name"
-              ? "border-b-2 border-brand text-brand"
-              : "text-black/50"
+              ? "border-b-2 border-brand text-brand-deep"
+              : "text-muted"
           }`}
         >
           Search by name
@@ -116,10 +116,10 @@ export function AssistDevicePicker({
           type="button"
           disabled={disabled}
           onClick={() => switchTab("browse")}
-          className={`flex-1 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide ${
+          className={`flex-1 px-2 py-1.5 text-xs font-bold ${
             tab === "browse"
-              ? "border-b-2 border-brand text-brand"
-              : "text-black/50"
+              ? "border-b-2 border-brand text-brand-deep"
+              : "text-muted"
           }`}
         >
           Browse list
@@ -145,23 +145,23 @@ export function AssistDevicePicker({
               }}
               disabled={disabled}
               placeholder="Assist display name (e.g. HNA-DELMAS-01)"
-              className="min-w-0 flex-1 rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="min-w-0 flex-1 rounded-lg border border-line px-3 py-2 text-sm"
             />
             <button
               type="button"
               disabled={disabled || !query.trim() || listBusy}
               onClick={runSearch}
-              className="shrink-0 rounded-lg border border-black/15 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-black/70 disabled:opacity-50"
+              className="shrink-0 rounded-lg border border-line bg-white px-3 py-2 text-xs font-bold text-ink disabled:opacity-50"
             >
               {listBusy ? "Searching…" : "Search"}
             </button>
           </div>
-          <p className="text-[11px] text-black/50">
+          <p className="text-xs text-muted">
             Search Assist devices, select the correct one, then click {linkLabel}.
           </p>
         </div>
       ) : (
-        <p className="text-[11px] text-black/50">
+        <p className="text-xs text-muted">
           Select a device from your Assist department, then click {linkLabel}.
         </p>
       )}
@@ -173,17 +173,17 @@ export function AssistDevicePicker({
       ) : null}
 
       {listBusy ? (
-        <p className="py-4 text-center text-xs text-black/50">
+        <p className="py-4 text-center text-xs text-muted">
           {tab === "name" ? "Searching Assist devices…" : "Loading devices…"}
         </p>
       ) : tab === "name" && !searched ? null : visibleRows.length === 0 ? (
-        <p className="py-4 text-center text-xs text-black/50">
+        <p className="py-4 text-center text-xs text-muted">
           {tab === "name"
             ? "No devices matched that name. Try a shorter search or browse the full list."
             : "No devices returned. Check Assist settings."}
         </p>
       ) : (
-        <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-black/10 p-1">
+        <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-line p-1">
           {visibleRows.map((r) => (
             <li key={r.resourceId}>
               <button
@@ -198,7 +198,7 @@ export function AssistDevicePicker({
               >
                 {r.displayName}
                 {r.deviceName && r.deviceName !== r.displayName ? (
-                  <span className="text-black/45"> · {r.deviceName}</span>
+                  <span className="text-muted"> · {r.deviceName}</span>
                 ) : null}
               </button>
             </li>
@@ -207,8 +207,8 @@ export function AssistDevicePicker({
       )}
 
       {selectedRow ? (
-        <p className="text-[11px] text-black/60">
-          Selected: <span className="font-medium text-black/80">{selectedRow.displayName}</span>
+        <p className="text-xs text-muted">
+          Selected: <span className="font-medium text-ink">{selectedRow.displayName}</span>
         </p>
       ) : null}
 
@@ -216,7 +216,7 @@ export function AssistDevicePicker({
         type="button"
         disabled={disabled || !selectedId || listBusy}
         onClick={() => void onLink({ resourceId: selectedId })}
-        className="font-heading w-full rounded-lg border-2 border-brand bg-brand px-3 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-brand-hover disabled:opacity-50"
+        className="btn-primary w-full"
       >
         {linkLabel}
       </button>

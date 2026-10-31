@@ -43,8 +43,8 @@ export function RefurbishedLineChart({ data }: { data: Asset[] }) {
       {
         label: "Refurbished (cumulative)",
         data: values,
-        borderColor: "rgb(19, 157, 75)",
-        backgroundColor: "rgba(19, 157, 75, 0.18)",
+        borderColor: "rgb(70, 155, 86)",
+        backgroundColor: "rgba(70, 155, 86, 0.18)",
         fill: true,
       },
     ],

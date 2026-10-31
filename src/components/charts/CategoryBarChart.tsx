@@ -15,7 +15,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 type Row = { category: string; count: number };
 
-const BAR = "rgba(19, 157, 75, 0.82)";
+const BAR = "rgba(70, 155, 86, 0.82)";
 
 export function CategoryBarChart({ data }: { data: Row[] }) {
   const chartData = {

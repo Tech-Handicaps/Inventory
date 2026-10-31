@@ -27,7 +27,7 @@ export function RegistrationYearChart({
       {
         label: datasetLabel,
         data: data.map((d) => d.count),
-        backgroundColor: "rgba(19, 157, 75, 0.75)",
+        backgroundColor: "rgba(70, 155, 86, 0.75)",
         borderRadius: 4,
       },
     ],

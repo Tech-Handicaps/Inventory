@@ -15,7 +15,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 type Row = { label: string; count: number; percent: number };
 
-const BAR = "rgba(19, 157, 75, 0.82)";
+const BAR = "rgba(70, 155, 86, 0.82)";
 
 /** Horizontal bars — truncate long model labels in axis */
 export function TopSkusBarChart({ data }: { data: Row[] }) {

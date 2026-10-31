@@ -1,30 +1,23 @@
 import type { ReactNode } from "react";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 type PageHeaderProps = {
-  eyebrow?: string;
   title: string;
+  /** One line. Longer guidance goes in `help`. */
   description?: ReactNode;
+  help?: ReactNode;
   children?: ReactNode;
 };
 
-export function PageHeader({
-  eyebrow = "Handicaps Network Africa",
-  title,
-  description,
-  children,
-}: PageHeaderProps) {
+export function PageHeader({ title, description, help, children }: PageHeaderProps) {
   return (
     <section className="page-hero">
-      <div className="page-hero-blob page-hero-blob-a" aria-hidden />
-      <div className="page-hero-blob page-hero-blob-b" aria-hidden />
-      <div className="relative">
-        <p className="page-eyebrow">{eyebrow}</p>
-        <h1 className="page-title brand-gradient-text">{title}</h1>
-        {description ? (
-          <div className="page-description">{description}</div>
-        ) : null}
-        {children ? <div className="mt-6">{children}</div> : null}
+      <div className="flex items-center gap-1.5">
+        <h1 className="page-title">{title}</h1>
+        {help ? <InfoTip label={`About ${title}`}>{help}</InfoTip> : null}
       </div>
+      {description ? <p className="page-description">{description}</p> : null}
+      {children ? <div className="mt-4">{children}</div> : null}
     </section>
   );
 }

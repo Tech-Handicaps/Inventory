@@ -4,7 +4,7 @@ import { RoleProvider } from "@/components/RoleProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ToastProvider } from "@/components/ToastProvider";
 import { getSessionRole } from "@/lib/auth/get-session-role";
-import { fontBody, fontHeading } from "@/lib/fonts";
+import { fontBody } from "@/lib/fonts";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -29,7 +29,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fontBody.variable} ${fontHeading.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fontBody.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className={`${fontBody.className} min-h-full flex flex-col`}>
         <ToastProvider>

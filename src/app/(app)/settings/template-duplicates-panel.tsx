@@ -105,7 +105,7 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
         type="button"
         disabled={busyKey !== null}
         onClick={() => void resolve({ action: "keep_both" }, finding.key)}
-        className="rounded-md border border-black/15 bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-black/[0.04] disabled:opacity-50"
+        className="rounded-md border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink hover:bg-black/[0.04] disabled:opacity-50"
       >
         {label}
       </button>
@@ -124,11 +124,11 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
     ) : null;
 
   return (
-    <section className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-      <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+    <section className="rounded-lg border border-line bg-white p-6">
+      <h3 className="font-heading text-sm font-bold text-ink">
         Possible duplicates{loading ? "" : ` (${findings.length})`}
       </h3>
-      <p className="mt-2 text-sm text-black/65">
+      <p className="mt-2 text-sm text-muted">
         Templates that look like the same device typed differently. Nothing is merged or removed
         until an admin chooses an action here.
       </p>
@@ -138,7 +138,7 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
           <SectionSkeleton label="Checking for duplicates" />
         </div>
       ) : findings.length === 0 ? (
-        <p className="mt-4 text-sm text-black/50">No possible duplicates found.</p>
+        <p className="mt-4 text-sm text-muted">No possible duplicates found.</p>
       ) : (
         <ul className="mt-4 space-y-3">
           {findings.map((finding) => (
@@ -146,12 +146,12 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
               {finding.kind === "placeholder" ? (
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="text-sm">
-                    <p className="font-semibold text-black">Placeholder template</p>
-                    <p className="mt-1 text-black/70">
+                    <p className="font-semibold text-ink">Placeholder template</p>
+                    <p className="mt-1 text-ink">
                       {finding.template.label} — make “{finding.template.manufacturer}”, model “
                       {finding.template.model}”
                     </p>
-                    <p className="mt-1 text-xs text-black/55">
+                    <p className="mt-1 text-xs text-muted">
                       {finding.template.assetCount === 0
                         ? "No assets use this template."
                         : `Used by ${plural(finding.template.assetCount, "asset")}. Edit the template to give it a real make and model.`}
@@ -173,7 +173,7 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
                 </div>
               ) : finding.kind === "manufacturer" ? (
                 <div>
-                  <p className="text-sm font-semibold text-black">Manufacturer spelled differently</p>
+                  <p className="text-sm font-semibold text-ink">Manufacturer spelled differently</p>
                   <fieldset className="mt-2 space-y-1 text-sm">
                     <legend className="sr-only">Spelling to keep</legend>
                     {finding.spellings.map((s) => (
@@ -186,8 +186,8 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
                           onChange={() => setChoices((c) => ({ ...c, [finding.key]: s.manufacturer }))}
                           className="accent-brand"
                         />
-                        <span className="font-medium text-black">{s.manufacturer}</span>
-                        <span className="text-xs text-black/55">
+                        <span className="font-medium text-ink">{s.manufacturer}</span>
+                        <span className="text-xs text-muted">
                           {plural(s.templateCount, "template")}, {plural(s.assetCount, "asset")}
                         </span>
                       </label>
@@ -202,7 +202,7 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm font-semibold text-black">Same device listed more than once</p>
+                  <p className="text-sm font-semibold text-ink">Same device listed more than once</p>
                   <fieldset className="mt-2 space-y-1 text-sm">
                     <legend className="sr-only">Template to keep</legend>
                     {finding.templates.map((t) => (
@@ -215,8 +215,8 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
                           onChange={() => setChoices((c) => ({ ...c, [finding.key]: t.id }))}
                           className="accent-brand"
                         />
-                        <span className="font-medium text-black">{t.label}</span>
-                        <span className="text-xs text-black/55">
+                        <span className="font-medium text-ink">{t.label}</span>
+                        <span className="text-xs text-muted">
                           {t.manufacturer} {t.model} · {plural(t.assetCount, "asset")}
                         </span>
                       </label>
@@ -235,7 +235,7 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
         </ul>
       )}
       {!loading && !canResolve && findings.length > 0 ? (
-        <p className="mt-3 text-xs text-black/55">Only an admin can merge or keep these.</p>
+        <p className="mt-3 text-xs text-muted">Only an admin can merge or keep these.</p>
       ) : null}
 
       {pending?.kind === "remove_placeholder" ? (

@@ -294,14 +294,14 @@ export function EditAssetModal({
         className="modal-panel max-h-[90vh] w-full max-w-xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-black/10 px-5 py-4">
+        <div className="border-b border-line px-5 py-4">
           <h2
             id="edit-asset-title"
-            className="font-heading text-lg font-bold uppercase tracking-wide text-black"
+            className="font-heading text-lg font-bold text-ink"
           >
             Edit asset
           </h2>
-          <p className="mt-1 text-xs text-black/60">
+          <p className="mt-1 text-xs text-muted">
             Update details and lifecycle status. Empty optional fields are cleared.
           </p>
         </div>
@@ -317,7 +317,7 @@ export function EditAssetModal({
           ) : null}
 
           {loading ? (
-            <p className="py-8 text-center text-sm text-black/55">Loading…</p>
+            <p className="py-8 text-center text-sm text-muted">Loading…</p>
           ) : loadError ? null : (
             <form onSubmit={submit} className="space-y-3">
               {saveError ? (
@@ -330,13 +330,13 @@ export function EditAssetModal({
               ) : null}
 
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   Club name
                 </label>
                 <select
                   value={clubId}
                   onChange={(e) => setClubId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 >
                   <option value="">— None —</option>
                   {clubs.map((c) => (
@@ -347,14 +347,14 @@ export function EditAssetModal({
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   Name
                 </label>
                 <input
                   value={assetName}
                   onChange={(e) => setAssetName(e.target.value)}
                   required
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 />
               </div>
               <TagInput
@@ -366,14 +366,14 @@ export function EditAssetModal({
                 hint="First tag is the primary category on reports. Add USB HID Magnetic Stripe Reader or Hardware as needed."
               />
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   Status
                 </label>
                 <select
                   value={statusId}
                   onChange={(e) => setStatusId(e.target.value)}
                   required
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 >
                   {statuses.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -383,24 +383,24 @@ export function EditAssetModal({
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   Reason (e.g. write-off)
                 </label>
                 <input
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   placeholder="Optional"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   Device template
                 </label>
                 <select
                   value={deviceTemplateId}
                   onChange={(e) => setDeviceTemplateId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 >
                   <option value="">None</option>
                   {templates.map((t) => (
@@ -415,71 +415,71 @@ export function EditAssetModal({
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-medium text-black/70">
+                  <label className="text-xs font-medium text-ink">
                     Manufacturer
                   </label>
                   <input
                     value={manufacturer}
                     onChange={(e) => setManufacturer(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-black/70">
+                  <label className="text-xs font-medium text-ink">
                     Model
                   </label>
                   <input
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   Serial
                 </label>
                 <input
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   Location
                 </label>
                 <input
                   value={deviceLocation}
                   onChange={(e) => setDeviceLocation(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   CPU
                 </label>
                 <input
                   value={processorName}
                   onChange={(e) => setProcessorName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-medium text-black/70">RAM</label>
+                  <label className="text-xs font-medium text-ink">RAM</label>
                   <input
                     value={systemRam}
                     onChange={(e) => setSystemRam(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-black/70">GPU</label>
+                  <label className="text-xs font-medium text-ink">GPU</label>
                   <input
                     value={systemGpu}
                     onChange={(e) => setSystemGpu(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   />
                 </div>
               </div>
@@ -501,19 +501,19 @@ export function EditAssetModal({
                 </div>
               ) : null}
 
-              <div className="rounded-lg border border-brand/20 bg-brand-muted/40 px-3 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+              <div className="rounded-lg border border-line bg-brand-muted/40 px-3 py-3">
+                <p className="text-xs font-bold text-muted">
                   Zoho Assist
                 </p>
                 {assistLinked ? (
                   <>
-                    <p className="mt-1 text-xs text-black/70">
+                    <p className="mt-1 text-xs text-ink">
                       Linked device:{" "}
-                      <span className="font-mono text-[11px] text-black/85">
+                      <span className="font-mono text-xs text-ink">
                         {zohoAssistDeviceId}
                       </span>
                       {assistDisplayName ? (
-                        <span className="text-black/55"> · {assistDisplayName}</span>
+                        <span className="text-muted"> · {assistDisplayName}</span>
                       ) : null}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -521,7 +521,7 @@ export function EditAssetModal({
                         type="button"
                         disabled={assistUnlinkBusy || assistLinkBusy || ipRefreshing}
                         onClick={() => void unlinkFromAssist()}
-                        className="rounded-lg border border-black/15 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-black/70 disabled:opacity-50"
+                        className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-bold text-ink disabled:opacity-50"
                       >
                         {assistUnlinkBusy ? "Unlinking…" : "Unlink Assist"}
                       </button>
@@ -529,7 +529,7 @@ export function EditAssetModal({
                   </>
                 ) : (
                   <>
-                    <p className="mt-1 text-xs leading-relaxed text-black/65">
+                    <p className="mt-1 text-xs leading-relaxed text-muted">
                       Link this unit to its unattended Assist device for live public IP
                       and GeoIP sync. Your <strong>serial number above is kept</strong>{" "}
                       as entered — use this when import failed due to a duplicate serial.
@@ -546,61 +546,61 @@ export function EditAssetModal({
               </div>
 
               {assistLinked ? (
-                <div className="rounded-lg border border-brand/20 bg-brand-muted/50 px-3 py-3">
+                <div className="rounded-lg border border-line bg-brand-muted/50 px-3 py-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+                      <p className="text-xs font-bold text-muted">
                         Public IP &amp; location (Assist + GeoIP)
                       </p>
-                      <p className="mt-1 font-mono text-sm text-black/90">
+                      <p className="mt-1 font-mono text-sm text-ink">
                         {publicIpDisplay || "—"}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-black/55">{geoLine}</p>
+                      <p className="mt-0.5 text-xs text-muted">{geoLine}</p>
                     </div>
                     <button
                       type="button"
                       disabled={ipRefreshing}
                       onClick={() => void refreshPublicIpFromAssist()}
-                      className="shrink-0 rounded-lg border border-brand bg-brand px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-brand-hover disabled:opacity-50"
+                      className="shrink-0 rounded-lg border border-brand bg-brand px-2 py-1.5 text-xs font-bold text-white hover:bg-brand-hover disabled:opacity-50"
                     >
                       {ipRefreshing ? "Refreshing…" : "Refresh from Assist"}
                     </button>
                   </div>
-                  <p className="mt-2 text-[10px] text-black/45">
+                  <p className="mt-2 text-xs text-muted">
                     Updated on import and by weekly sync. VPNs may change apparent
                     region.
                   </p>
                 </div>
               ) : null}
 
-              <div className="rounded-lg border border-black/10 bg-black/[0.02] px-3 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
+              <div className="rounded-lg border border-line bg-black/[0.02] px-3 py-3">
+                <p className="text-xs font-bold text-muted">
                   Acquisition & warranty
                 </p>
-                <p className="mt-1 text-[11px] text-black/50">
+                <p className="mt-1 text-xs text-muted">
                   Optional — improves procurement and age analytics on the dashboard.
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="text-xs font-medium text-black/70">
+                    <label className="text-xs font-medium text-ink">
                       Purchase date
                     </label>
                     <input
                       type="date"
                       value={purchaseDate}
                       onChange={(e) => setPurchaseDate(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-black/70">
+                    <label className="text-xs font-medium text-ink">
                       Warranty end
                     </label>
                     <input
                       type="date"
                       value={warrantyEndDate}
                       onChange={(e) => setWarrantyEndDate(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
@@ -610,7 +610,7 @@ export function EditAssetModal({
                 <button
                   type="submit"
                   disabled={saving}
-                  className="font-heading rounded-lg border-2 border-brand bg-brand px-4 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {saving ? "Saving…" : "Save"}
                 </button>
@@ -618,7 +618,7 @@ export function EditAssetModal({
                   type="button"
                   onClick={onClose}
                   disabled={saving}
-                  className="rounded-lg border border-black/15 px-4 py-2 text-xs font-medium text-black/70 hover:bg-black/5"
+                  className="rounded-lg border border-line px-4 py-2 text-xs font-medium text-ink hover:bg-black/5"
                 >
                   Cancel
                 </button>

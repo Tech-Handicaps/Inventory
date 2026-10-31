@@ -34,7 +34,7 @@ type EmailSettingsRow = {
 };
 
 const fieldClass =
-  "mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm";
+  "mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm";
 
 function mapApiToRow(j: EmailSettingsRow & { error?: string }): EmailSettingsRow {
   return {
@@ -186,60 +186,60 @@ export function EmailNotificationsSettingsSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+        <h2 className="font-heading text-sm font-bold text-ink">
           Email &amp; finance notifications
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-black/65">
+        <p className="mt-2 max-w-2xl text-sm text-muted">
           Choose <strong>Resend HTTP API</strong> or <strong>SMTP</strong> (e.g.
           Resend’s SMTP relay or Microsoft 365). When SMTP is selected, the app
           does not call the Resend REST API. Secrets stay in environment
           variables only.
         </p>
-        <div className="mt-4 rounded-xl border border-black/10 bg-black/[0.03] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black/55">
+        <div className="mt-4 rounded-lg border border-line bg-black/[0.03] p-4">
+          <p className="text-xs font-semibold text-muted">
             Environment status
           </p>
-          <ul className="mt-2 space-y-1.5 text-xs text-black/55">
+          <ul className="mt-2 space-y-1.5 text-xs text-muted">
             <li>
               Transport:{" "}
-              <strong className="text-black/80">
+              <strong className="text-ink">
                 {EMAIL_TRANSPORT_LABEL[data.emailTransport]}
               </strong>
             </li>
             <li>
               From address (one of{" "}
-              <code className="text-[11px]">SMTP_FROM</code>,{" "}
-              <code className="text-[11px]">EMAIL_FROM</code>,{" "}
-              <code className="text-[11px]">RESEND_FROM_EMAIL</code>):{" "}
-              <strong className="text-black/80">
+              <code className="text-xs">SMTP_FROM</code>,{" "}
+              <code className="text-xs">EMAIL_FROM</code>,{" "}
+              <code className="text-xs">RESEND_FROM_EMAIL</code>):{" "}
+              <strong className="text-ink">
                 {data.resendFromEmailConfigured ? "Set" : "Not set"}
               </strong>
             </li>
             <li>
               Resend API key (REST only):{" "}
-              <strong className="text-black/80">
+              <strong className="text-ink">
                 {data.resendApiKeyConfigured ? "Yes" : "No"}
               </strong>
             </li>
             <li>
               SMTP env (host + user + password):{" "}
-              <strong className="text-black/80">
+              <strong className="text-ink">
                 {data.smtpEnvConfigured ? "Yes" : "No"}
               </strong>
             </li>
             <li>
               Ready to send:{" "}
-              <strong className="text-black/80">
+              <strong className="text-ink">
                 {data.senderConfigured ? "Yes" : "No"}
               </strong>
               {blockedHint ? (
-                <span className="ml-1 text-black/45">({blockedHint})</span>
+                <span className="ml-1 text-muted">({blockedHint})</span>
               ) : null}
             </li>
             {data.resolvedFromPreview ? (
               <li>
                 From preview:{" "}
-                <code className="text-[11px] text-black/70">
+                <code className="text-xs text-ink">
                   {data.resolvedFromPreview}
                 </code>
               </li>
@@ -250,14 +250,14 @@ export function EmailNotificationsSettingsSection() {
 
       <form onSubmit={save} className="space-y-5">
         <fieldset className="space-y-2">
-          <legend className="text-xs font-medium text-black/70">
+          <legend className="text-xs font-medium text-ink">
             Delivery method
           </legend>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             {EMAIL_DELIVERY_OPTIONS.map((opt) => (
               <label
                 key={opt.id}
-                className="flex cursor-pointer items-start gap-2 rounded-lg border border-black/10 px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand/5"
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-line px-3 py-2.5 has-[:checked]:border-brand has-[:checked]:bg-brand/5"
               >
                 <input
                   type="radio"
@@ -268,9 +268,9 @@ export function EmailNotificationsSettingsSection() {
                   }
                   className="mt-1"
                 />
-                <span className="text-sm text-black/80">
+                <span className="text-sm text-ink">
                   <strong>{opt.title}</strong>
-                  <span className="mt-0.5 block text-xs text-black/50">
+                  <span className="mt-0.5 block text-xs text-muted">
                     {opt.detail}
                   </span>
                 </span>
@@ -290,7 +290,7 @@ export function EmailNotificationsSettingsSection() {
             }
             className="mt-1"
           />
-          <span className="text-sm text-black/80">
+          <span className="text-sm text-ink">
             <strong>Enable sending</strong> — when off, event records are still
             created but emails are skipped. Scheduled monthly reconcile also
             respects this switch.
@@ -308,7 +308,7 @@ export function EmailNotificationsSettingsSection() {
             }
             className="mt-1"
           />
-          <span className="text-sm text-black/80">
+          <span className="text-sm text-ink">
             Notify finance when hardware enters <strong>Assessment/Maintenance</strong>{" "}
             (triage, reloads, or light depot work before a repair)
           </span>
@@ -325,7 +325,7 @@ export function EmailNotificationsSettingsSection() {
             }
             className="mt-1"
           />
-          <span className="text-sm text-black/80">
+          <span className="text-sm text-ink">
             Notify finance when a <strong>repair</strong> is logged
           </span>
         </label>
@@ -341,7 +341,7 @@ export function EmailNotificationsSettingsSection() {
             }
             className="mt-1"
           />
-          <span className="text-sm text-black/80">
+          <span className="text-sm text-ink">
             Notify finance with a <strong>dispatch voucher</strong> (PDF attached)
             when hardware moves from <strong>Assessment/Maintenance</strong> or{" "}
             <strong>In repairs</strong> to <strong>Deployed</strong>
@@ -359,7 +359,7 @@ export function EmailNotificationsSettingsSection() {
             }
             className="mt-1"
           />
-          <span className="text-sm text-black/80">
+          <span className="text-sm text-ink">
             Notify finance when hardware moves from{" "}
             <strong>Assessment/Maintenance</strong> to <strong>Refurbished</strong>{" "}
             (booked into refurbishment, ready for redistribution)
@@ -377,13 +377,13 @@ export function EmailNotificationsSettingsSection() {
             }
             className="mt-1"
           />
-          <span className="text-sm text-black/80">
+          <span className="text-sm text-ink">
             Notify finance when an asset is <strong>written off</strong>
           </span>
         </label>
 
         <label className="block">
-          <span className="text-xs font-medium text-black/70">
+          <span className="text-xs font-medium text-ink">
             Finance emails
           </span>
           <textarea
@@ -396,16 +396,16 @@ export function EmailNotificationsSettingsSection() {
             className={`${fieldClass} min-h-[88px] font-mono text-[13px]`}
             placeholder={`Jane Smith <jane@handicaps.co.za>\nAudit Desk <audit@handicaps.co.za>\nfinance@handicaps.co.za`}
           />
-          <span className="mt-1 block text-xs text-black/50">
+          <span className="mt-1 block text-xs text-muted">
             One per line (or comma-separated). Prefer{" "}
-            <code className="text-[11px]">Name &lt;email@domain&gt;</code> so{" "}
-            <code className="text-[11px]">{"{name}"}</code> personalizes each
+            <code className="text-xs">Name &lt;email@domain&gt;</code> so{" "}
+            <code className="text-xs">{"{name}"}</code> personalizes each
             message. Plain emails fall back to the greeting name below.
           </span>
         </label>
 
         <label className="block">
-          <span className="text-xs font-medium text-black/70">
+          <span className="text-xs font-medium text-ink">
             Send test email to (optional)
           </span>
           <input
@@ -415,14 +415,14 @@ export function EmailNotificationsSettingsSection() {
             className={fieldClass}
             placeholder="your@email.com — overrides finance list for test only"
           />
-          <span className="mt-1 block text-xs text-black/50">
+          <span className="mt-1 block text-xs text-muted">
             If empty, the test goes to the <strong>first</strong> finance email
             above (after you have saved at least one address).
           </span>
         </label>
 
         <label className="block">
-          <span className="text-xs font-medium text-black/70">
+          <span className="text-xs font-medium text-ink">
             Fallback greeting name (optional)
           </span>
           <input
@@ -436,15 +436,15 @@ export function EmailNotificationsSettingsSection() {
             className={fieldClass}
             placeholder="Finance team"
           />
-          <span className="mt-1 block text-xs text-black/50">
+          <span className="mt-1 block text-xs text-muted">
             Used when a recipient has no display name. Default is{" "}
             <strong>Finance team</strong>. You can also use a template such as{" "}
-            <code className="text-[11px]">{"Hi {name},"}</code>.
+            <code className="text-xs">{"Hi {name},"}</code>.
           </span>
         </label>
 
         <label className="block">
-          <span className="text-xs font-medium text-black/70">
+          <span className="text-xs font-medium text-ink">
             From display name
           </span>
           <input
@@ -458,7 +458,7 @@ export function EmailNotificationsSettingsSection() {
         </label>
 
         <label className="block">
-          <span className="text-xs font-medium text-black/70">
+          <span className="text-xs font-medium text-ink">
             Reply-to (optional)
           </span>
           <input
@@ -472,15 +472,15 @@ export function EmailNotificationsSettingsSection() {
           />
         </label>
 
-        <section className="rounded-xl border border-black/10 bg-black/[0.02] p-4 space-y-4">
+        <section className="rounded-lg border border-line bg-black/[0.02] p-4 space-y-4">
           <div>
-            <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+            <h3 className="font-heading text-sm font-bold text-ink">
               Scheduled reports
             </h3>
-            <p className="mt-1 text-sm text-black/60">
+            <p className="mt-1 text-sm text-muted">
               Email the <strong>Monthly Stock Reconcile Report</strong> PDF to
               the finance list above. The report covers the <em>previous</em>{" "}
-              month (e.g. sent on 1 Aug → "For month ending July 2026"). Runs
+              month (e.g. sent on 1 Aug → “For month ending July 2026”). Runs
               daily at 06:00 UTC and only sends on the chosen day (once per
               month).
             </p>
@@ -499,13 +499,13 @@ export function EmailNotificationsSettingsSection() {
               }
               className="mt-1"
             />
-            <span className="text-sm text-black/80">
+            <span className="text-sm text-ink">
               Send <strong>Monthly Stock Reconcile</strong> automatically
             </span>
           </label>
 
           <label className="block max-w-xs">
-            <span className="text-xs font-medium text-black/70">
+            <span className="text-xs font-medium text-ink">
               Day of month (1–28)
             </span>
             <input
@@ -531,15 +531,15 @@ export function EmailNotificationsSettingsSection() {
           </label>
 
           {data.scheduleReconcileLastSentMonth ? (
-            <p className="text-xs text-black/50">
+            <p className="text-xs text-muted">
               Last official report month:{" "}
-              <strong className="text-black/70">
+              <strong className="text-ink">
                 {data.scheduleReconcileLastSentMonth}
               </strong>
               . This is the month printed on the PDF. A manual test is not recorded here.
             </p>
           ) : (
-            <p className="text-xs text-black/50">
+            <p className="text-xs text-muted">
               No scheduled send recorded yet.
             </p>
           )}
@@ -548,7 +548,7 @@ export function EmailNotificationsSettingsSection() {
             type="button"
             disabled={sendingReconcile || saving}
             onClick={() => void sendReconcileNow()}
-            className="rounded-lg border border-black/15 px-4 py-2 text-sm font-medium text-black/80 hover:bg-black/[0.04] disabled:opacity-50"
+            className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-black/[0.04] disabled:opacity-50"
           >
             {sendingReconcile
               ? "Sending reconcile…"
@@ -562,7 +562,7 @@ export function EmailNotificationsSettingsSection() {
           </p>
         ) : null}
         {message ? (
-          <p className="text-sm text-brand" role="status">
+          <p className="text-sm text-brand-deep" role="status">
             {message}
           </p>
         ) : null}
@@ -571,7 +571,7 @@ export function EmailNotificationsSettingsSection() {
           <button
             type="submit"
             disabled={saving}
-            className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white hover:bg-brand-hover disabled:opacity-50"
+            className="btn-primary"
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -579,7 +579,7 @@ export function EmailNotificationsSettingsSection() {
             type="button"
             disabled={testing || saving}
             onClick={() => void testSend()}
-            className="rounded-lg border border-black/15 px-5 py-2.5 text-sm font-medium text-black/80 hover:bg-black/[0.04] disabled:opacity-50"
+            className="rounded-lg border border-line px-5 py-2.5 text-sm font-medium text-ink hover:bg-black/[0.04] disabled:opacity-50"
           >
             {testing ? "Sending…" : "Send test email"}
           </button>

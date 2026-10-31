@@ -69,7 +69,7 @@ function DeskStatusPill({
       aria-live="polite"
     >
       <div
-        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-heading text-[10px] font-bold uppercase tracking-widest ${c.border}`}
+        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-heading text-xs font-bold ${c.border}`}
       >
         <span
           className={`h-2 w-2 shrink-0 rounded-full ${c.dot}`}
@@ -78,7 +78,7 @@ function DeskStatusPill({
         {c.label}
       </div>
       {hint ? (
-        <p className="max-w-[240px] text-[11px] leading-snug text-black/55">{hint}</p>
+        <p className="max-w-[240px] text-xs leading-snug text-muted">{hint}</p>
       ) : null}
     </div>
   );
@@ -304,10 +304,9 @@ export function ZohoDeskSettingsSection() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+          <h2 className="font-heading text-sm font-bold text-ink">
             Zoho Desk API
           </h2>
-          <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
         </div>
         <div className="flex shrink-0 justify-end">
           <DeskStatusPill status={headerStatus} hint={statusHint} />
@@ -327,31 +326,31 @@ export function ZohoDeskSettingsSection() {
         </div>
       ) : null}
 
-      <p className="text-sm leading-relaxed text-black/70">
+      <p className="text-sm leading-relaxed text-ink">
         Separate OAuth client from <strong>Zoho Assist</strong>. Register a client in the{" "}
         <a
           href="https://api-console.zoho.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-semibold text-brand underline"
+          className="font-semibold text-brand-deep underline"
         >
           Zoho API Console
         </a>{" "}
         with scopes{" "}
-        <code className="rounded bg-black/5 px-1 text-[11px]">
+        <code className="rounded bg-black/5 px-1 text-xs">
           Desk.tickets.ALL
         </code>
         ,{" "}
-        <code className="rounded bg-black/5 px-1 text-[11px]">Desk.basic.READ</code>
+        <code className="rounded bg-black/5 px-1 text-xs">Desk.basic.READ</code>
         {" "}
         (required for <strong>Test Desk API</strong>, which lists departments — without it
-        Zoho returns <code className="rounded bg-black/5 px-1 text-[11px]">SCOPE_MISMATCH</code>
+        Zoho returns <code className="rounded bg-black/5 px-1 text-xs">SCOPE_MISMATCH</code>
         ), and{" "}
-        <code className="rounded bg-black/5 px-1 text-[11px]">Desk.search.READ</code>
+        <code className="rounded bg-black/5 px-1 text-xs">Desk.search.READ</code>
         {" "}
         (required to look up tickets by their <strong>display number</strong>, e.g.{" "}
-        <code className="rounded bg-black/5 px-1 text-[11px]">1292</code>). Add the same scopes to this client in the Zoho API Console. Set the authorized redirect URI to{" "}
-        <code className="rounded bg-black/5 px-1 text-[11px]">
+        <code className="rounded bg-black/5 px-1 text-xs">1292</code>). Add the same scopes to this client in the Zoho API Console. Set the authorized redirect URI to{" "}
+        <code className="rounded bg-black/5 px-1 text-xs">
           {(appOrigin || "https://your-app.example").replace(/\/$/, "")}
           /api/settings/zoho-desk/callback
         </code>
@@ -364,11 +363,11 @@ export function ZohoDeskSettingsSection() {
 
       <form onSubmit={save} className="mt-6 space-y-4">
         <div>
-          <label className="text-xs font-medium text-black/70">Data center</label>
+          <label className="text-xs font-medium text-ink">Data center</label>
           <select
             value={dataCenter}
             onChange={(e) => setDataCenter(e.target.value)}
-            className="mt-1 w-full max-w-md rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className="mt-1 w-full max-w-md rounded-lg border border-line px-3 py-2 text-sm"
           >
             {ZOHO_DATA_CENTERS.map((d) => (
               <option key={d.value} value={d.value}>
@@ -378,7 +377,7 @@ export function ZohoDeskSettingsSection() {
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-black/70">
+          <label className="text-xs font-medium text-ink">
             Desk organization id <span className="text-red-600">*</span>
           </label>
           <input
@@ -386,11 +385,11 @@ export function ZohoDeskSettingsSection() {
             onChange={(e) => setOrgId(e.target.value)}
             autoComplete="off"
             placeholder="Required for API calls (orgId header)"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-black/70">
+          <label className="text-xs font-medium text-ink">
             Default department id (optional)
           </label>
           <input
@@ -398,22 +397,22 @@ export function ZohoDeskSettingsSection() {
             onChange={(e) => setDepartmentId(e.target.value)}
             autoComplete="off"
             placeholder="Leave blank to use first department from Desk"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-black/70">Client ID</label>
+          <label className="text-xs font-medium text-ink">Client ID</label>
           <input
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
             autoComplete="off"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-black/70">Client secret</label>
+          <label className="text-xs font-medium text-ink">Client secret</label>
           {meta?.hasClientSecret ? (
-            <p className="mt-1 text-xs text-black/55">
+            <p className="mt-1 text-xs text-muted">
               Stored: <span className="font-mono">{meta.clientSecretMasked}</span>
             </p>
           ) : null}
@@ -421,9 +420,9 @@ export function ZohoDeskSettingsSection() {
             value={clientSecret}
             onChange={(e) => setClientSecret(e.target.value)}
             autoComplete="new-password"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
           />
-          <label className="mt-2 flex items-center gap-2 text-xs text-black/70">
+          <label className="mt-2 flex items-center gap-2 text-xs text-ink">
             <input
               type="checkbox"
               checked={clearClientSecret}
@@ -433,9 +432,9 @@ export function ZohoDeskSettingsSection() {
           </label>
         </div>
         <div>
-          <label className="text-xs font-medium text-black/70">Refresh token</label>
+          <label className="text-xs font-medium text-ink">Refresh token</label>
           {meta?.hasRefreshToken ? (
-            <p className="mt-1 text-xs text-black/55">
+            <p className="mt-1 text-xs text-muted">
               Stored:{" "}
               <span className="font-mono">{meta.refreshTokenMasked}</span>
             </p>
@@ -445,9 +444,9 @@ export function ZohoDeskSettingsSection() {
             onChange={(e) => setRefreshToken(e.target.value)}
             rows={2}
             placeholder="Paste from Self Client with Desk scopes, or use Connect Zoho Desk"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-xs"
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-xs"
           />
-          <label className="mt-2 flex items-center gap-2 text-xs text-black/70">
+          <label className="mt-2 flex items-center gap-2 text-xs text-ink">
             <input
               type="checkbox"
               checked={clearRefreshToken}
@@ -461,7 +460,7 @@ export function ZohoDeskSettingsSection() {
           <button
             type="submit"
             disabled={saving}
-            className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+            className="btn-primary"
           >
             {saving ? "Saving…" : "Save Desk credentials"}
           </button>
@@ -469,7 +468,7 @@ export function ZohoDeskSettingsSection() {
             type="button"
             disabled={testing || !meta?.canTestApi}
             onClick={() => void runTest()}
-            className="font-heading rounded-lg border-2 border-brand bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-brand disabled:opacity-50"
+            className="btn-secondary"
           >
             {testing ? "Testing…" : "Test Desk API"}
           </button>
@@ -477,7 +476,7 @@ export function ZohoDeskSettingsSection() {
             type="button"
             disabled={oauthConnecting || !meta?.readyForOAuth}
             onClick={() => void connectZohoDesk()}
-            className="font-heading rounded-lg border-2 border-black bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-black transition-colors hover:bg-black/[0.04] disabled:opacity-50"
+            className="btn-secondary"
           >
             {oauthConnecting ? "Redirecting…" : "Connect Zoho Desk"}
           </button>
@@ -487,7 +486,7 @@ export function ZohoDeskSettingsSection() {
             Ready to create tickets from the hardware board (Log repair).
           </p>
         ) : (
-          <p className="text-xs text-black/55">
+          <p className="text-xs text-muted">
             Fill org id, client credentials, and refresh token to enable ticket creation.
           </p>
         )}
@@ -495,10 +494,10 @@ export function ZohoDeskSettingsSection() {
 
       {testResult ? (
         <div className="mt-6">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-black/70">
+          <h3 className="text-xs font-bold text-ink">
             API test response
           </h3>
-          <pre className="mt-2 max-h-96 overflow-auto rounded-lg border border-black/10 bg-black/[0.03] p-4 font-mono text-xs text-black/90">
+          <pre className="mt-2 max-h-96 overflow-auto rounded-lg border border-line bg-black/[0.03] p-4 font-mono text-xs text-ink">
             {testResult}
           </pre>
         </div>

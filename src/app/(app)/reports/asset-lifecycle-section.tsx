@@ -129,31 +129,31 @@ function AssetStageCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-xl border p-4 text-left transition ${
+      className={`w-full rounded-lg border p-4 text-left transition ${
         selected
           ? variant === "retired"
             ? "border-amber-400/60 bg-amber-50/80 ring-2 ring-amber-300/40"
             : "border-brand/50 bg-brand-muted/60 ring-2 ring-brand/25"
           : variant === "retired"
             ? "border-amber-200/80 bg-white hover:border-amber-300 hover:bg-amber-50/40"
-            : "border-brand/15 bg-white hover:border-brand/30 hover:bg-brand-muted/20"
+            : "border-line bg-white hover:border-brand/30 hover:bg-brand-muted/20"
       }`}
     >
-      <p className="font-heading text-sm font-bold text-black">{asset.assetName}</p>
+      <p className="font-heading text-sm font-bold text-ink">{asset.assetName}</p>
       {asset.serialNumber ? (
-        <p className="mt-0.5 text-xs text-black/55">S/N {asset.serialNumber}</p>
+        <p className="mt-0.5 text-xs text-muted">S/N {asset.serialNumber}</p>
       ) : null}
-      <p className="mt-2 text-xs font-medium text-black/70">{asset.status.label}</p>
+      <p className="mt-2 text-xs font-medium text-ink">{asset.status.label}</p>
       {updated ? (
-        <p className="mt-1 text-[10px] text-black/45">Last updated {updated}</p>
+        <p className="mt-1 text-xs text-muted">Last updated {updated}</p>
       ) : null}
       {variant === "retired" && asset.writeOffSummary ? (
         <div className="mt-2 space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900/70">
+          <p className="text-xs font-semibold text-amber-900/70">
             {asset.writeOffSummary.referenceNumber}
           </p>
           {asset.writeOffSummary.replacementRequested ? (
-            <p className="rounded-md bg-amber-100/80 px-2 py-1 text-[11px] text-amber-950">
+            <p className="rounded-md bg-amber-100/80 px-2 py-1 text-xs text-amber-950">
               Replacement requested
               {asset.writeOffSummary.replacementAssetName
                 ? `: ${asset.writeOffSummary.replacementAssetName}`
@@ -185,20 +185,20 @@ function ClubStageBlock({
 }) {
   const headerClass =
     variant === "retired"
-      ? "border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-white"
-      : "border-brand/20 bg-gradient-to-br from-brand-muted/70 to-white";
+      ? "border-amber-200/80 bg-amber-50"
+      : "border-line bg-white";
 
   return (
     <section
-      className={`overflow-hidden rounded-2xl border ${variant === "retired" ? "border-amber-200/80" : "border-brand/20"}`}
+      className={`overflow-hidden rounded-lg border ${variant === "retired" ? "border-amber-200/80" : "border-line"}`}
     >
       <header className={`border-b px-5 py-4 ${headerClass}`}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-heading text-xs font-bold uppercase tracking-[0.14em] text-black">
+            <h3 className="font-heading text-xs font-bold text-ink">
               {title}
             </h3>
-            <p className="mt-1 text-xs leading-relaxed text-black/55">{subtitle}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{subtitle}</p>
           </div>
           <span
             className={`funky-badge shrink-0 ${variant === "retired" ? "border-amber-300/60" : ""}`}
@@ -209,7 +209,7 @@ function ClubStageBlock({
       </header>
       <div className="space-y-3 p-4">
         {assets.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-black/10 bg-surface/50 px-4 py-8 text-center text-sm text-black/45">
+          <p className="rounded-lg border border-dashed border-line bg-surface/50 px-4 py-8 text-center text-sm text-muted">
             {emptyMessage}
           </p>
         ) : (
@@ -241,8 +241,8 @@ function TimelinePanel({
 }) {
   if (!asset) {
     return (
-      <div className="rounded-2xl border border-dashed border-black/12 bg-surface/40 px-6 py-10 text-center">
-        <p className="text-sm text-black/45">
+      <div className="rounded-lg border border-dashed border-black/12 bg-surface/40 px-6 py-10 text-center">
+        <p className="text-sm text-muted">
           Select a unit above to view its movement timeline.
         </p>
       </div>
@@ -251,7 +251,7 @@ function TimelinePanel({
 
   if (!auditAccess) {
     return (
-      <div className="rounded-2xl border border-dashed border-black/12 bg-surface/50 px-6 py-10 text-center text-sm text-black/50">
+      <div className="rounded-lg border border-dashed border-black/12 bg-surface/50 px-6 py-10 text-center text-sm text-muted">
         Movement timeline requires an admin role.
       </div>
     );
@@ -263,37 +263,37 @@ function TimelinePanel({
 
   if (timeline.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-black/15 bg-surface/50 px-6 py-10 text-sm text-black/55">
+      <div className="rounded-lg border border-dashed border-line bg-surface/50 px-6 py-10 text-sm text-muted">
         No audit entries for <strong>{asset.assetName}</strong> yet.
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-black/10 bg-white p-6">
-      <h3 className="font-heading text-xs font-bold uppercase tracking-[0.15em] text-black/45">
+    <div className="rounded-lg border border-line bg-white p-6">
+      <h3 className="font-heading text-xs font-bold text-muted">
         Movement timeline · {asset.assetName}
       </h3>
-      <p className="mt-1 text-xs text-black/50">
+      <p className="mt-1 text-xs text-muted">
         {timeline.length} event{timeline.length === 1 ? "" : "s"} · {asset.status.label}
       </p>
       <ol className="relative mt-5 space-y-0 border-l-2 border-brand/25 pl-6">
         {timeline.map((row) => (
           <li key={row.id} className="relative pb-6 last:pb-0">
             <span
-              className="absolute -left-[calc(0.5rem+5px)] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-brand bg-white shadow-sm"
+              className="absolute -left-[calc(0.5rem+5px)] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-brand bg-white"
               aria-hidden
             />
             <time
               dateTime={row.timestamp}
-              className="text-xs font-medium tabular-nums text-black/45"
+              className="text-xs font-medium tabular-nums text-muted"
             >
               {formatDateTime(row.timestamp)}
             </time>
-            <p className="mt-0.5 text-sm font-medium text-black">
+            <p className="mt-0.5 text-sm font-medium text-ink">
               {formatTransitionSummary(row)}
             </p>
-            <p className="text-[10px] uppercase tracking-wide text-black/40">
+            <p className="text-xs text-muted">
               {row.actionType}
             </p>
           </li>
@@ -427,12 +427,12 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
 
   return (
     <section id="lifecycle" className="section-card scroll-mt-6 overflow-hidden">
-      <div className="border-b border-brand/10 bg-gradient-to-r from-brand-muted/80 to-white px-6 py-5 sm:px-8">
+      <div className="border-b border-line bg-white px-6 py-5 sm:px-8">
         <p className="page-eyebrow">Club &amp; asset history</p>
-        <h2 className="font-heading mt-1 text-lg font-bold uppercase tracking-wide text-black">
+        <h2 className="font-heading mt-1 text-lg font-bold text-ink">
           Asset lifecycle / movement
         </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-black/65">
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
           {clubMode ? (
             <>
               Viewing <strong>{selectedClubName}</strong> — active assignments
@@ -450,7 +450,7 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
 
       <div className="space-y-6 p-6 sm:p-8">
         <div className="max-w-md">
-          <label htmlFor="lifecycle-club" className="text-xs font-medium text-black/70">
+          <label htmlFor="lifecycle-club" className="text-xs font-medium text-ink">
             Club
           </label>
           <select
@@ -515,7 +515,7 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
               <div>
                 <label
                   htmlFor="lifecycle-asset-search"
-                  className="text-xs font-medium text-black/70"
+                  className="text-xs font-medium text-ink"
                 >
                   Search assets
                 </label>
@@ -531,7 +531,7 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
               <div>
                 <label
                   htmlFor="lifecycle-asset"
-                  className="text-xs font-medium text-black/70"
+                  className="text-xs font-medium text-ink"
                 >
                   Select asset
                 </label>

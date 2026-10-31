@@ -1,6 +1,6 @@
 import { View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 
-const brandGreen = "#139d4b";
+const brandGreen = "#469b56";
 
 const styles = StyleSheet.create({
   logoWrap: {

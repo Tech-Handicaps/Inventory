@@ -63,14 +63,14 @@ export function ConfirmDeleteDialog({
         onClick={busy ? undefined : onCancel}
       />
       <div className="relative w-full max-w-md rounded-lg border border-[#e5e9ec] bg-white p-5">
-        <h2 id="confirm-delete-title" className="text-base font-semibold text-black">
+        <h2 id="confirm-delete-title" className="text-base font-semibold text-ink">
           {title}
         </h2>
-        <div id="confirm-delete-body" className="mt-3 space-y-2 text-sm text-black/75">
+        <div id="confirm-delete-body" className="mt-3 space-y-2 text-sm text-ink">
           <p>
-            <strong className="text-black">{itemName}</strong>
+            <strong className="text-ink">{itemName}</strong>
             {itemDetail ? (
-              <span className="mt-0.5 block font-mono text-xs text-black/60">{itemDetail}</span>
+              <span className="mt-0.5 block font-mono text-xs text-muted">{itemDetail}</span>
             ) : null}
           </p>
           <p>{consequence}</p>
@@ -81,7 +81,7 @@ export function ConfirmDeleteDialog({
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="rounded-md border border-black/15 bg-white px-4 py-2 text-sm font-medium text-black hover:bg-black/[0.04] disabled:opacity-50"
+            className="rounded-md border border-line bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-black/[0.04] disabled:opacity-50"
           >
             Cancel
           </button>

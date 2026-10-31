@@ -25,7 +25,7 @@ export type DispatchVoucherPdfFields = {
   dataSource: string;
 };
 
-const brandGreen = "#139d4b";
+const brandGreen = "#469b56";
 const black = "#111111";
 const muted = "#555555";
 

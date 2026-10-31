@@ -153,11 +153,11 @@ export function WriteOffModal({
       >
         <h2
           id="write-off-title"
-          className="font-heading text-lg font-bold uppercase tracking-wide text-black"
+          className="font-heading text-lg font-bold text-ink"
         >
           Write off (cannot repair)
         </h2>
-        <p className="mt-1 text-sm text-black/65">
+        <p className="mt-1 text-sm text-muted">
           {asset.assetName}
           {asset.serialNumber ? (
             <span className="ml-2 font-mono text-xs">
@@ -184,7 +184,7 @@ export function WriteOffModal({
 
         <form onSubmit={submit} className="mt-4 space-y-4">
           <label className="block">
-            <span className="text-xs font-medium text-black/70">
+            <span className="text-xs font-medium text-ink">
               Serial number
             </span>
             <input
@@ -192,17 +192,17 @@ export function WriteOffModal({
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value)}
               autoComplete="off"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
               placeholder="Confirm or enter serial"
             />
-            <p className="mt-1 text-[11px] text-black/50">
+            <p className="mt-1 text-xs text-muted">
               Confirm the unit being written off. Correct only if the registry
               serial was wrong.
             </p>
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-black/70">
+            <span className="text-xs font-medium text-ink">
               Xero fixed asset number
             </span>
             <input
@@ -210,17 +210,17 @@ export function WriteOffModal({
               value={xeroFixedAssetNumber}
               onChange={(e) => setXeroFixedAssetNumber(e.target.value)}
               autoComplete="off"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
               placeholder="From finance (written-off unit)"
             />
-            <p className="mt-1 text-[11px] text-black/50">
+            <p className="mt-1 text-xs text-muted">
               Enter the Xero fixed asset number for this unit when finance
               provides it.
             </p>
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-black/70">
+            <span className="text-xs font-medium text-ink">
               Write-off reason <span className="text-red-600">*</span>
             </span>
             <textarea
@@ -228,7 +228,7 @@ export function WriteOffModal({
               onChange={(e) => setReason(e.target.value)}
               rows={4}
               required
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
               placeholder="e.g. Motherboard failure — uneconomical to repair; physical damage beyond depot scope"
             />
           </label>
@@ -240,18 +240,18 @@ export function WriteOffModal({
               onChange={(e) => setReplacementRequested(e.target.checked)}
               className="mt-1"
             />
-            <span className="text-sm text-black/80">
+            <span className="text-sm text-ink">
               Request a <strong>replacement</strong> unit for this site / club
             </span>
           </label>
 
           {replacementRequested ? (
-            <div className="space-y-3 rounded-lg border border-black/10 bg-black/[0.02] p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-black/55">
+            <div className="space-y-3 rounded-lg border border-line bg-black/[0.02] p-3">
+              <p className="text-xs font-semibold text-muted">
                 Replacement unit
               </p>
               <label className="block">
-                <span className="text-xs font-medium text-black/70">
+                <span className="text-xs font-medium text-ink">
                   Asset name <span className="text-red-600">*</span>
                 </span>
                 <input
@@ -259,12 +259,12 @@ export function WriteOffModal({
                   value={replacementAssetName}
                   onChange={(e) => setReplacementAssetName(e.target.value)}
                   required={replacementRequested}
-                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
                   placeholder="e.g. Posiflex PS-3000 PS3316-E"
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-black/70">
+                <span className="text-xs font-medium text-ink">
                   Asset type <span className="text-red-600">*</span>
                 </span>
                 <input
@@ -272,12 +272,12 @@ export function WriteOffModal({
                   value={replacementAssetType}
                   onChange={(e) => setReplacementAssetType(e.target.value)}
                   required={replacementRequested}
-                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
                   placeholder="e.g. AIO, POS, Laptop"
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-black/70">
+                <span className="text-xs font-medium text-ink">
                   Make / model <span className="text-red-600">*</span>
                 </span>
                 <input
@@ -285,12 +285,12 @@ export function WriteOffModal({
                   value={replacementMakeModel}
                   onChange={(e) => setReplacementMakeModel(e.target.value)}
                   required={replacementRequested}
-                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
                   placeholder="e.g. Posiflex · PS3316-E"
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-black/70">
+                <span className="text-xs font-medium text-ink">
                   Serial number <span className="text-red-600">*</span>
                 </span>
                 <input
@@ -299,12 +299,12 @@ export function WriteOffModal({
                   onChange={(e) => setReplacementSerialNumber(e.target.value)}
                   required={replacementRequested}
                   autoComplete="off"
-                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 font-mono text-sm"
+                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 font-mono text-sm"
                   placeholder="Replacement unit serial"
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-black/70">
+                <span className="text-xs font-medium text-ink">
                   Xero fixed asset number
                 </span>
                 <input
@@ -314,23 +314,23 @@ export function WriteOffModal({
                     setReplacementXeroFixedAssetNumber(e.target.value)
                   }
                   autoComplete="off"
-                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 font-mono text-sm"
+                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 font-mono text-sm"
                   placeholder="From finance (replacement unit)"
                 />
-                <p className="mt-1 text-[11px] text-black/50">
+                <p className="mt-1 text-xs text-muted">
                   Enter when finance provides the replacement unit’s Xero fixed
                   asset number.
                 </p>
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-black/70">
+                <span className="text-xs font-medium text-ink">
                   Replacement notes (optional)
                 </span>
                 <textarea
                   value={replacementNotes}
                   onChange={(e) => setReplacementNotes(e.target.value)}
                   rows={2}
-                  className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
                   placeholder="Urgency, same model vs upgrade, club context…"
                 />
               </label>
@@ -347,14 +347,14 @@ export function WriteOffModal({
             <button
               type="submit"
               disabled={saving}
-              className="font-heading rounded-lg bg-red-700 px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-red-800 disabled:opacity-50"
+              className="font-heading rounded-lg bg-red-700 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-800 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Confirm write-off"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-black/15 px-5 py-2.5 text-sm font-medium text-black/80 hover:bg-black/[0.04]"
+              className="rounded-lg border border-line px-5 py-2.5 text-sm font-medium text-ink hover:bg-black/[0.04]"
             >
               Cancel
             </button>

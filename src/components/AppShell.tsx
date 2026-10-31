@@ -4,19 +4,22 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
-  LayoutGrid,
   Menu,
   Package,
   FileText,
+  Plus,
   Settings,
+  SquareKanban,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { HandicaperProvider } from "@/components/HandicaperProvider";
 import { useAppRole } from "@/components/RoleProvider";
 import { useToast } from "@/components/ToastProvider";
 import { isNavLinkVisible, hasFullNavAccess, type NavKey } from "@/lib/auth/nav-access";
+import { ADD_HARDWARE_EVENT, ADD_HARDWARE_HREF } from "@/lib/client/add-hardware";
 import { createClient } from "@/lib/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -37,24 +40,9 @@ const NAV_ITEMS: {
   label: string;
   icon: LucideIcon;
 }[] = [
-  {
-    href: "/inventory",
-    key: "inventory",
-    label: "Hardware board",
-    icon: LayoutGrid,
-  },
-  {
-    href: "/dashboard",
-    key: "dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/assets",
-    key: "assets",
-    label: "All assets",
-    icon: Package,
-  },
+  { href: "/inventory", key: "inventory", label: "Hardware board", icon: SquareKanban },
+  { href: "/dashboard", key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/assets", key: "assets", label: "All assets", icon: Package },
   { href: "/reports", key: "reports", label: "Reports", icon: FileText },
   { href: "/settings", key: "settings", label: "Settings", icon: Settings },
 ];
@@ -91,18 +79,11 @@ function SidebarNav({
             key={item.key}
             href={item.href}
             onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
             className={`nav-link ${active ? "nav-link-active" : "nav-link-inactive"}`}
           >
-            <span className="nav-icon-pill">
-              <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            </span>
+            <Icon className="h-5 w-5 shrink-0" aria-hidden />
             <span className="truncate">{item.label}</span>
-            {active ? (
-              <span
-                className="ml-auto h-2 w-2 shrink-0 rounded-full bg-brand shadow-[0_0_0_3px_rgba(19,157,75,0.25)]"
-                aria-hidden
-              />
-            ) : null}
           </Link>
         );
       })}
@@ -158,23 +139,19 @@ function SidebarUser({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <div className="border-t border-brand/10 px-4 py-4">
+    <div className="border-t border-white/10 px-4 py-4">
       {loadError ? (
-        <p className="mb-2 rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
+        <p className="mb-2 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
           Could not load role — refresh or sign in again
         </p>
       ) : null}
-      {email ? (
-        <p className="truncate text-xs font-medium text-black/55" title={email}>
-          {email}
-        </p>
-      ) : (
-        <p className="text-xs text-black/40">Signed in</p>
-      )}
+      <p className="truncate text-xs font-medium text-white/75" title={email ?? undefined}>
+        {email ?? "Signed in"}
+      </p>
       <button
         type="button"
         onClick={() => void signOut()}
-        className="font-heading mt-2.5 text-xs font-bold uppercase tracking-wide text-brand transition hover:text-brand-hover hover:underline"
+        className="mt-2 text-sm font-medium text-white hover:text-brand-hover hover:underline"
       >
         Sign out
       </button>
@@ -189,31 +166,14 @@ function SidebarPanel({
   current?: AppShellCurrent;
   onNavigate?: () => void;
 }) {
-  const { role, loading } = useAppRole();
-  const subtitle =
-    role === "reports_only" && !loading
-      ? "PDF reports and downloads"
-      : "Stock · repairs · refurbishment";
-
   return (
-    <div className="sidebar-shell relative flex h-full flex-col">
-      <div className="sidebar-brand-stripe" aria-hidden />
-      <div className="border-b border-brand/10 px-4 py-5 pl-5">
-        <Link href="/inventory" onClick={onNavigate} className="block" title="Hardware board (home)">
-          <BrandLogo className="h-9 w-auto" priority={current === "inventory"} />
+    <div className="sidebar-shell flex h-full flex-col">
+      <div className="px-5 pb-4 pt-6">
+        <Link href="/inventory" onClick={onNavigate} className="block w-40" title="Hardware board (home)">
+          <BrandLogo onDark className="h-auto w-40" priority />
         </Link>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <p className="font-heading text-[10px] font-bold uppercase tracking-[0.18em] text-black">
-            Hardware inventory
-          </p>
-          <span className="funky-badge">
-            <span className="funky-badge-dot" aria-hidden />
-            Live
-          </span>
-        </div>
-        <p className="mt-1 text-[11px] leading-snug text-black/50">{subtitle}</p>
       </div>
-      <div className="flex-1 overflow-y-auto py-3">
+      <div className="flex-1 overflow-y-auto py-2">
         <SidebarNav current={current} onNavigate={onNavigate} />
       </div>
       <SidebarUser onNavigate={onNavigate} />
@@ -221,8 +181,43 @@ function SidebarPanel({
   );
 }
 
+function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
+  const { role } = useAppRole();
+  const pathname = usePathname();
+  const canUseAssets = role !== "reports_only";
+
+  return (
+    <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-white px-4 py-3 lg:px-6">
+      <button
+        type="button"
+        onClick={onOpenMenu}
+        className="rounded-lg border border-line p-2 text-ink lg:hidden"
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" aria-hidden />
+      </button>
+      <div className="min-w-0 flex-1">{canUseAssets ? <GlobalSearch /> : null}</div>
+      {canUseAssets ? (
+        <Link
+          href={ADD_HARDWARE_HREF}
+          className="btn-primary shrink-0"
+          aria-label="Add hardware"
+          onClick={(e) => {
+            if (!pathname.startsWith("/inventory")) return;
+            e.preventDefault();
+            window.dispatchEvent(new Event(ADD_HARDWARE_EVENT));
+          }}
+        >
+          <Plus className="h-5 w-5" aria-hidden />
+          <span className="hidden sm:inline">Add hardware</span>
+        </Link>
+      ) : null}
+    </header>
+  );
+}
+
 /**
- * App chrome: icon sidebar (desktop) + drawer (mobile). Active item from pathname.
+ * App chrome: charcoal sidebar (desktop) or drawer (mobile), plus the top bar.
  */
 export function AppShell({ children }: Props) {
   const pathname = usePathname();
@@ -241,59 +236,37 @@ export function AppShell({ children }: Props) {
   return (
     <HandicaperProvider>
       <div className="min-h-screen lg:flex">
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-brand/10 lg:block">
-        <SidebarPanel current={current} />
-      </aside>
+        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 lg:block">
+          <SidebarPanel current={current} />
+        </aside>
 
-      {/* Mobile drawer */}
-      {open ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal>
-          <button
-            type="button"
-            className="modal-overlay absolute inset-0"
-            aria-label="Close menu"
-            onClick={() => setOpen(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(100%,18rem)] flex-col shadow-2xl">
-            <div className="absolute right-3 top-3 z-10">
+        {open ? (
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal aria-label="Menu">
+            <button
+              type="button"
+              className="modal-overlay absolute inset-0"
+              aria-label="Close menu"
+              onClick={() => setOpen(false)}
+            />
+            <aside className="absolute inset-y-0 left-0 flex w-[min(100%,18rem)] flex-col">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-xl bg-white/95 p-2 text-black/70 shadow-md ring-1 ring-brand/10"
+                className="absolute right-3 top-3 z-10 rounded-lg p-2 text-white/80 hover:text-white"
                 aria-label="Close menu"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden />
               </button>
-            </div>
-            <SidebarPanel
-              current={current}
-              onNavigate={() => setOpen(false)}
-            />
-          </aside>
-        </div>
-      ) : null}
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-brand/10 bg-white/80 px-4 py-3 backdrop-blur-md lg:hidden">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="rounded-xl border border-brand/15 bg-brand-muted/40 p-2 text-brand-hover"
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="font-heading truncate text-[10px] font-bold uppercase tracking-[0.16em] text-black">
-              Hardware inventory
-            </p>
+              <SidebarPanel current={current} onNavigate={() => setOpen(false)} />
+            </aside>
           </div>
-          <BrandLogo className="h-7 w-auto" />
-        </header>
-        <div className="app-canvas min-w-0 flex-1">{children}</div>
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TopBar onOpenMenu={() => setOpen(true)} />
+          <div className="app-canvas min-w-0 flex-1">{children}</div>
+        </div>
       </div>
-    </div>
     </HandicaperProvider>
   );
 }

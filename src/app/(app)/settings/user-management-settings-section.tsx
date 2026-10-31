@@ -37,7 +37,7 @@ async function readError(res: Response): Promise<string> {
 }
 
 const fieldClass =
-  "mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm";
+  "mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm";
 
 export function UserManagementSettingsSection() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -298,10 +298,10 @@ export function UserManagementSettingsSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+        <h2 className="font-heading text-sm font-bold text-ink">
           Create user
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-black/65">
+        <p className="mt-2 max-w-2xl text-sm text-muted">
           Capture who the account belongs to (name and surname), plus login
           username and email. Display names are used for personalized finance
           emails (<code className="rounded bg-black/[0.06] px-1 text-xs">{"{name}"}</code>
@@ -318,7 +318,7 @@ export function UserManagementSettingsSection() {
           className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2"
         >
           <label className="block">
-            <span className="text-xs font-medium text-black/70">First name</span>
+            <span className="text-xs font-medium text-ink">First name</span>
             <input
               type="text"
               name="firstName"
@@ -332,7 +332,7 @@ export function UserManagementSettingsSection() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-black/70">Surname</span>
+            <span className="text-xs font-medium text-ink">Surname</span>
             <input
               type="text"
               name="lastName"
@@ -346,7 +346,7 @@ export function UserManagementSettingsSection() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-black/70">Username</span>
+            <span className="text-xs font-medium text-ink">Username</span>
             <input
               type="text"
               name="username"
@@ -362,7 +362,7 @@ export function UserManagementSettingsSection() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-black/70">Email</span>
+            <span className="text-xs font-medium text-ink">Email</span>
             <input
               type="email"
               name="email"
@@ -375,7 +375,7 @@ export function UserManagementSettingsSection() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-black/70">Password</span>
+            <span className="text-xs font-medium text-ink">Password</span>
             <PasswordInput
               name="password"
               autoComplete="new-password"
@@ -387,7 +387,7 @@ export function UserManagementSettingsSection() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-black/70">
+            <span className="text-xs font-medium text-ink">
               Confirm password
             </span>
             <PasswordInput
@@ -401,7 +401,7 @@ export function UserManagementSettingsSection() {
             />
           </label>
           <label className="block sm:col-span-2">
-            <span className="text-xs font-medium text-black/70">Role</span>
+            <span className="text-xs font-medium text-ink">Role</span>
             <select
               value={createRole}
               onChange={(e) => setCreateRole(e.target.value as AssignableRole)}
@@ -413,7 +413,7 @@ export function UserManagementSettingsSection() {
                 </option>
               ))}
             </select>
-            <p className="mt-1.5 text-xs text-black/55">
+            <p className="mt-1.5 text-xs text-muted">
               {roleDescription(createRole)}
             </p>
           </label>
@@ -421,7 +421,7 @@ export function UserManagementSettingsSection() {
             <button
               type="submit"
               disabled={saving}
-              className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+              className="btn-primary"
             >
               {saving ? "Working…" : "Create user"}
             </button>
@@ -433,13 +433,13 @@ export function UserManagementSettingsSection() {
         <button
           type="button"
           onClick={() => setShowInvite((v) => !v)}
-          className="text-sm font-medium text-brand hover:underline"
+          className="text-sm font-medium text-brand-deep hover:underline"
         >
           {showInvite ? "Hide email invite" : "Invite by email instead"}
         </button>
         {showInvite ? (
           <div className="mt-3">
-            <p className="max-w-2xl text-sm text-black/65">
+            <p className="max-w-2xl text-sm text-muted">
               Sends a Supabase invite email when the address is new. If the user
               already exists, their role is updated instead. After they accept,
               use <strong>Edit profile</strong> to set username, first name, and
@@ -450,7 +450,7 @@ export function UserManagementSettingsSection() {
               className="mt-3 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
             >
               <label className="block min-w-0 flex-1">
-                <span className="text-xs font-medium text-black/70">Email</span>
+                <span className="text-xs font-medium text-ink">Email</span>
                 <input
                   type="email"
                   name="inviteEmail"
@@ -463,7 +463,7 @@ export function UserManagementSettingsSection() {
                 />
               </label>
               <label className="block w-full sm:w-48">
-                <span className="text-xs font-medium text-black/70">Role</span>
+                <span className="text-xs font-medium text-ink">Role</span>
                 <select
                   value={inviteRole}
                   onChange={(e) =>
@@ -481,7 +481,7 @@ export function UserManagementSettingsSection() {
               <button
                 type="submit"
                 disabled={saving}
-                className="font-heading rounded-lg border border-brand/40 bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-brand-hover transition-colors hover:bg-brand-muted disabled:opacity-50"
+                className="font-heading rounded-lg border border-brand/40 bg-white px-5 py-2.5 text-sm font-bold text-brand-deep transition-colors hover:bg-brand-muted disabled:opacity-50"
               >
                 {saving ? "Working…" : "Invite / update"}
               </button>
@@ -506,19 +506,19 @@ export function UserManagementSettingsSection() {
         </div>
       ) : null}
       {message ? (
-        <p className="text-sm text-brand" role="status">
+        <p className="text-sm text-brand-deep" role="status">
           {message}
         </p>
       ) : null}
 
       <div>
-        <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+        <h2 className="font-heading text-sm font-bold text-ink">
           Users
         </h2>
-        <div className="mt-3 overflow-x-auto rounded-lg border border-black/10">
+        <div className="mt-3 overflow-x-auto rounded-lg border border-line">
           <table className="w-full min-w-[900px] text-sm">
             <thead>
-              <tr className="border-b border-black/10 bg-black/[0.03] text-left">
+              <tr className="border-b border-line bg-black/[0.03] text-left">
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Username</th>
                 <th className="px-4 py-3 font-medium">Email</th>
@@ -531,7 +531,7 @@ export function UserManagementSettingsSection() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-b border-black/5">
+                <tr key={row.id} className="border-b border-line">
                   <td className="px-4 py-2.5">
                     {editingId === row.id ? (
                       <div className="flex min-w-[12rem] flex-col gap-1.5">
@@ -539,7 +539,7 @@ export function UserManagementSettingsSection() {
                           type="text"
                           value={editFirstName}
                           onChange={(e) => setEditFirstName(e.target.value)}
-                          className="w-full rounded border border-black/15 px-2 py-1.5 text-xs"
+                          className="w-full rounded border border-line px-2 py-1.5 text-xs"
                           placeholder="First name"
                           autoComplete="off"
                           maxLength={60}
@@ -549,7 +549,7 @@ export function UserManagementSettingsSection() {
                           type="text"
                           value={editLastName}
                           onChange={(e) => setEditLastName(e.target.value)}
-                          className="w-full rounded border border-black/15 px-2 py-1.5 text-xs"
+                          className="w-full rounded border border-line px-2 py-1.5 text-xs"
                           placeholder="Surname"
                           autoComplete="off"
                           maxLength={60}
@@ -557,11 +557,11 @@ export function UserManagementSettingsSection() {
                         />
                       </div>
                     ) : row.displayName ? (
-                      <span className="font-medium text-black/85">
+                      <span className="font-medium text-ink">
                         {row.displayName}
                       </span>
                     ) : (
-                      <span className="text-black/40">—</span>
+                      <span className="text-muted">—</span>
                     )}
                   </td>
                   <td className="px-4 py-2.5 font-mono text-xs">
@@ -570,7 +570,7 @@ export function UserManagementSettingsSection() {
                         type="text"
                         value={editUsername}
                         onChange={(e) => setEditUsername(e.target.value)}
-                        className="w-full min-w-[7rem] rounded border border-black/15 px-2 py-1.5 font-mono text-xs"
+                        className="w-full min-w-[7rem] rounded border border-line px-2 py-1.5 font-mono text-xs"
                         placeholder="username"
                         autoComplete="off"
                         minLength={3}
@@ -581,7 +581,7 @@ export function UserManagementSettingsSection() {
                     ) : row.username ? (
                       row.username
                     ) : (
-                      <span className="text-black/40">—</span>
+                      <span className="text-muted">—</span>
                     )}
                   </td>
                   <td className="px-4 py-2.5">
@@ -590,7 +590,7 @@ export function UserManagementSettingsSection() {
                         type="email"
                         value={editEmail}
                         onChange={(e) => setEditEmail(e.target.value)}
-                        className="w-full min-w-[10rem] rounded border border-black/15 px-2 py-1.5 text-xs"
+                        className="w-full min-w-[10rem] rounded border border-line px-2 py-1.5 text-xs"
                         placeholder="email@example.com"
                         autoComplete="off"
                         aria-label={`Email for ${row.username ?? row.id}`}
@@ -599,15 +599,15 @@ export function UserManagementSettingsSection() {
                       row.email
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-black/80">
+                  <td className="px-4 py-2.5 text-ink">
                     {roleLabel(row.role)}
                   </td>
-                  <td className="px-4 py-2.5 text-black/55 tabular-nums">
+                  <td className="px-4 py-2.5 text-muted tabular-nums">
                     {formatDateTime(row.lastSignInAt)}
                   </td>
                   <td className="px-4 py-2">
                     {row.readOnly ? (
-                      <span className="text-xs text-black/45">Protected</span>
+                      <span className="text-xs text-muted">Protected</span>
                     ) : editingId === row.id ? (
                       <div className="flex flex-wrap gap-1.5">
                         <button
@@ -622,7 +622,7 @@ export function UserManagementSettingsSection() {
                           type="button"
                           disabled={saving}
                           onClick={cancelEditProfile}
-                          className="rounded border border-black/15 bg-white px-2.5 py-1 text-xs font-medium text-black/70 hover:bg-black/[0.04] disabled:opacity-50"
+                          className="rounded border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-black/[0.04] disabled:opacity-50"
                         >
                           Cancel
                         </button>
@@ -632,7 +632,7 @@ export function UserManagementSettingsSection() {
                         type="button"
                         disabled={saving || editingId !== null}
                         onClick={() => startEditProfile(row)}
-                        className="rounded border border-black/15 bg-white px-2.5 py-1 text-xs font-medium text-black/70 hover:bg-black/[0.04] disabled:opacity-50"
+                        className="rounded border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-black/[0.04] disabled:opacity-50"
                       >
                         Edit profile
                       </button>
@@ -640,11 +640,11 @@ export function UserManagementSettingsSection() {
                   </td>
                   <td className="px-4 py-2">
                     {row.readOnly ? (
-                      <span className="text-xs text-black/45">—</span>
+                      <span className="text-xs text-muted">—</span>
                     ) : (
                       <select
                         aria-label={`Role for ${row.email}`}
-                        className="w-full max-w-[220px] rounded border border-black/15 bg-white px-2 py-1.5 text-xs"
+                        className="w-full max-w-[220px] rounded border border-line bg-white px-2 py-1.5 text-xs"
                         value={
                           ASSIGNABLE_ROLES.includes(row.role as AssignableRole)
                             ? row.role
@@ -667,7 +667,7 @@ export function UserManagementSettingsSection() {
                   </td>
                   <td className="px-4 py-2">
                     {row.readOnly ? (
-                      <span className="text-xs text-black/45">Protected</span>
+                      <span className="text-xs text-muted">Protected</span>
                     ) : (
                       <button
                         type="button"
@@ -677,7 +677,7 @@ export function UserManagementSettingsSection() {
                         }
                         className={`rounded px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
                           row.disabled
-                            ? "border border-black/15 bg-white text-black/70 hover:bg-black/[0.04]"
+                            ? "border border-line bg-white text-ink hover:bg-black/[0.04]"
                             : "bg-black text-white hover:bg-black/85"
                         }`}
                       >
@@ -690,7 +690,7 @@ export function UserManagementSettingsSection() {
             </tbody>
           </table>
           {rows.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-black/45">
+            <p className="px-4 py-8 text-center text-sm text-muted">
               No users returned.
             </p>
           ) : null}

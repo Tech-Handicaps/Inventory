@@ -50,11 +50,11 @@ export function LegacyMonthEndSection() {
 
   return (
     <section id="prior-months" className="scroll-mt-6 space-y-4">
-      <header className="border-b border-black/10 pb-4">
-        <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+      <header className="border-b border-line pb-4">
+        <h2 className="font-heading text-lg font-bold text-ink">
           Prior company month-end stock
         </h2>
-        <p className="mt-1 max-w-3xl text-sm text-black/60">
+        <p className="mt-1 max-w-3xl text-sm text-muted">
           Quantity stock takes from the previous process, October 2025 through
           March 2026. October, November, and December come from the workbooks.
           January, February, and March repeat the December count. April is not
@@ -69,14 +69,14 @@ export function LegacyMonthEndSection() {
       ) : months === null ? (
         <SectionSkeleton label="Loading month-end archive" />
       ) : months.length === 0 ? (
-        <p className="text-sm text-black/60">
+        <p className="text-sm text-muted">
           No prior month-end stock has been imported yet.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-lg border border-line bg-white">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
-              <tr className="border-b border-black/10">
+              <tr className="border-b border-line">
                 <th className="px-4 py-3 font-medium">Month ending</th>
                 <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 text-right font-medium">New</th>
@@ -88,9 +88,9 @@ export function LegacyMonthEndSection() {
             </thead>
             <tbody>
               {months.map((month) => (
-                <tr key={month.monthKey} className="border-b border-black/5">
+                <tr key={month.monthKey} className="border-b border-line">
                   <td className="px-4 py-3 font-medium">{month.label}</td>
-                  <td className="px-4 py-3 text-black/70">
+                  <td className="px-4 py-3 text-ink">
                     {month.sourceKind === "source_file"
                       ? "Workbook"
                       : `Copied from ${month.carriedForwardFromMonthKey}`}
@@ -112,13 +112,13 @@ export function LegacyMonthEndSection() {
                       href={pdfHref(month.monthKey)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mr-3 text-xs font-semibold uppercase text-brand hover:underline"
+                      className="mr-3 text-xs font-semibold text-brand-deep hover:underline"
                     >
                       Open PDF
                     </a>
                     <a
                       href={pdfHref(month.monthKey, true)}
-                      className="text-xs font-semibold uppercase text-brand hover:underline"
+                      className="text-xs font-semibold text-brand-deep hover:underline"
                     >
                       Download
                     </a>

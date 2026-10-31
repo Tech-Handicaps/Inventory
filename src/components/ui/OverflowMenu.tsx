@@ -72,7 +72,7 @@ export function OverflowMenu({ label, items, disabled }: Props) {
         type="button"
         disabled={disabled}
         onClick={toggle}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-black/60 hover:bg-black/[0.06] hover:text-black disabled:opacity-50"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-black/[0.06] hover:text-ink disabled:opacity-50"
         aria-label={`More actions for ${label}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -102,7 +102,7 @@ export function OverflowMenu({ label, items, disabled }: Props) {
               className={`block w-full px-3 py-2 text-left text-sm disabled:opacity-50 ${
                 item.destructive
                   ? "text-red-700 hover:bg-red-50"
-                  : "text-black/80 hover:bg-black/[0.04]"
+                  : "text-ink hover:bg-black/[0.04]"
               }`}
             >
               {item.label}

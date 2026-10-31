@@ -18,28 +18,28 @@ export function StockCompositionBlock({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-heading text-xs font-bold uppercase tracking-[0.15em] text-black/50">
+        <h3 className="font-heading text-xs font-bold text-muted">
           {title}
         </h3>
-        {note ? <p className="mt-1 max-w-3xl text-sm text-black/60">{note}</p> : null}
+        {note ? <p className="mt-1 max-w-3xl text-sm text-muted">{note}</p> : null}
       </div>
       {columns.map((column) => (
         <div key={column.field} className="space-y-2">
-          <h4 className="text-sm font-semibold text-black">
+          <h4 className="text-sm font-semibold text-ink">
             {column.label} — {column.total}
           </h4>
-          <p className="max-w-3xl text-sm text-black/70">{compositionHeadline(column)}</p>
-          <p className="text-sm text-black/55">
+          <p className="max-w-3xl text-sm text-ink">{compositionHeadline(column)}</p>
+          <p className="text-sm text-muted">
             By section:{" "}
             {column.groupTotals
               .map((group) => `${group.groupLabel} ${group.quantity}`)
               .join(", ")}
             .
           </p>
-          <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-lg border border-line bg-white">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
-                <tr className="border-b border-black/10">
+                <tr className="border-b border-line">
                   <th className="px-4 py-3 font-medium">Section</th>
                   <th className="px-4 py-3 font-medium">Make / model</th>
                   <th className="px-4 py-3 font-medium">Type</th>
@@ -50,13 +50,13 @@ export function StockCompositionBlock({
                 {column.lines.map((line) => (
                   <tr
                     key={`${column.field}-${line.model}`}
-                    className="border-b border-black/5"
+                    className="border-b border-line"
                   >
-                    <td className="px-4 py-3 text-black/70">{line.groupLabel}</td>
+                    <td className="px-4 py-3 text-ink">{line.groupLabel}</td>
                     <td className="px-4 py-3 font-medium">
                       {line.manufacturer} {line.model}
                     </td>
-                    <td className="px-4 py-3 text-black/70">{line.category}</td>
+                    <td className="px-4 py-3 text-ink">{line.category}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{line.quantity}</td>
                   </tr>
                 ))}

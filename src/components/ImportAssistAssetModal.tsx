@@ -305,26 +305,26 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
         className="modal-panel max-h-[90vh] w-full max-w-lg overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-black/10 px-5 py-4">
+        <div className="border-b border-line px-5 py-4">
           <h2
             id="assist-import-title"
-            className="font-heading text-lg font-bold uppercase tracking-wide text-black"
+            className="font-heading text-lg font-bold text-ink"
           >
             Import from Zoho Assist
           </h2>
-          <p className="mt-1 text-xs text-black/60">
+          <p className="mt-1 text-xs text-muted">
             Requires saved Assist OAuth credentials and a default department id in Settings.
           </p>
         </div>
 
-        <div className="flex border-b border-black/10 px-2">
+        <div className="flex border-b border-line px-2">
           <button
             type="button"
             onClick={() => setTab("name")}
-            className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wide ${
+            className={`flex-1 px-3 py-2 text-xs font-bold ${
               tab === "name"
-                ? "border-b-2 border-brand text-brand"
-                : "text-black/50"
+                ? "border-b-2 border-brand text-brand-deep"
+                : "text-muted"
             }`}
           >
             By device name
@@ -332,10 +332,10 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
           <button
             type="button"
             onClick={() => setTab("browse")}
-            className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wide ${
+            className={`flex-1 px-3 py-2 text-xs font-bold ${
               tab === "browse"
-                ? "border-b-2 border-brand text-brand"
-                : "text-black/50"
+                ? "border-b-2 border-brand text-brand-deep"
+                : "text-muted"
             }`}
           >
             Browse Assist devices
@@ -344,14 +344,14 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
 
         <div className="px-5 py-4">
           <div className="mb-4">
-            <label className="text-xs font-medium text-black/70">
+            <label className="text-xs font-medium text-ink">
               Club name (optional)
             </label>
             <select
               value={clubId}
               onChange={(e) => setClubId(e.target.value)}
               disabled={clubsLoading}
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
             >
               <option value="">
                 {clubsLoading ? "Loading clubs…" : "— None —"}
@@ -393,14 +393,14 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
                   )}{" "}
                   <Link
                     href="/assets"
-                    className="font-semibold text-brand underline hover:no-underline"
+                    className="font-semibold text-brand-deep underline hover:no-underline"
                   >
                     Open All assets
                   </Link>{" "}
                   or{" "}
                   <Link
                     href="/inventory"
-                    className="font-semibold text-brand underline hover:no-underline"
+                    className="font-semibold text-brand-deep underline hover:no-underline"
                   >
                     Hardware board
                   </Link>{" "}
@@ -414,17 +414,17 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
           {tab === "name" ? (
             <form onSubmit={submitByName} className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-black/70">
+                <label className="text-xs font-medium text-ink">
                   Device display name (Assist)
                 </label>
                 <input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="e.g. HNA-AKASIACC-01"
-                  className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm"
                   autoComplete="off"
                 />
-                <p className="mt-1 text-xs text-black/50">
+                <p className="mt-1 text-xs text-muted">
                   Must match the unattended device name / display name in Zoho Assist.
                 </p>
                 {matchingClubAsset ? (
@@ -443,14 +443,14 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="font-heading rounded-lg bg-brand px-4 py-2 text-xs font-bold uppercase tracking-wide text-white disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {busy ? "Importing…" : "Import device"}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="font-heading rounded-lg border border-black/20 px-4 py-2 text-xs font-bold uppercase"
+                  className="font-heading rounded-lg border border-black/20 px-4 py-2 text-xs font-bold"
                 >
                   Cancel
                 </button>
@@ -459,30 +459,30 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
           ) : (
             <div className="space-y-3">
               {listBusy ? (
-                <p className="text-sm text-black/55">Loading devices…</p>
+                <p className="text-sm text-muted">Loading devices…</p>
               ) : listError ? (
                 <p className="text-sm text-red-800">{listError}</p>
               ) : rows.length === 0 ? (
-                <p className="text-sm text-black/55">No devices returned for this department.</p>
+                <p className="text-sm text-muted">No devices returned for this department.</p>
               ) : (
                 <ul className="max-h-64 space-y-2 overflow-y-auto text-sm">
                   {rows.map((r) => (
                     <li
                       key={r.resourceId}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-black/10 bg-black/[0.02] px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-line bg-black/[0.02] px-3 py-2"
                     >
                       <div className="min-w-0">
                         <p className="truncate font-medium">{r.displayName}</p>
                         {r.deviceName && r.deviceName !== r.displayName ? (
-                          <p className="truncate text-xs text-black/50">{r.deviceName}</p>
+                          <p className="truncate text-xs text-muted">{r.deviceName}</p>
                         ) : null}
-                        <p className="font-mono text-[10px] text-black/40">{r.resourceId}</p>
+                        <p className="font-mono text-xs text-muted">{r.resourceId}</p>
                       </div>
                       <button
                         type="button"
                         disabled={busy}
                         onClick={() => importRow(r)}
-                        className="shrink-0 rounded bg-brand px-2 py-1 text-[10px] font-bold uppercase text-white disabled:opacity-50"
+                        className="shrink-0 rounded bg-brand px-2 py-1 text-xs font-bold text-white disabled:opacity-50"
                       >
                         Import
                       </button>
@@ -493,14 +493,14 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
               <button
                 type="button"
                 onClick={() => void loadList()}
-                className="text-xs font-semibold text-brand underline"
+                className="text-xs font-semibold text-brand-deep underline"
               >
                 Refresh list
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-2 block font-heading text-xs font-bold uppercase text-black/60"
+                className="mt-2 block font-heading text-xs font-bold text-muted"
               >
                 Close
               </button>
@@ -511,8 +511,8 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
 
       {noTpl ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-xl">
-            <h3 className="font-heading text-sm font-bold uppercase text-amber-950">
+          <div className="w-full max-w-md rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-xl">
+            <h3 className="font-heading text-sm font-bold text-amber-950">
               No device template match
             </h3>
             <p className="mt-2 text-sm text-amber-950/95">
@@ -525,13 +525,13 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
               model number is available (must match exactly one catalog template).
             </p>
             <div className="mt-4 space-y-2">
-              <label className="text-xs font-medium text-black/70">
+              <label className="text-xs font-medium text-ink">
                 Category if creating a template
               </label>
               <input
                 value={tplCategory}
                 onChange={(e) => setTplCategory(e.target.value)}
-                className="w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-line px-3 py-2 text-sm"
                 placeholder="Hardware, Laptop, …"
               />
             </div>
@@ -540,7 +540,7 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
                 type="button"
                 disabled={busy}
                 onClick={() => void confirmNoTemplate("create")}
-                className="font-heading rounded-lg bg-brand px-4 py-2 text-xs font-bold uppercase text-white disabled:opacity-50"
+                className="btn-primary"
               >
                 Create template &amp; import
               </button>
@@ -548,14 +548,14 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
                 type="button"
                 disabled={busy}
                 onClick={() => void confirmNoTemplate("skip")}
-                className="font-heading rounded-lg border border-amber-800/40 bg-white px-4 py-2 text-xs font-bold uppercase text-amber-950 disabled:opacity-50"
+                className="font-heading rounded-lg border border-amber-800/40 bg-white px-4 py-2 text-xs font-bold text-amber-950 disabled:opacity-50"
               >
                 Import without template
               </button>
               <button
                 type="button"
                 onClick={() => setNoTpl(null)}
-                className="font-heading rounded-lg px-4 py-2 text-xs font-bold uppercase text-black/70"
+                className="font-heading rounded-lg px-4 py-2 text-xs font-bold text-ink"
               >
                 Cancel
               </button>
@@ -579,21 +579,21 @@ function ClubAssignedAssetsPanel({
   matchingAsset: ClubAsset | null;
 }) {
   return (
-    <div className="mt-3 rounded-lg border border-black/10 bg-black/[0.02] p-3">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-black/50">
+    <div className="mt-3 rounded-lg border border-line bg-black/[0.02] p-3">
+      <p className="text-xs font-bold text-muted">
         Already assigned to this club
       </p>
       {loading ? (
-        <p className="mt-2 text-xs text-black/55">Loading club assets…</p>
+        <p className="mt-2 text-xs text-muted">Loading club assets…</p>
       ) : error ? (
         <p className="mt-2 text-xs text-red-800">{error}</p>
       ) : assets.length === 0 ? (
-        <p className="mt-2 text-xs text-black/55">
+        <p className="mt-2 text-xs text-muted">
           No assets registered to this club yet.
         </p>
       ) : (
         <>
-          <p className="mt-1 text-xs text-black/60">
+          <p className="mt-1 text-xs text-muted">
             {assets.length} asset{assets.length === 1 ? "" : "s"} on record — check
             before importing.
           </p>
@@ -606,22 +606,22 @@ function ClubAssignedAssetsPanel({
                   className={`rounded-md border px-2.5 py-2 ${
                     isMatch
                       ? "border-amber-300 bg-amber-50"
-                      : "border-black/10 bg-white"
+                      : "border-line bg-white"
                   }`}
                 >
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-medium text-black">{asset.assetName}</span>
+                    <span className="font-medium text-ink">{asset.assetName}</span>
                     {asset.dataSource === "zoho_assist" ? (
-                      <span className="rounded border border-brand/30 bg-brand-muted px-1 py-px text-[9px] font-bold uppercase tracking-wide text-brand-deep">
+                      <span className="rounded border border-brand/30 bg-brand-muted px-1 py-px text-xs font-bold text-brand-deep">
                         Assist
                       </span>
                     ) : null}
-                    <span className="rounded border border-black/10 bg-black/[0.03] px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-black/55">
+                    <span className="rounded border border-line bg-black/[0.03] px-1 py-px text-xs font-semibold text-muted">
                       {asset.status.label}
                     </span>
                   </div>
                   {asset.serialNumber ? (
-                    <p className="mt-0.5 font-mono text-[10px] text-black/50">
+                    <p className="mt-0.5 font-mono text-xs text-muted">
                       S/N {asset.serialNumber}
                     </p>
                   ) : null}

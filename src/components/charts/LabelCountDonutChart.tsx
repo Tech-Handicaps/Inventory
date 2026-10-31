@@ -14,7 +14,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 export type LabelCount = { name: string; count: number };
 
 const PALETTE = [
-  "rgba(19, 157, 75, 0.88)",
+  "rgba(70, 155, 86, 0.88)",
   "rgba(14, 165, 233, 0.85)",
   "rgba(124, 58, 237, 0.78)",
   "rgba(245, 158, 11, 0.9)",

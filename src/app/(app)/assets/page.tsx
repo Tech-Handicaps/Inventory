@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TablePageSkeleton } from "@/components/Skeleton";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
@@ -68,6 +69,16 @@ function deriveStatusesFromAssets(assets: Asset[]): Status[] {
 }
 
 export default function AssetsPage() {
+  return (
+    <Suspense fallback={<TablePageSkeleton label="Loading assets" />}>
+      <AssetsPageContent />
+    </Suspense>
+  );
+}
+
+function AssetsPageContent() {
+  const router = useRouter();
+  const linkedAssetId = useSearchParams().get("asset");
   const toast = useToast();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
@@ -75,6 +86,7 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(true);
   const [assistImportOpen, setAssistImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const openAssetId = editingId ?? linkedAssetId;
   const [pendingDelete, setPendingDelete] = useState<Asset | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -119,6 +131,12 @@ export default function AssetsPage() {
     const s = await sRes.json();
     setStatuses(Array.isArray(s) ? (s as Status[]) : []);
   }, []);
+
+  const closeAsset = useCallback(() => {
+    setEditingId(null);
+    if (linkedAssetId) router.replace("/assets", { scroll: false });
+    void load();
+  }, [linkedAssetId, router, load]);
 
   const effectiveStatuses =
     statuses.length > 0 ? statuses : deriveStatusesFromAssets(assets);
@@ -206,9 +224,9 @@ export default function AssetsPage() {
   return (
     <main className="mx-auto max-w-6xl space-y-8 p-6">
         <PageHeader
-          eyebrow="Asset registry"
           title="All assets"
-          description="Every unit in one searchable table — register hardware, assign templates and clubs, or import from Zoho Assist."
+          description="Every unit in one searchable table."
+          help="Register hardware, assign templates and clubs, or import devices from Zoho Assist."
         >
           <button
             type="button"
@@ -225,7 +243,7 @@ export default function AssetsPage() {
 
         {fetchError ? (
           <div
-            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
             role="status"
           >
             {fetchError}
@@ -237,7 +255,7 @@ export default function AssetsPage() {
             <>
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:gap-4">
                 <label className="block min-w-0 flex-1 lg:max-w-xl">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-black/50">
+                  <span className="text-xs font-semibold text-muted">
                     Search registry
                   </span>
                   <div className="mt-1 flex gap-2">
@@ -247,7 +265,7 @@ export default function AssetsPage() {
                       value={registrySearch}
                       onChange={(e) => setRegistrySearch(e.target.value)}
                       placeholder="Name, club, serial, template, category, location, IP…"
-                      className="min-w-0 flex-1 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:ring-2"
+                      className="min-w-0 flex-1 rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:ring-2"
                       autoComplete="off"
                       aria-label="Search all assets table"
                     />
@@ -255,7 +273,7 @@ export default function AssetsPage() {
                       <button
                         type="button"
                         onClick={() => setRegistrySearch("")}
-                        className="shrink-0 rounded-lg border border-black/15 px-3 py-2 text-xs font-medium text-black/70 hover:bg-black/[0.04]"
+                        className="shrink-0 rounded-lg border border-line px-3 py-2 text-xs font-medium text-ink hover:bg-black/[0.04]"
                       >
                         Clear
                       </button>
@@ -263,13 +281,13 @@ export default function AssetsPage() {
                   </div>
                 </label>
                 <label className="block w-full sm:max-w-[220px]">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-black/50">
+                  <span className="text-xs font-semibold text-muted">
                     Status
                   </span>
                   <select
                     value={statusFilterId}
                     onChange={(e) => setStatusFilterId(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
                     aria-label="Filter by lifecycle status"
                   >
                     <option value="">All statuses</option>
@@ -282,9 +300,9 @@ export default function AssetsPage() {
                 </label>
               </div>
               {registrySearch.trim() || statusFilterId ? (
-                <p className="mb-3 text-xs text-black/55">
+                <p className="mb-3 text-xs text-muted">
                   Showing{" "}
-                  <strong className="tabular-nums text-black/80">
+                  <strong className="tabular-nums text-ink">
                     {filteredRegistryAssets.length}
                   </strong>{" "}
                   of {assets.length} assets
@@ -298,7 +316,7 @@ export default function AssetsPage() {
                       setRegistrySearch("");
                       setStatusFilterId("");
                     }}
-                    className="font-semibold text-brand hover:underline"
+                    className="font-semibold text-brand-deep hover:underline"
                   >
                     Clear filters
                   </button>
@@ -307,7 +325,7 @@ export default function AssetsPage() {
 
               {filteredRegistryAssets.length === 0 ? (
                 <div
-                  className="rounded-lg border border-dashed border-black/15 bg-black/[0.02] py-12 text-center text-sm text-black/55"
+                  className="rounded-lg border border-dashed border-line bg-black/[0.02] py-12 text-center text-sm text-muted"
                   role="status"
                 >
                   No assets match these filters — adjust search or status, or{" "}
@@ -317,7 +335,7 @@ export default function AssetsPage() {
                       setRegistrySearch("");
                       setStatusFilterId("");
                     }}
-                    className="font-semibold text-brand hover:underline"
+                    className="font-semibold text-brand-deep hover:underline"
                   >
                     reset filters
                   </button>
@@ -327,7 +345,7 @@ export default function AssetsPage() {
                 <div className="overflow-x-auto">
               <table className="w-full min-w-[1580px] text-sm">
                 <thead>
-                  <tr className="border-b border-black/10">
+                  <tr className="border-b border-line">
                     <th className="py-2 text-left font-medium">Club name</th>
                     <th className="py-2 text-left font-medium">Name</th>
                     <th className="py-2 text-left font-medium whitespace-nowrap">
@@ -364,8 +382,8 @@ export default function AssetsPage() {
                 </thead>
                 <tbody>
                   {filteredRegistryAssets.map((a) => (
-                    <tr key={a.id} className="border-b border-black/5">
-                      <td className="py-2 text-black/85">{a.club?.name ?? "—"}</td>
+                    <tr key={a.id} className="border-b border-line">
+                      <td className="py-2 text-ink">{a.club?.name ?? "—"}</td>
                       <td className="py-2">{a.assetName}</td>
                       <td className="py-2 text-xs">
                         {a.dataSource === "zoho_assist" ? (
@@ -384,18 +402,18 @@ export default function AssetsPage() {
                       <td className="py-2 font-mono text-xs">
                         {a.serialNumber ?? "—"}
                       </td>
-                      <td className="max-w-[140px] py-2 text-xs text-black/70">
+                      <td className="max-w-[140px] py-2 text-xs text-ink">
                         {a.deviceLocation ?? "—"}
                       </td>
-                      <td className="max-w-[200px] py-2 text-xs text-black/70">
+                      <td className="max-w-[200px] py-2 text-xs text-ink">
                         {[a.processorName, a.systemRam, a.systemGpu]
                           .filter(Boolean)
                           .join(" · ") || "—"}
                       </td>
-                      <td className="py-2 font-mono text-xs text-black/85">
+                      <td className="py-2 font-mono text-xs text-ink">
                         {a.publicIp ?? "—"}
                       </td>
-                      <td className="max-w-[160px] py-2 text-xs text-black/70">
+                      <td className="max-w-[160px] py-2 text-xs text-ink">
                         {formatGeoLabel(
                           a.geoCountryCode,
                           a.geoRegionCode,
@@ -403,17 +421,17 @@ export default function AssetsPage() {
                           a.geoRegionName
                         )}
                       </td>
-                      <td className="py-2 text-xs text-black/70">
+                      <td className="py-2 text-xs text-ink">
                         {a.deviceTemplate
                           ? displayDeviceTemplateLabel(a.deviceTemplate)
                           : "—"}
                       </td>
-                      <td className="whitespace-nowrap py-2 text-xs text-black/70">
+                      <td className="whitespace-nowrap py-2 text-xs text-ink">
                         {a.purchaseDate
                           ? formatDate(a.purchaseDate)
                           : "—"}
                       </td>
-                      <td className="whitespace-nowrap py-2 text-xs text-black/70">
+                      <td className="whitespace-nowrap py-2 text-xs text-ink">
                         {a.warrantyEndDate
                           ? formatDate(a.warrantyEndDate)
                           : "—"}
@@ -425,7 +443,7 @@ export default function AssetsPage() {
                           onChange={(e) =>
                             void updateStatus(a.id, e.target.value)
                           }
-                          className="max-w-[10rem] rounded border border-black/15 bg-white px-1.5 py-1 text-xs text-black"
+                          className="max-w-[10rem] rounded border border-line bg-white px-1.5 py-1 text-xs text-ink"
                           aria-label={`Status for ${a.assetName}`}
                         >
                           {effectiveStatuses.map((s) => (
@@ -444,7 +462,7 @@ export default function AssetsPage() {
                           <button
                             type="button"
                             onClick={() => setEditingId(a.id)}
-                            className="text-xs font-semibold text-brand hover:underline"
+                            className="text-xs font-semibold text-brand-deep hover:underline"
                           >
                             Edit
                           </button>
@@ -468,7 +486,7 @@ export default function AssetsPage() {
               )}
             </>
           ) : (
-            <p className="py-8 text-center text-black/50">
+            <p className="py-8 text-center text-muted">
               No assets yet. Use the form above to register hardware.
             </p>
           )}
@@ -480,18 +498,13 @@ export default function AssetsPage() {
           onImported={() => load()}
         />
 
-        {editingId ? (
+        {openAssetId ? (
           <EditAssetModal
-            assetId={editingId}
+            key={openAssetId}
+            assetId={openAssetId}
             statuses={effectiveStatuses}
-            onClose={() => {
-              setEditingId(null);
-              void load();
-            }}
-            onSaved={() => {
-              setEditingId(null);
-              void load();
-            }}
+            onClose={closeAsset}
+            onSaved={closeAsset}
           />
         ) : null}
 
@@ -506,18 +519,18 @@ export default function AssetsPage() {
           onConfirm={() => void confirmDelete()}
         />
 
-        <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
-          <h3 className="font-heading mb-2 text-sm font-bold uppercase tracking-wide text-black">
+        <div className="rounded-lg border border-line bg-white p-6">
+          <h3 className="font-heading mb-2 text-sm font-bold text-ink">
             Lifecycle states (extensible)
           </h3>
-          <p className="text-xs text-black/55">
+          <p className="text-xs text-muted">
             Add rows to AssetStatus table to load additional states.
           </p>
           <ul className="mt-2 flex flex-wrap gap-2">
             {effectiveStatuses.map((s) => (
               <li
                 key={s.id}
-                className="rounded border border-black/10 bg-brand-muted px-2 py-1 text-xs font-medium text-black/80"
+                className="rounded border border-line bg-brand-muted px-2 py-1 text-xs font-medium text-ink"
               >
                 {s.label} ({s.code})
               </li>

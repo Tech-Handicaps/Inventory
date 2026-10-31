@@ -126,7 +126,7 @@ function AssessmentWorkflowPill({ workflowStatus }: { workflowStatus: string }) 
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${cfg.ring} ${cfg.bg} ${cfg.fg}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ring-1 ${cfg.ring} ${cfg.bg} ${cfg.fg}`}
       title="Assessment/Maintenance intake status"
     >
       <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.dot}`} aria-hidden />
@@ -152,7 +152,7 @@ const columnAccent: Record<string, string> = {
   deployed: "border-t-sky-500 bg-sky-50/90",
   assessment: "border-t-amber-500 bg-amber-50/90",
   repair: "border-t-orange-500 bg-orange-50/90",
-  refurbished: "border-t-[#0b5d2e] bg-emerald-50/80",
+  refurbished: "border-t-[#2f7a3c] bg-emerald-50/80",
   written_off: "border-t-neutral-400 bg-neutral-100",
 };
 
@@ -376,9 +376,20 @@ export default function InventoryPage() {
   return (
     <main className="mx-auto max-w-7xl space-y-8 p-6">
         <PageHeader
-          eyebrow="Hardware board"
-          title="Lifecycle workflow"
-          description="Move hardware through each stage — from new stock and deployment to assessment, repairs, refurbishment, and write-off."
+          title="Hardware board"
+          description="Move hardware through each lifecycle stage."
+          help={
+            <>
+              Each column is a lifecycle stage. Use <strong>Register hardware</strong>{" "}
+              (template + serial), then move cards by changing status.{" "}
+              <strong>Deployed</strong> field returns flow through{" "}
+              <strong>Assessment/Maintenance</strong> before <strong>In repairs</strong>{" "}
+              when a formal repair record is needed. <strong>New Stock</strong> and{" "}
+              <strong>Refurbished</strong> are the distributable stages; the dashboard
+              rolls both into <strong>Available to distribute</strong>. Templates and
+              clubs are managed in <strong>Settings</strong>.
+            </>
+          }
         />
         <HardwareCaptureForm
           statuses={effectiveStatuses}
@@ -387,7 +398,7 @@ export default function InventoryPage() {
 
         {fetchError ? (
           <div
-            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
             role="status"
           >
             <p className="font-medium">{fetchError}</p>
@@ -399,35 +410,14 @@ export default function InventoryPage() {
           </div>
         ) : null}
 
-        <div className="section-card p-6">
-          <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
-            How this board is organized
-          </h2>
-          <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-black/70">
-            Each column is a lifecycle stage for hardware. Use{" "}
-            <strong>Register hardware</strong> above (template + serial), then
-            move cards by changing status. <strong>Deployed</strong> field returns flow
-            through <strong>Assessment/Maintenance</strong> (triage or light depot work such as reloads){" "}
-            before <strong>In repairs</strong> when a formal repair record is needed. The two
-            <strong> distributable</strong> stages are <strong>New Stock</strong> (never deployed) and{" "}
-            <strong>Refurbished</strong> (serviced, ready for reuse); the dashboard rolls both into{" "}
-            <strong>Available to distribute</strong>. Use{" "}
-            <strong>Settings → Device templates</strong> for reusable make/model
-            presets and <strong>Settings → Clubs</strong> for club/site labels on each unit.
-            Status codes live in the database so you can extend stages
-            later without losing data.
-          </p>
-        </div>
-
         <section>
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-            <h2 className="font-heading text-sm font-bold uppercase tracking-[0.15em] text-black shrink-0">
+            <h2 className="font-heading text-sm font-bold text-ink shrink-0">
               Stock & workflow
             </h2>
             <div className="min-w-0 flex-1 max-w-2xl">
               <label className="block">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-black/50">
+                <span className="text-xs font-semibold text-muted">
                   Search entire board
                 </span>
                 <div className="mt-1 flex gap-2">
@@ -437,23 +427,23 @@ export default function InventoryPage() {
                     value={globalSearch}
                     onChange={(e) => setGlobalSearch(e.target.value)}
                     placeholder="Name, club, serial, template, category, location, IP…"
-                    className="min-w-0 flex-1 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:ring-2"
+                    className="min-w-0 flex-1 rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none ring-brand/30 focus:border-brand/50 focus:ring-2"
                     autoComplete="off"
                   />
                   {globalSearch.trim() ? (
                     <button
                       type="button"
                       onClick={() => setGlobalSearch("")}
-                      className="shrink-0 rounded-lg border border-black/15 px-3 py-2 text-xs font-medium text-black/70 hover:bg-black/[0.04]"
+                      className="shrink-0 rounded-lg border border-line px-3 py-2 text-xs font-medium text-ink hover:bg-black/[0.04]"
                     >
                       Clear
                     </button>
                   ) : null}
                 </div>
               </label>
-              <p className="mt-1.5 text-[11px] text-black/45">
+              <p className="mt-1.5 text-xs text-muted">
                 Narrows cards in every stage at once (including written-off below). Combine with{" "}
-                <strong className="text-black/55">each column&apos;s filter</strong> for the last
+                <strong className="text-muted">each column&apos;s filter</strong> for the last
                 bit of narrowing.
               </p>
             </div>
@@ -462,14 +452,14 @@ export default function InventoryPage() {
           assets.length > 0 &&
           globallyFilteredAssets.length === 0 ? (
             <div
-              className="mb-4 rounded-lg border border-black/10 bg-black/[0.03] px-3 py-2 text-sm text-black/75"
+              className="mb-4 rounded-lg border border-line bg-black/[0.03] px-3 py-2 text-sm text-ink"
               role="status"
             >
               No hardware matches your board search.{" "}
               <button
                 type="button"
                 onClick={() => setGlobalSearch("")}
-                className="font-semibold text-brand hover:underline"
+                className="font-semibold text-brand-deep hover:underline"
               >
                 Clear search
               </button>{" "}
@@ -512,16 +502,16 @@ export default function InventoryPage() {
               return (
               <div
                 key={st.id}
-                className={`flex max-h-[min(70vh,720px)] flex-col rounded-xl border border-black/10 border-t-4 bg-white shadow-sm ${
+                className={`flex max-h-[min(70vh,720px)] flex-col rounded-lg border border-line border-t-4 bg-white ${
                   columnAccent[st.code] ?? "border-t-neutral-400 bg-white"
                 }`}
               >
-                <div className="border-b border-black/10 px-4 py-3">
-                  <h3 className="font-heading font-bold uppercase tracking-wide text-black">
+                <div className="border-b border-line px-4 py-3">
+                  <h3 className="font-heading font-bold text-ink">
                     {st.label}
                   </h3>
                   {st.description ? (
-                    <p className="mt-1 text-xs text-black/55">
+                    <p className="mt-1 text-xs text-muted">
                       {st.description}
                     </p>
                   ) : null}
@@ -538,17 +528,17 @@ export default function InventoryPage() {
                         }))
                       }
                       placeholder="Search this column…"
-                      className="w-full rounded-md border border-black/15 bg-white px-2 py-2 text-xs outline-none placeholder:text-black/35 ring-brand/25 focus:border-brand/40 focus:ring-2"
+                      className="w-full rounded-md border border-line bg-white px-2 py-2 text-xs outline-none placeholder:text-muted ring-brand/25 focus:border-brand/40 focus:ring-2"
                       autoComplete="off"
                       aria-label={`Filter ${st.label} column`}
                     />
                   </label>
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-black">
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-ink">
                     {displayed.length}
                   </p>
                   {(globalSearch.trim() || colRaw.trim()) &&
                   fullStageCount !== displayed.length ? (
-                    <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-black/45">
+                    <p className="mt-1 text-xs font-medium text-muted">
                       {fullStageCount} in stage · {displayed.length} matching
                     </p>
                   ) : null}
@@ -601,7 +591,7 @@ export default function InventoryPage() {
                     </li>
                   ))}
                   {displayed.length === 0 && (
-                    <li className="rounded-lg border border-dashed border-black/15 py-8 text-center text-sm text-black/40">
+                    <li className="rounded-lg border border-dashed border-line py-8 text-center text-sm text-muted">
                       {emptyHint}
                     </li>
                   )}
@@ -614,16 +604,16 @@ export default function InventoryPage() {
 
         {writtenOff && (
           <section>
-            <h2 className="font-heading mb-4 text-sm font-bold uppercase tracking-[0.15em] text-black">
+            <h2 className="font-heading mb-4 text-sm font-bold text-ink">
               {writtenOff.label}
             </h2>
             <div
-              className={`overflow-hidden rounded-xl border border-black/10 border-t-4 shadow-sm ${columnAccent.written_off}`}
+              className={`overflow-hidden rounded-lg border border-line border-t-4 ${columnAccent.written_off}`}
             >
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-black/10 bg-white/80 text-left">
+                    <tr className="border-b border-line bg-white text-left">
                       <th className="px-4 py-3 font-medium">Club name</th>
                       <th className="px-4 py-3 font-medium">Name</th>
                       <th className="px-4 py-3 font-medium">Tags</th>
@@ -642,9 +632,9 @@ export default function InventoryPage() {
                     {writtenOffRows.map((asset) => (
                       <tr
                         key={asset.id}
-                        className="border-b border-black/5"
+                        className="border-b border-line"
                       >
-                        <td className="px-4 py-2 text-black/80">
+                        <td className="px-4 py-2 text-ink">
                           {asset.club?.name ?? "—"}
                         </td>
                         <td className="px-4 py-2">{asset.assetName}</td>
@@ -662,13 +652,13 @@ export default function InventoryPage() {
                         <td className="px-4 py-2 font-mono text-xs">
                           {asset.serialNumber ?? "—"}
                         </td>
-                        <td className="px-4 py-2 text-black/65">
+                        <td className="px-4 py-2 text-muted">
                           {asset.reason ?? "—"}
                         </td>
                         <td className="px-4 py-2">
                           <a
                             href={`/api/assets/${asset.id}/write-off-certificate`}
-                            className="text-xs font-semibold text-brand hover:underline"
+                            className="text-xs font-semibold text-brand-deep hover:underline"
                             title="Download write-off certificate (PDF)"
                           >
                             Download PDF
@@ -676,7 +666,7 @@ export default function InventoryPage() {
                         </td>
                         <td className="px-4 py-2">
                           <select
-                            className="w-full max-w-[200px] rounded border border-black/15 bg-white px-2 py-1 text-xs"
+                            className="w-full max-w-[200px] rounded border border-line bg-white px-2 py-1 text-xs"
                             value={asset.status.id}
                             disabled={savingId === asset.id}
                             onChange={(e) =>
@@ -695,7 +685,7 @@ export default function InventoryPage() {
                             <button
                               type="button"
                               onClick={() => setEditingId(asset.id)}
-                              className="text-xs font-semibold text-brand hover:underline"
+                              className="text-xs font-semibold text-brand-deep hover:underline"
                             >
                               Edit
                             </button>
@@ -716,7 +706,7 @@ export default function InventoryPage() {
                   </tbody>
                 </table>
                 {writtenOffRows.length === 0 ? (
-                  <p className="py-10 text-center text-sm text-black/45">
+                  <p className="py-10 text-center text-sm text-muted">
                     {writtenOffStageTotal === 0 ? (
                       "No written-off hardware."
                     ) : globalSearch.trim() ? (
@@ -724,7 +714,7 @@ export default function InventoryPage() {
                         No written-off rows match board search —{" "}
                         <button
                           type="button"
-                          className="font-semibold text-brand hover:underline"
+                          className="font-semibold text-brand-deep hover:underline"
                           onClick={() => setGlobalSearch("")}
                         >
                           Clear board search
@@ -832,11 +822,11 @@ function HardwareCard({
   const intake = openAssessment(asset);
 
   return (
-    <article className="rounded-lg border border-black/10 bg-white p-3 shadow-sm">
+    <article className="rounded-lg border border-line bg-white p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-heading font-semibold text-black">
+            <p className="font-heading font-semibold text-ink">
               {asset.assetName}
             </p>
             {asset.status.code === "assessment" ? (
@@ -846,30 +836,30 @@ function HardwareCard({
                     <AssessmentWorkflowPill
                       workflowStatus={intake.workflowStatus}
                     />
-                    <span className="rounded border border-black/15 bg-black/[0.04] px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-black/75">
+                    <span className="rounded border border-line bg-black/[0.04] px-1.5 py-0.5 font-mono text-xs font-semibold text-ink">
                       {intake.referenceNumber}
                     </span>
                   </>
                 ) : (
-                  <span className="text-[10px] font-semibold uppercase text-amber-800">
+                  <span className="text-xs font-semibold text-amber-800">
                     No open intake link
                   </span>
                 )}
               </>
             ) : null}
             {asset.club ? (
-              <span className="rounded border border-brand/40 bg-brand-muted/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand">
+              <span className="rounded border border-brand/40 bg-brand-muted/60 px-1.5 py-0.5 text-xs font-bold text-brand-deep">
                 {asset.club.name}
               </span>
             ) : null}
             {asset.dataSource === "zoho_assist" ? (
-              <span className="rounded border border-brand/30 bg-brand-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-deep">
+              <span className="rounded border border-brand/30 bg-brand-muted px-1.5 py-0.5 text-xs font-bold text-brand-deep">
                 Assist
               </span>
             ) : null}
           </div>
           {asset.deviceTemplate ? (
-            <p className="text-[10px] font-medium uppercase tracking-wide text-brand">
+            <p className="text-xs font-medium text-brand-deep">
               Template: {displayDeviceTemplateLabel(asset.deviceTemplate)}
             </p>
           ) : null}
@@ -877,60 +867,60 @@ function HardwareCard({
             <AssetTagChips tags={asset.tags} category={asset.category} size="xs" />
           </div>
           {(displayAssetManufacturer(asset) || displayAssetModel(asset)) ? (
-            <p className="mt-1 text-xs text-black/55">
+            <p className="mt-1 text-xs text-muted">
               {[displayAssetManufacturer(asset), displayAssetModel(asset)]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
           ) : null}
           {asset.deviceLocation ? (
-            <p className="mt-1 text-xs text-black/60">
-              <span className="font-medium text-black/45">Location:</span>{" "}
+            <p className="mt-1 text-xs text-muted">
+              <span className="font-medium text-muted">Location:</span>{" "}
               {asset.deviceLocation}
             </p>
           ) : null}
           {asset.publicIp || asset.geoCountryCode ? (
-            <p className="mt-1 text-xs text-black/60">
-              <span className="font-medium text-black/45">Public IP:</span>{" "}
-              <span className="font-mono text-[11px]">
+            <p className="mt-1 text-xs text-muted">
+              <span className="font-medium text-muted">Public IP:</span>{" "}
+              <span className="font-mono text-xs">
                 {asset.publicIp ?? "—"}
               </span>
               {geoLabel !== "—" ? (
-                <span className="mt-0.5 block text-[10px] text-black/50">
+                <span className="mt-0.5 block text-xs text-muted">
                   {geoLabel}
                 </span>
               ) : null}
             </p>
           ) : null}
           {asset.serialNumber ? (
-            <p className="mt-1 font-mono text-xs text-black/65">
+            <p className="mt-1 font-mono text-xs text-muted">
               S/N {asset.serialNumber}
             </p>
           ) : null}
           {asset.processorName || asset.systemRam || asset.systemGpu ? (
-            <dl className="mt-2 space-y-0.5 border-t border-black/5 pt-2 text-[11px] text-black/70">
+            <dl className="mt-2 space-y-0.5 border-t border-line pt-2 text-xs text-ink">
               {asset.processorName ? (
                 <div className="flex gap-2">
-                  <dt className="shrink-0 text-black/45">CPU</dt>
+                  <dt className="shrink-0 text-muted">CPU</dt>
                   <dd className="min-w-0">{asset.processorName}</dd>
                 </div>
               ) : null}
               {asset.systemRam ? (
                 <div className="flex gap-2">
-                  <dt className="shrink-0 text-black/45">RAM</dt>
+                  <dt className="shrink-0 text-muted">RAM</dt>
                   <dd>{asset.systemRam}</dd>
                 </div>
               ) : null}
               {asset.systemGpu ? (
                 <div className="flex gap-2">
-                  <dt className="shrink-0 text-black/45">GPU</dt>
+                  <dt className="shrink-0 text-muted">GPU</dt>
                   <dd className="min-w-0">{asset.systemGpu}</dd>
                 </div>
               ) : null}
             </dl>
           ) : null}
           {asset.zohoAssistDeviceId ? (
-            <p className="mt-1 font-mono text-[10px] text-black/40">
+            <p className="mt-1 font-mono text-xs text-muted">
               Assist id {asset.zohoAssistDeviceId}
             </p>
           ) : null}
@@ -941,12 +931,12 @@ function HardwareCard({
           ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <div className="flex items-center gap-1 text-[11px]">
+          <div className="flex items-center gap-1 text-xs">
             <button
               type="button"
               disabled={disabled}
               onClick={onEdit}
-              className="font-semibold text-brand hover:underline disabled:opacity-50"
+              className="font-semibold text-brand-deep hover:underline disabled:opacity-50"
             >
               Edit
             </button>
@@ -964,7 +954,7 @@ function HardwareCard({
             type="button"
             disabled={disabled}
             onClick={onStartAssessment}
-            className="font-heading w-full rounded-md border-2 border-amber-500/90 bg-amber-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-950 transition-colors hover:bg-amber-100 disabled:opacity-50"
+            className="font-heading w-full rounded-md border-2 border-amber-500/90 bg-amber-50 px-2 py-1.5 text-xs font-bold text-amber-950 transition-colors hover:bg-amber-100 disabled:opacity-50"
           >
             Send for Assessment/Maintenance
           </button>
@@ -974,7 +964,7 @@ function HardwareCard({
             type="button"
             disabled={disabled}
             onClick={onLogRepair}
-            className="font-heading w-full rounded-md border-2 border-orange-500/80 bg-orange-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-orange-900 transition-colors hover:bg-orange-100 disabled:opacity-50"
+            className="font-heading w-full rounded-md border-2 border-orange-500/80 bg-orange-50 px-2 py-1.5 text-xs font-bold text-orange-900 transition-colors hover:bg-orange-100 disabled:opacity-50"
           >
             Log repair
           </button>
@@ -984,7 +974,7 @@ function HardwareCard({
             type="button"
             disabled={disabled}
             onClick={onCancelAssessment}
-            className="w-full rounded-md border border-red-400/70 bg-red-50 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-900 hover:bg-red-100 disabled:opacity-50"
+            className="w-full rounded-md border border-red-400/70 bg-red-50 px-2 py-1.5 text-xs font-semibold text-red-900 hover:bg-red-100 disabled:opacity-50"
           >
             Cancel intake
           </button>
@@ -996,17 +986,17 @@ function HardwareCard({
             type="button"
             disabled={disabled}
             onClick={onWriteOff}
-            className="w-full rounded-md border-2 border-neutral-500/80 bg-neutral-100 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-neutral-900 transition-colors hover:bg-neutral-200 disabled:opacity-50"
+            className="w-full rounded-md border-2 border-neutral-500/80 bg-neutral-100 px-2 py-1.5 text-xs font-bold text-neutral-900 transition-colors hover:bg-neutral-200 disabled:opacity-50"
           >
             Write off (cannot repair)
           </button>
         ) : null}
         <div>
-          <label className="block text-[10px] font-medium uppercase tracking-wide text-black/40">
+          <label className="block text-xs font-medium text-muted">
             Move to
           </label>
           <select
-            className="mt-1 w-full rounded-md border border-black/15 bg-surface px-2 py-1.5 text-xs"
+            className="mt-1 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-xs"
             value={asset.status.id}
             disabled={disabled}
             onChange={(e) => onStatusChange(asset.id, e.target.value)}

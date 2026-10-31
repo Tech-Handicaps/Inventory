@@ -36,9 +36,9 @@ export function MonthOnMonthSection() {
 
   return (
     <section id="month-on-month" className="scroll-mt-6 space-y-4">
-      <header className="border-b border-black/10 pb-4">
+      <header className="border-b border-line pb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+          <h2 className="font-heading text-lg font-bold text-ink">
             Prior-company month-on-month
           </h2>
           <div className="flex gap-2">
@@ -63,21 +63,21 @@ export function MonthOnMonthSection() {
         <SectionSkeleton label="Loading month-on-month audit" />
       ) : (
         <>
-          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-black/70">
+          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-ink">
             {audit.explanation.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
           </div>
 
           {audit.months.length === 0 ? (
-            <p className="text-sm text-black/60">
+            <p className="text-sm text-muted">
               No prior month-end stock has been imported yet.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-lg border border-line bg-white">
               <table className="w-full min-w-[1100px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-black/10">
+                  <tr className="border-b border-line">
                     <th className="px-4 py-3 font-medium">Month ending</th>
                     <th className="px-4 py-3 font-medium">Source</th>
                     <th className="px-4 py-3 text-right font-medium">New</th>
@@ -95,10 +95,10 @@ export function MonthOnMonthSection() {
                   {audit.months.map((month) => (
                     <tr
                       key={`${month.monthKey}-${month.sourceKind}`}
-                      className="border-b border-black/5"
+                      className="border-b border-line"
                     >
                       <td className="px-4 py-3 font-medium">{month.label}</td>
-                      <td className="px-4 py-3 text-black/70">{month.sourceLabel}</td>
+                      <td className="px-4 py-3 text-ink">{month.sourceLabel}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {month.totals.newStock}
                       </td>
@@ -123,7 +123,7 @@ export function MonthOnMonthSection() {
                       <td className="px-4 py-3 text-right tabular-nums">
                         {month.delta ? formatSigned(month.delta.units) : "—"}
                       </td>
-                      <td className="px-4 py-3 text-black/70">{month.movementNote}</td>
+                      <td className="px-4 py-3 text-ink">{month.movementNote}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -142,13 +142,13 @@ export function MonthOnMonthSection() {
 
           {audit.movements.length > 0 ? (
             <div className="space-y-2">
-              <h3 className="font-heading text-xs font-bold uppercase tracking-[0.15em] text-black/50">
+              <h3 className="font-heading text-xs font-bold text-muted">
                 Line movements
               </h3>
-              <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+              <div className="overflow-x-auto rounded-lg border border-line bg-white">
                 <table className="w-full min-w-[720px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-black/10">
+                    <tr className="border-b border-line">
                       <th className="px-4 py-3 font-medium">Month</th>
                       <th className="px-4 py-3 font-medium">Make / model</th>
                       <th className="px-4 py-3 font-medium">Column</th>
@@ -161,13 +161,13 @@ export function MonthOnMonthSection() {
                     {audit.movements.map((movement) => (
                       <tr
                         key={`${movement.toMonthKey}-${movement.model}-${movement.column}`}
-                        className="border-b border-black/5"
+                        className="border-b border-line"
                       >
                         <td className="px-4 py-3">{movement.toLabel}</td>
                         <td className="px-4 py-3 font-medium">
                           {movement.manufacturer} {movement.model}
                         </td>
-                        <td className="px-4 py-3 text-black/70">{movement.column}</td>
+                        <td className="px-4 py-3 text-ink">{movement.column}</td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {movement.previous}
                         </td>

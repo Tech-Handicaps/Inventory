@@ -196,24 +196,20 @@ function ReportTile({ report }: { report: ReportDef }) {
     : pdfUrl(report.type, true);
   return (
     <article className="section-card section-card-interactive group relative flex flex-col overflow-hidden">
-      <div
-        className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-brand to-brand-deep transition group-hover:from-brand-hover"
-        aria-hidden
-      />
-      <div className="flex flex-1 flex-col gap-3 p-5 pl-6">
+      <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+          <h3 className="font-heading text-sm font-bold text-ink">
             {report.title}
           </h3>
           <span className="funky-badge">PDF</span>
         </div>
-        <p className="flex-1 text-sm leading-relaxed text-black/65">
+        <p className="flex-1 text-sm leading-relaxed text-muted">
           {report.description}
         </p>
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-black/40">
+        <p className="text-xs font-medium text-muted">
           {report.audience}
         </p>
-        <div className="mt-1 flex flex-wrap gap-2 border-t border-black/5 pt-4">
+        <div className="mt-1 flex flex-wrap gap-2 border-t border-line pt-4">
           <a
             href={openHref}
             target="_blank"
@@ -239,7 +235,8 @@ export default function ReportsPage() {
     <main className="mx-auto max-w-7xl space-y-10 p-6 pb-16">
         <PageHeader
           title="Reports"
-          description="Printable inventory PDFs for finance reconciliation, stock by asset type, audits, and accounting — plus per-asset movement history from the audit trail."
+          description="Printable PDFs for finance, audit and accounting."
+          help="Finance reconciliation, stock by asset type, audit packs and per-asset movement history from the audit trail."
         >
           <nav className="flex flex-wrap gap-2" aria-label="Reports sections">
             <a href="#auditor-index" className="filter-pill filter-pill-active">
@@ -276,19 +273,19 @@ export default function ReportsPage() {
 
         {/* PDF library */}
         <section id="pdf-library" className="scroll-mt-6 space-y-8">
-          <header className="flex flex-col gap-2 border-b border-black/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <header className="flex flex-col gap-2 border-b border-line pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+              <h2 className="font-heading text-lg font-bold text-ink">
                 PDF library
               </h2>
-              <p className="mt-1 max-w-xl text-sm text-black/60">
+              <p className="mt-1 max-w-xl text-sm text-muted">
                 Inventory PDFs include serials and dates where available. Use{" "}
                 <strong>Monthly stock reconcile</strong> for finance; ensure each
                 asset’s <strong>asset tags</strong> are set correctly (e.g. Hardware
                 vs USB HID Magnetic Stripe Reader) so type splits are accurate.
               </p>
             </div>
-            <p className="text-[11px] text-black/45 sm:text-right">
+            <p className="text-xs text-muted sm:text-right">
               Print via browser · Ctrl/Cmd+P after opening
             </p>
           </header>
@@ -296,10 +293,10 @@ export default function ReportsPage() {
           {REPORT_GROUPS.map((group) => (
             <div key={group.id} className="space-y-4">
               <div>
-                <h3 className="font-heading text-xs font-bold uppercase tracking-[0.15em] text-black/50">
+                <h3 className="font-heading text-xs font-bold text-muted">
                   {group.label}
                 </h3>
-                <p className="mt-1 text-sm text-black/55">{group.blurb}</p>
+                <p className="mt-1 text-sm text-muted">{group.blurb}</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {group.reports.map((r) => (

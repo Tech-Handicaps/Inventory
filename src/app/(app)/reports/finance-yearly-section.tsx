@@ -103,9 +103,9 @@ export function FinanceYearlySection() {
 
   return (
     <section id="finance-yearly" className="scroll-mt-6 space-y-4">
-      <header className="border-b border-black/10 pb-4">
+      <header className="border-b border-line pb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
+          <h2 className="font-heading text-lg font-bold text-ink">
             Finance yearly
           </h2>
           <div className="flex gap-2">
@@ -130,26 +130,26 @@ export function FinanceYearlySection() {
         <SectionSkeleton label="Loading finance yearly" />
       ) : (
         <>
-          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-black/70">
+          <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-ink">
             {report.introduction.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+            <h3 className="font-heading text-sm font-bold text-ink">
               2025 — December workbook
             </h3>
             {workbook ? (
               <>
-                <p className="max-w-3xl text-sm leading-relaxed text-black/70">{workbook.basis}</p>
-                <p className="text-xs text-black/50">
+                <p className="max-w-3xl text-sm leading-relaxed text-ink">{workbook.basis}</p>
+                <p className="text-xs text-muted">
                   {workbook.sourceLabel} · {workbook.monthEndingLabel}
                 </p>
-                <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+                <div className="overflow-x-auto rounded-lg border border-line bg-white">
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead>
-                      <tr className="border-b border-black/10">
+                      <tr className="border-b border-line">
                         <th className="px-4 py-3 font-medium">Year</th>
                         <th className="px-4 py-3 text-right font-medium">New</th>
                         <th className="px-4 py-3 text-right font-medium">Repaired/Used</th>
@@ -174,16 +174,16 @@ export function FinanceYearlySection() {
                     </tbody>
                   </table>
                 </div>
-                <h4 className="font-heading text-xs font-bold uppercase tracking-[0.15em] text-black/50">
+                <h4 className="font-heading text-xs font-bold text-muted">
                   What the 2025 totals are made of
                 </h4>
-                <p className="max-w-3xl text-sm leading-relaxed text-black/70">
+                <p className="max-w-3xl text-sm leading-relaxed text-ink">
                   {WORKBOOK_GROUP_NOTE}
                 </p>
-                <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+                <div className="overflow-x-auto rounded-lg border border-line bg-white">
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead>
-                      <tr className="border-b border-black/10">
+                      <tr className="border-b border-line">
                         <th className="px-4 py-3 font-medium">Section</th>
                         <th className="px-4 py-3 text-right font-medium">New</th>
                         <th className="px-4 py-3 text-right font-medium">Repaired/Used</th>
@@ -196,7 +196,7 @@ export function FinanceYearlySection() {
                     </thead>
                     <tbody>
                       {workbook.groups.map((row) => (
-                        <tr key={row.groupLabel} className="border-b border-black/5">
+                        <tr key={row.groupLabel} className="border-b border-line">
                           <td className="px-4 py-3 font-medium">{row.groupLabel}</td>
                           {workbookCells(row)}
                         </tr>
@@ -210,20 +210,20 @@ export function FinanceYearlySection() {
                 </div>
               </>
             ) : (
-              <p className="text-sm text-black/60">The December 2025 workbook is not on file.</p>
+              <p className="text-sm text-muted">The December 2025 workbook is not on file.</p>
             )}
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+            <h3 className="font-heading text-sm font-bold text-ink">
               2026 — {finance?.closed ? "closing finance pack" : "open year"}
             </h3>
-            <p className="max-w-3xl text-sm leading-relaxed text-black/70">{finance?.basis}</p>
+            <p className="max-w-3xl text-sm leading-relaxed text-ink">{finance?.basis}</p>
             {finance?.closing ? (
-              <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+              <div className="overflow-x-auto rounded-lg border border-line bg-white">
                 <table className="w-full min-w-[980px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-black/10">
+                    <tr className="border-b border-line">
                       <th className="px-4 py-3 font-medium">Closing month</th>
                       <th className="px-4 py-3 text-right font-medium">New</th>
                       <th className="px-4 py-3 text-right font-medium">Refurbished</th>
@@ -253,16 +253,16 @@ export function FinanceYearlySection() {
             ) : null}
             {finance?.closing && finance.closing.types.length > 0 ? (
               <div className="space-y-3">
-                <h4 className="font-heading text-xs font-bold uppercase tracking-[0.15em] text-black/50">
+                <h4 className="font-heading text-xs font-bold text-muted">
                   What the 2026 closing row is made of
                 </h4>
-                <p className="max-w-3xl text-sm leading-relaxed text-black/70">
+                <p className="max-w-3xl text-sm leading-relaxed text-ink">
                   {FINANCE_YEAR_TYPE_NOTE}
                 </p>
-                <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+                <div className="overflow-x-auto rounded-lg border border-line bg-white">
                   <table className="w-full min-w-[980px] text-left text-sm">
                     <thead>
-                      <tr className="border-b border-black/10">
+                      <tr className="border-b border-line">
                         <th className="px-4 py-3 font-medium">Heading</th>
                         <th className="px-4 py-3 text-right font-medium">New</th>
                         <th className="px-4 py-3 text-right font-medium">Refurbished</th>
@@ -276,7 +276,7 @@ export function FinanceYearlySection() {
                     </thead>
                     <tbody>
                       {finance.closing.types.map((row) => (
-                        <tr key={row.assetType} className="border-b border-black/5">
+                        <tr key={row.assetType} className="border-b border-line">
                           <td className="px-4 py-3 font-medium">{row.label}</td>
                           {registerCells(row)}
                         </tr>
@@ -286,15 +286,15 @@ export function FinanceYearlySection() {
                 </div>
               </div>
             ) : finance?.closing ? (
-              <p className="text-sm text-black/60">
+              <p className="text-sm text-muted">
                 Asset-type totals were not stored with this pack.
               </p>
             ) : null}
             {finance && finance.months.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+              <div className="overflow-x-auto rounded-lg border border-line bg-white">
                 <table className="w-full min-w-[1100px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-black/10">
+                    <tr className="border-b border-line">
                       <th className="px-4 py-3 font-medium">Month ending</th>
                       <th className="px-4 py-3 text-right font-medium">New</th>
                       <th className="px-4 py-3 text-right font-medium">Refurbished</th>
@@ -310,7 +310,7 @@ export function FinanceYearlySection() {
                   </thead>
                   <tbody>
                     {finance.months.map((month) => (
-                      <tr key={month.monthKey} className="border-b border-black/5">
+                      <tr key={month.monthKey} className="border-b border-line">
                         <td className="px-4 py-3 font-medium">{month.monthEndingLabel}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{month.newStock}</td>
                         <td className="px-4 py-3 text-right tabular-nums">{month.refurbished}</td>
@@ -335,21 +335,21 @@ export function FinanceYearlySection() {
             {finance && finance.typeBlocks.length > 0 ? (
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <h4 className="font-heading text-xs font-bold uppercase tracking-[0.15em] text-black/50">
+                  <h4 className="font-heading text-xs font-bold text-muted">
                     2026 headings by stored month
                   </h4>
-                  <p className="max-w-3xl text-sm leading-relaxed text-black/70">
+                  <p className="max-w-3xl text-sm leading-relaxed text-ink">
                     {finance.typeNote} A change is against the previous stored month of that same
                     heading.
                   </p>
                 </div>
                 {finance.typeBlocks.map((block) => (
                   <div key={block.assetType} className="space-y-2">
-                    <h5 className="text-sm font-medium text-black">{block.label}</h5>
-                    <div className="overflow-x-auto rounded-xl border border-black/10 bg-white shadow-sm">
+                    <h5 className="text-sm font-medium text-ink">{block.label}</h5>
+                    <div className="overflow-x-auto rounded-lg border border-line bg-white">
                       <table className="w-full min-w-[1100px] text-left text-sm">
                         <thead>
-                          <tr className="border-b border-black/10">
+                          <tr className="border-b border-line">
                             <th className="px-4 py-3 font-medium">Month ending</th>
                             <th className="px-4 py-3 text-right font-medium">New</th>
                             <th className="px-4 py-3 text-right font-medium">Refurbished</th>
@@ -369,7 +369,7 @@ export function FinanceYearlySection() {
                         </thead>
                         <tbody>
                           {block.months.map((month) => (
-                            <tr key={month.monthKey} className="border-b border-black/5">
+                            <tr key={month.monthKey} className="border-b border-line">
                               <td className="px-4 py-3 font-medium">{month.monthEndingLabel}</td>
                               <td className="px-4 py-3 text-right tabular-nums">{month.newStock}</td>
                               <td className="px-4 py-3 text-right tabular-nums">

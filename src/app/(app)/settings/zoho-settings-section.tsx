@@ -330,22 +330,21 @@ export function ZohoAssistSettingsSection() {
 
   return (
     <div className="space-y-6">
-      <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-black">
+      <h2 className="font-heading text-sm font-bold text-ink">
         Zoho Assist API
       </h2>
-      <div className="mt-2 h-0.5 w-16 rounded-full bg-brand" />
 
       <div
-        className={`rounded-xl border-2 px-4 py-4 sm:px-5 ${statusClass}`}
+        className={`rounded-lg border-2 px-4 py-4 sm:px-5 ${statusClass}`}
         role="status"
         aria-live="polite"
       >
-        <p className="font-heading text-[10px] font-bold uppercase tracking-[0.2em] opacity-80">
+        <p className="font-heading text-xs font-bold opacity-80">
           Connection status
         </p>
         <p className="mt-2 text-base font-bold">{statusHeadline}</p>
         <p className="mt-1 text-sm leading-relaxed opacity-90">{statusBody}</p>
-        <ul className="mt-4 space-y-2 border-t border-black/10 pt-3 text-sm">
+        <ul className="mt-4 space-y-2 border-t border-line pt-3 text-sm">
           <li className="flex items-start gap-2">
             <span className="mt-0.5 font-mono text-base" aria-hidden>
               {hasClientIdSaved ? "✓" : "○"}
@@ -353,9 +352,9 @@ export function ZohoAssistSettingsSection() {
             <span>
               <span className="font-medium">Client ID</span>{" "}
               {hasClientIdSaved ? (
-                <span className="text-black/70">saved in app settings</span>
+                <span className="text-ink">saved in app settings</span>
               ) : (
-                <span className="text-black/70">not saved yet</span>
+                <span className="text-ink">not saved yet</span>
               )}
             </span>
           </li>
@@ -366,13 +365,13 @@ export function ZohoAssistSettingsSection() {
             <span>
               <span className="font-medium">Client secret</span>{" "}
               {secretOnServer ? (
-                <span className="text-black/70">stored (masked below)</span>
+                <span className="text-ink">stored (masked below)</span>
               ) : pendingSecretInForm ? (
                 <span className="text-amber-900/90">
                   entered in form — click Save to store
                 </span>
               ) : (
-                <span className="text-black/70">not saved yet</span>
+                <span className="text-ink">not saved yet</span>
               )}
             </span>
           </li>
@@ -383,13 +382,13 @@ export function ZohoAssistSettingsSection() {
             <span>
               <span className="font-medium">Refresh token</span>{" "}
               {refreshOnServer ? (
-                <span className="text-black/70">stored — API calls enabled</span>
+                <span className="text-ink">stored — API calls enabled</span>
               ) : pendingRefreshInForm ? (
                 <span className="text-amber-900/90">
                   entered in form — click Save to store
                 </span>
               ) : (
-                <span className="text-black/70">
+                <span className="text-ink">
                   not saved — use Connect or paste token
                 </span>
               )}
@@ -397,12 +396,12 @@ export function ZohoAssistSettingsSection() {
           </li>
         </ul>
         {lastApiVerified ? (
-          <p className="mt-3 border-t border-black/10 pt-3 text-xs text-black/65">
+          <p className="mt-3 border-t border-line pt-3 text-xs text-muted">
             Last successful <strong>Test API</strong>:{" "}
             {formatDateTime(lastApiVerified)}
           </p>
         ) : (
-          <p className="mt-3 border-t border-black/10 pt-3 text-xs text-black/55">
+          <p className="mt-3 border-t border-line pt-3 text-xs text-muted">
             Run <strong>Test API</strong> after saving to confirm Assist responds.
           </p>
         )}
@@ -417,13 +416,13 @@ export function ZohoAssistSettingsSection() {
         </div>
       ) : null}
 
-      <p className="mt-4 text-sm leading-relaxed text-black/70">
+      <p className="mt-4 text-sm leading-relaxed text-ink">
         Register a client in the{" "}
         <a
           href="https://api-console.zoho.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-semibold text-brand underline"
+          className="font-semibold text-brand-deep underline"
         >
           Zoho API Console
         </a>{" "}
@@ -456,11 +455,11 @@ export function ZohoAssistSettingsSection() {
 
       <form onSubmit={save} className="mt-6 space-y-4">
         <div>
-          <label className="text-xs font-medium text-black/70">Data center</label>
+          <label className="text-xs font-medium text-ink">Data center</label>
           <select
             value={dataCenter}
             onChange={(e) => setDataCenter(e.target.value)}
-            className="mt-1 w-full max-w-md rounded-lg border border-black/15 px-3 py-2 text-sm"
+            className="mt-1 w-full max-w-md rounded-lg border border-line px-3 py-2 text-sm"
           >
             {ZOHO_DATA_CENTERS.map((d) => (
               <option key={d.value} value={d.value}>
@@ -471,7 +470,7 @@ export function ZohoAssistSettingsSection() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="text-xs font-medium text-black/70">
+            <label className="text-xs font-medium text-ink">
               Default org id (Assist)
             </label>
             <input
@@ -479,11 +478,11 @@ export function ZohoAssistSettingsSection() {
               onChange={(e) => setDefaultOrgId(e.target.value)}
               autoComplete="off"
               placeholder="x-com-zoho-assist-orgid — optional"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-black/70">
+            <label className="text-xs font-medium text-ink">
               Default department id (Assist)
             </label>
             <input
@@ -491,24 +490,24 @@ export function ZohoAssistSettingsSection() {
               onChange={(e) => setDefaultDepartmentId(e.target.value)}
               autoComplete="off"
               placeholder="Required for GET /api/v2/devices/…"
-              className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
             />
           </div>
         </div>
         <div>
-          <label className="text-xs font-medium text-black/70">Client ID</label>
+          <label className="text-xs font-medium text-ink">Client ID</label>
           <input
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
             autoComplete="off"
             placeholder="From Zoho API Console"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-black/70">Client secret</label>
+          <label className="text-xs font-medium text-ink">Client secret</label>
           {meta?.hasClientSecret ? (
-            <p className="mt-1 text-xs text-black/55">
+            <p className="mt-1 text-xs text-muted">
               Stored: <span className="font-mono">{meta.clientSecretMasked}</span>
             </p>
           ) : null}
@@ -521,9 +520,9 @@ export function ZohoAssistSettingsSection() {
                 ? "Leave blank to keep existing, or enter a new secret"
                 : "Paste client secret"
             }
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-sm"
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-sm"
           />
-          <label className="mt-2 flex items-center gap-2 text-xs text-black/70">
+          <label className="mt-2 flex items-center gap-2 text-xs text-ink">
             <input
               type="checkbox"
               checked={clearClientSecret}
@@ -533,11 +532,11 @@ export function ZohoAssistSettingsSection() {
           </label>
         </div>
         <div>
-          <label className="text-xs font-medium text-black/70">
+          <label className="text-xs font-medium text-ink">
             Refresh token (optional)
           </label>
           {meta?.hasRefreshToken ? (
-            <p className="mt-1 text-xs text-black/55">
+            <p className="mt-1 text-xs text-muted">
               Stored:{" "}
               <span className="font-mono">{meta.refreshTokenMasked}</span>
             </p>
@@ -547,9 +546,9 @@ export function ZohoAssistSettingsSection() {
             onChange={(e) => setRefreshToken(e.target.value)}
             rows={2}
             placeholder="Paste refresh token from Zoho API Console (Self Client), or use Connect below"
-            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 font-mono text-xs"
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 font-mono text-xs"
           />
-          <label className="mt-2 flex items-center gap-2 text-xs text-black/70">
+          <label className="mt-2 flex items-center gap-2 text-xs text-ink">
             <input
               type="checkbox"
               checked={clearRefreshToken}
@@ -563,7 +562,7 @@ export function ZohoAssistSettingsSection() {
           <button
             type="submit"
             disabled={saving}
-            className="font-heading rounded-lg bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
+            className="btn-primary"
           >
             {saving ? "Saving…" : "Save Zoho credentials"}
           </button>
@@ -571,7 +570,7 @@ export function ZohoAssistSettingsSection() {
             type="button"
             disabled={connecting || !meta?.readyForOAuth}
             onClick={() => void connectZoho()}
-            className="font-heading rounded-lg border-2 border-black bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-black disabled:opacity-50"
+            className="btn-secondary"
           >
             {connecting ? "Redirecting…" : "Connect Zoho Account"}
           </button>
@@ -579,7 +578,7 @@ export function ZohoAssistSettingsSection() {
             type="button"
             disabled={testing || !meta?.canTestApi}
             onClick={() => void runTest()}
-            className="font-heading rounded-lg border-2 border-brand bg-white px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-brand disabled:opacity-50"
+            className="btn-secondary"
           >
             {testing ? "Testing…" : "Test API"}
           </button>
@@ -587,7 +586,7 @@ export function ZohoAssistSettingsSection() {
             type="button"
             disabled={ipSyncBusy || !meta?.canTestApi}
             onClick={() => void runSyncPublicIps()}
-            className="font-heading rounded-lg border-2 border-brand bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white hover:bg-brand-hover disabled:opacity-50"
+            className="btn-primary"
           >
             {ipSyncBusy ? "Syncing IPs…" : "Sync public IPs (all Assist assets)"}
           </button>
@@ -597,13 +596,13 @@ export function ZohoAssistSettingsSection() {
             Save Client ID and Client Secret before connecting or testing.
           </p>
         ) : !meta?.canTestApi ? (
-          <p className="text-xs text-black/55">
+          <p className="text-xs text-muted">
             Connect Zoho Account or save a refresh token to enable API test.
           </p>
         ) : null}
       </form>
 
-      <p className="mt-4 text-xs text-black/55">
+      <p className="mt-4 text-xs text-muted">
         <strong>Public IP sync:</strong> Weekly job (Vercel Cron, Sundays 05:00 UTC) refreshes
         public IP and approximate region for every Assist-linked asset. Use the button above for
         an on-demand run.
@@ -611,10 +610,10 @@ export function ZohoAssistSettingsSection() {
 
       {ipSyncResult ? (
         <div className="mt-4">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-black/70">
+          <h3 className="text-xs font-bold text-ink">
             Public IP sync result
           </h3>
-          <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-black/10 bg-black/[0.03] p-4 font-mono text-xs text-black/90">
+          <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-line bg-black/[0.03] p-4 font-mono text-xs text-ink">
             {ipSyncResult}
           </pre>
         </div>
@@ -622,10 +621,10 @@ export function ZohoAssistSettingsSection() {
 
       {testResult ? (
         <div className="mt-6">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-black/70">
+          <h3 className="text-xs font-bold text-ink">
             API test response
           </h3>
-          <pre className="mt-2 max-h-96 overflow-auto rounded-lg border border-black/10 bg-black/[0.03] p-4 font-mono text-xs text-black/90">
+          <pre className="mt-2 max-h-96 overflow-auto rounded-lg border border-line bg-black/[0.03] p-4 font-mono text-xs text-ink">
             {testResult}
           </pre>
         </div>
