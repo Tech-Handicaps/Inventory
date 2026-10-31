@@ -17,6 +17,53 @@ export function isAllowedHardwareBoardMove(
   return allowed.includes(toStatusCode);
 }
 
+/**
+ * What dropping (or "Move to…") a card onto a stage does:
+ * - "confirm": plain status change after a confirmation dialog
+ * - "assessment" / "repair" / "writeoff": opens that workflow's own dialog, which creates its record
+ * - null: not allowed from the card's current stage
+ */
+export type BoardDropAction = "confirm" | "assessment" | "repair" | "writeoff";
+
+export function boardDropAction(
+  fromStatusCode: string,
+  toStatusCode: string
+): BoardDropAction | null {
+  if (fromStatusCode === toStatusCode) return null;
+  if (toStatusCode === "written_off") {
+    if (fromStatusCode === "assessment" || fromStatusCode === "repair") return "writeoff";
+    return isAllowedHardwareBoardMove(fromStatusCode, toStatusCode) ? "confirm" : null;
+  }
+  if (toStatusCode === "assessment" && fromStatusCode === "deployed") return "assessment";
+  if (toStatusCode === "repair") {
+    if (fromStatusCode === "deployed") return null;
+    if (fromStatusCode === "written_off") return "confirm";
+    return "repair";
+  }
+  return isAllowedHardwareBoardMove(fromStatusCode, toStatusCode) ? "confirm" : null;
+}
+
+/** Side effects worth telling the user about before a plain status change. */
+export function boardMoveConsequences(
+  fromStatusCode: string,
+  toStatusCode: string
+): string[] {
+  const notes: string[] = [];
+  if (
+    toStatusCode === "deployed" &&
+    (fromStatusCode === "assessment" || fromStatusCode === "repair")
+  ) {
+    notes.push("A dispatch voucher is issued for this unit.");
+  }
+  if (
+    fromStatusCode === "assessment" &&
+    (toStatusCode === "deployed" || toStatusCode === "refurbished")
+  ) {
+    notes.push("The open Assessment/Maintenance intake is marked completed.");
+  }
+  return notes;
+}
+
 export function hardwareBoardMoveError(
   fromStatusCode: string,
   toStatusCode: string

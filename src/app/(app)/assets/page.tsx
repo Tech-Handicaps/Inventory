@@ -4,13 +4,14 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TablePageSkeleton } from "@/components/Skeleton";
 import { EditAssetModal } from "@/components/EditAssetModal";
-import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AssetTagChips } from "@/components/ui/AssetTagChips";
 import { ConfirmDeleteDialog } from "@/components/ui/ConfirmDeleteDialog";
 import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { useToast } from "@/components/ToastProvider";
+import { HARDWARE_CREATED_EVENT, openAddHardware } from "@/lib/client/add-hardware";
+import { Plus } from "lucide-react";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 import {
@@ -170,6 +171,12 @@ function AssetsPageContent() {
     };
   }, [load]);
 
+  useEffect(() => {
+    const onCreated = () => void load().catch(console.error);
+    window.addEventListener(HARDWARE_CREATED_EVENT, onCreated);
+    return () => window.removeEventListener(HARDWARE_CREATED_EVENT, onCreated);
+  }, [load]);
+
   const updateStatus = useCallback(
     async (assetId: string, statusId: string) => {
       const prev = assets.find((x) => x.id === assetId);
@@ -227,18 +234,21 @@ function AssetsPageContent() {
           title="All assets"
           description="Every unit in one searchable table."
           help="Register hardware, assign templates and clubs, or import devices from Zoho Assist."
-        >
-          <button
-            type="button"
-            onClick={() => setAssistImportOpen(true)}
-            className="btn-secondary"
-          >
-            Import from Zoho Assist
-          </button>
-        </PageHeader>
-        <HardwareCaptureForm
-          statuses={effectiveStatuses}
-          onCreated={() => void load()}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => setAssistImportOpen(true)}
+                className="btn-secondary"
+              >
+                Import from Zoho Assist
+              </button>
+              <button type="button" onClick={openAddHardware} className="btn-primary">
+                <Plus className="h-5 w-5" aria-hidden />
+                Add hardware
+              </button>
+            </>
+          }
         />
 
         {fetchError ? (

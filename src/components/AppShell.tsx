@@ -19,7 +19,8 @@ import { HandicaperProvider } from "@/components/HandicaperProvider";
 import { useAppRole } from "@/components/RoleProvider";
 import { useToast } from "@/components/ToastProvider";
 import { isNavLinkVisible, hasFullNavAccess, type NavKey } from "@/lib/auth/nav-access";
-import { ADD_HARDWARE_EVENT, ADD_HARDWARE_HREF } from "@/lib/client/add-hardware";
+import { AddHardwareModal } from "@/components/AddHardwareModal";
+import { openAddHardware } from "@/lib/client/add-hardware";
 import { createClient } from "@/lib/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -183,7 +184,6 @@ function SidebarPanel({
 
 function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { role } = useAppRole();
-  const pathname = usePathname();
   const canUseAssets = role !== "reports_only";
 
   return (
@@ -198,19 +198,16 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
       </button>
       <div className="min-w-0 flex-1">{canUseAssets ? <GlobalSearch /> : null}</div>
       {canUseAssets ? (
-        <Link
-          href={ADD_HARDWARE_HREF}
+        <button
+          type="button"
           className="btn-primary shrink-0"
           aria-label="Add hardware"
-          onClick={(e) => {
-            if (!pathname.startsWith("/inventory")) return;
-            e.preventDefault();
-            window.dispatchEvent(new Event(ADD_HARDWARE_EVENT));
-          }}
+          aria-haspopup="dialog"
+          onClick={openAddHardware}
         >
           <Plus className="h-5 w-5" aria-hidden />
           <span className="hidden sm:inline">Add hardware</span>
-        </Link>
+        </button>
       ) : null}
     </header>
   );
@@ -267,6 +264,7 @@ export function AppShell({ children }: Props) {
           <div className="app-canvas min-w-0 flex-1">{children}</div>
         </div>
       </div>
+      <AddHardwareModal />
     </HandicaperProvider>
   );
 }

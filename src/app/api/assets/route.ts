@@ -11,6 +11,7 @@ import {
   parseTagsFromUnknown,
   resolveTagsForSave,
 } from "@/lib/inventory/asset-tags";
+import { findAssetBySerial } from "@/lib/inventory/serial-lookup";
 import { nextResponseIfPrismaSchemaDrift } from "@/lib/prisma-error-response";
 import { prisma } from "@/lib/prisma";
 
@@ -232,6 +233,19 @@ export async function POST(request: NextRequest) {
     const resolvedDataSource = dataSource ?? "manual";
 
     const resolvedAssistId = zohoAssistDeviceId;
+
+    if (typeof serialNumber === "string" && serialNumber.trim()) {
+      const existing = await findAssetBySerial(serialNumber);
+      if (existing) {
+        return NextResponse.json(
+          {
+            error: `That serial number is already on the board (${existing.assetName}, ${existing.status.label}).`,
+            code: "UNIQUE_VIOLATION",
+          },
+          { status: 409 }
+        );
+      }
+    }
 
     const purchaseD = optionalIsoDateFromBody(purchaseDate);
     const warrantyD = optionalIsoDateFromBody(warrantyEndDate);

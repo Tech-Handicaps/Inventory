@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TagInput } from "@/components/ui/TagInput";
-import { ADD_HARDWARE_EVENT, ADD_HARDWARE_HASH } from "@/lib/client/add-hardware";
 import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
 import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
@@ -35,6 +34,7 @@ type Props = {
   /** Optional: parent may pass statuses; if empty, the form fetches `/api/statuses` itself. */
   statuses: Status[];
   onCreated: () => void;
+  onCancel: () => void;
 };
 
 async function apiErrorMessage(res: Response): Promise<string> {
@@ -53,22 +53,19 @@ async function apiErrorMessage(res: Response): Promise<string> {
   }
 }
 
-export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props) {
-  const sectionRef = useRef<HTMLElement>(null);
+type SerialCheck =
+  | { state: "idle" }
+  | { state: "checking" }
+  | { state: "ok" }
+  | { state: "taken"; assetName: string; stage: string };
 
-  useEffect(() => {
-    const reveal = () => {
-      const section = sectionRef.current;
-      if (!section) return;
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
-      section
-        .querySelector<HTMLElement>("select:not(:disabled), input:not(:disabled)")
-        ?.focus({ preventScroll: true });
-    };
-    if (window.location.hash === ADD_HARDWARE_HASH) reveal();
-    window.addEventListener(ADD_HARDWARE_EVENT, reveal);
-    return () => window.removeEventListener(ADD_HARDWARE_EVENT, reveal);
-  }, []);
+export function HardwareCaptureForm({
+  statuses: statusesProp,
+  onCreated,
+  onCancel,
+}: Props) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const focusedRef = useRef(false);
   const [localStatuses, setLocalStatuses] = useState<Status[]>([]);
   const [statusesLoading, setStatusesLoading] = useState(false);
 
@@ -134,6 +131,53 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [serialCheck, setSerialCheck] = useState<SerialCheck>({ state: "idle" });
+
+  useEffect(() => {
+    if (templatesLoading || focusedRef.current) return;
+    focusedRef.current = true;
+    formRef.current
+      ?.querySelector<HTMLElement>("input:not(:disabled)")
+      ?.focus({ preventScroll: true });
+  }, [templatesLoading]);
+
+  useEffect(() => {
+    const serial = serialNumber.trim();
+    if (!serial) {
+      setSerialCheck({ state: "idle" });
+      return;
+    }
+    setSerialCheck({ state: "checking" });
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetch(`/api/assets/serial-check?serial=${encodeURIComponent(serial)}`, {
+        signal: controller.signal,
+      })
+        .then(async (r) => {
+          if (!r.ok) throw new Error("check failed");
+          return (await r.json()) as {
+            exists: boolean;
+            asset: { assetName: string; status: { label: string } } | null;
+          };
+        })
+        .then((j) => {
+          setSerialCheck(
+            j.exists && j.asset
+              ? { state: "taken", assetName: j.asset.assetName, stage: j.asset.status.label }
+              : { state: "ok" }
+          );
+        })
+        .catch((e) => {
+          if (!(e instanceof DOMException && e.name === "AbortError")) {
+            setSerialCheck({ state: "idle" });
+          }
+        });
+    }, 350);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [serialNumber]);
 
   useEffect(() => {
     if (statusId && !statuses.some((s) => s.id === statusId)) {
@@ -251,7 +295,8 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
       e.preventDefault();
       pickTemplateFromSearch(filteredTemplates[0]!.id);
     }
-    if (e.key === "Escape") {
+    if (e.key === "Escape" && (templateId || templateFilter)) {
+      e.preventDefault();
       if (templateId) clearTemplateSelection();
       else setTemplateFilter("");
     }
@@ -317,27 +362,30 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
     }
   }
 
-  const canSubmit = statuses.length > 0 && Boolean(effectiveStatusId);
+  const serialTaken = serialCheck.state === "taken";
+  const canSubmit =
+    statuses.length > 0 && Boolean(effectiveStatusId) && !serialTaken;
   const noStatusesYet = !statusesLoading && statuses.length === 0;
 
   return (
-    <section
-      id="register-hardware"
-      ref={sectionRef}
-      className="glass-card scroll-mt-20 overflow-hidden"
+    <form
+      ref={formRef}
+      onSubmit={submit}
+      className="flex min-h-0 flex-1 flex-col"
+      aria-describedby="hw-form-intro"
     >
-      <div className="border-b border-line px-6 py-4">
-        <div className="flex items-center gap-1.5">
-          <h2 className="font-heading text-lg font-semibold text-ink">Register hardware</h2>
-          <InfoTip label="About registering hardware">
-            Each row on the board is a <strong>physical unit</strong>. Pick a{" "}
-            <strong>device template</strong> for consistent make, model and category, then
-            enter the <strong>serial</strong> (or service tag) so the unit is identifiable.
-            Manage templates under <strong>Settings → Device templates</strong> and club
-            names under <strong>Settings → Clubs</strong>.
-          </InfoTip>
-        </div>
-        <p className="mt-1 text-sm text-muted">Pick a device template, then enter the serial number.</p>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="flex items-center gap-1.5 border-b border-line px-6 py-3">
+        <p id="hw-form-intro" className="text-sm text-muted">
+          Pick a device template, then enter the serial number.
+        </p>
+        <InfoTip label="About registering hardware">
+          Each card on the board is a <strong>physical unit</strong>. Pick a{" "}
+          <strong>device template</strong> for consistent make, model and category, then
+          enter the <strong>serial</strong> (or service tag) so the unit is identifiable.
+          Manage templates under <strong>Settings → Device templates</strong> and club
+          names under <strong>Settings → Clubs</strong>.
+        </InfoTip>
       </div>
 
       {statusesLoading && statuses.length === 0 ? (
@@ -367,7 +415,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
         </div>
       ) : null}
 
-      <form onSubmit={submit} className="px-6 py-6">
+      <div className="px-6 py-6">
         {optionsError ? (
           <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
             {optionsError}
@@ -465,6 +513,7 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                           key={t.id}
                           type="button"
                           role="option"
+                          aria-selected={false}
                           onClick={() => pickTemplateFromSearch(t.id)}
                           className="block w-full px-3 py-2 text-left text-sm hover:bg-brand-muted/60"
                         >
@@ -683,11 +732,27 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
                   placeholder="Unique per device; leave blank only if unknown"
                   autoCapitalize="characters"
                   spellCheck={false}
-                  className="mt-1 w-full rounded-lg border border-line px-3 py-2.5 font-mono text-sm"
+                  aria-invalid={serialTaken}
+                  aria-describedby="hw-serial-status"
+                  className={`mt-1 w-full rounded-lg border px-3 py-2.5 font-mono text-sm ${
+                    serialTaken ? "border-red-500 ring-2 ring-red-500/20" : "border-line"
+                  }`}
                 />
-                <p className="mt-1.5 text-xs text-muted">
-                  Used to avoid duplicates and track warranty. Must be unique if
-                  provided.
+                <p id="hw-serial-status" className="mt-1.5 text-xs" aria-live="polite">
+                  {serialCheck.state === "taken" ? (
+                    <span className="font-medium text-red-700">
+                      Already registered: {serialCheck.assetName} ({serialCheck.stage}). Each
+                      serial can only be added once.
+                    </span>
+                  ) : serialCheck.state === "checking" ? (
+                    <span className="text-muted">Checking serial…</span>
+                  ) : serialCheck.state === "ok" ? (
+                    <span className="font-medium text-hna-green-text">Serial is not on the board yet.</span>
+                  ) : (
+                    <span className="text-muted">
+                      Used to avoid duplicates and track warranty. Must be unique if provided.
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -806,19 +871,24 @@ export function HardwareCaptureForm({ statuses: statusesProp, onCreated }: Props
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-line pt-6">
-          <button
-            type="submit"
-            disabled={busy || !canSubmit}
-            className="btn-primary"
-          >
-            {busy ? "Saving…" : "Add to board"}
-          </button>
-          <p className="text-xs text-muted">
-            You can move cards between columns after they appear.
-          </p>
-        </div>
-      </form>
-    </section>
+      </div>
+      </div>
+
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-line bg-white px-6 py-4">
+        <p className="mr-auto text-xs text-muted">
+          You can move cards between columns after they appear.
+        </p>
+        <button type="button" onClick={onCancel} className="btn-secondary" disabled={busy}>
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={busy || !canSubmit}
+          className="btn-primary"
+        >
+          {busy ? "Saving…" : "Add hardware"}
+        </button>
+      </div>
+    </form>
   );
 }

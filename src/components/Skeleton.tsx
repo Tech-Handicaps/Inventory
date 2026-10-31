@@ -54,11 +54,12 @@ export function SectionSkeleton({ label }: { label: string }) {
 
 export function BoardSkeleton() {
   return (
-    <main className="mx-auto max-w-7xl space-y-8 p-6" role="status" aria-label="Loading hardware board">
+    <main className="space-y-4 overflow-hidden px-4 py-5 lg:px-6" role="status" aria-label="Loading hardware board">
       <SkeletonHeader />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <SkeletonBlock className="h-24 w-full" />
+      <div className="flex gap-3 xl:grid xl:grid-cols-6">
         {Array.from({ length: 6 }, (_, col) => (
-          <div key={col} className="rounded-lg border border-[#e5e9ec] bg-white p-3">
+          <div key={col} className="w-64 shrink-0 rounded-lg border border-[#e5e9ec] bg-white p-3 xl:w-auto xl:min-w-0">
             <SkeletonBlock className="h-4 w-24" />
             <div className="mt-3 space-y-2">
               {Array.from({ length: 4 }, (_, i) => (
