@@ -6,6 +6,7 @@ import {
   type LegacyMonthEndDraft,
   type LegacyMonthTotals,
 } from "@/lib/reports/legacy-month-end";
+import { formatDate } from "@/lib/dates/format";
 
 const QTY_FIELDS = [
   ["newStock", "New"],
@@ -209,12 +210,7 @@ export function liveMonthFromAssets(
   }
   return {
     monthKey: `${year}-${String(month).padStart(2, "0")}`,
-    asOfLabel: new Intl.DateTimeFormat("en-ZA", {
-      timeZone: JOHANNESBURG,
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(now),
+    asOfLabel: formatDate(now),
     ...counts,
   };
 }

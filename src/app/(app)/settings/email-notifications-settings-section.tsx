@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useCallback, useEffect, useState } from "react";
 import type { EmailTransportId } from "@/lib/email/email-notification-copy";
 import {
@@ -177,7 +178,7 @@ export function EmailNotificationsSettingsSection() {
   }
 
   if (loading || !data) {
-    return <p className="text-sm text-black/55">Loading email settings…</p>;
+    return <SectionSkeleton label="Loading email settings" />;
   }
 
   const blockedHint = describeSenderBlockedReason(data.senderBlockedReason);

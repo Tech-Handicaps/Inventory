@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useEffect, useState } from "react";
 import type { StockHandover } from "@/lib/reports/stock-handover";
 
@@ -55,7 +56,7 @@ export function HandoverSection() {
       {error ? (
         <p className="text-sm text-red-700">{error}</p>
       ) : handover === null ? (
-        <p className="text-sm text-black/50">Loading stock handover…</p>
+        <SectionSkeleton label="Loading stock handover" />
       ) : (
         <>
           <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-black/70">

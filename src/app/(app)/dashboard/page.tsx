@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { DashboardSkeleton } from "@/components/Skeleton";
 import { CategoryBarChart } from "@/components/charts/CategoryBarChart";
 import { useHandicaper } from "@/components/HandicaperProvider";
 import { DataSourceDonutChart } from "@/components/charts/DataSourceDonutChart";
@@ -14,6 +15,7 @@ import { RepairsBarChart } from "@/components/charts/RepairsBarChart";
 import { StockPieChart } from "@/components/charts/StockPieChart";
 import { WriteoffsDonutChart } from "@/components/charts/WriteoffsDonutChart";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { formatDateTime } from "@/lib/dates/format";
 
 type StockRow = { status: string; count: number; code: string };
 type StockAvailableBucket = {
@@ -306,11 +308,7 @@ export default function DashboardPage() {
   }, [assetGeo]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
-        <p className="text-lg text-black/55">Loading dashboard...</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const hardFail =
@@ -791,7 +789,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Primary charts grid */}
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="section-card p-6">
             <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
               Lifecycle mix
@@ -875,7 +873,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Trend + recent activity */}
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="section-card p-6">
             <h2 className="font-heading text-lg font-bold uppercase tracking-wide text-black">
               Refurbished trend
@@ -927,7 +925,7 @@ export default function DashboardPage() {
                             : "Manual"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-xs text-black/55">
-                          {new Date(a.dateUpdated).toLocaleString()}
+                          {formatDateTime(a.dateUpdated)}
                         </td>
                       </tr>
                     ))}
@@ -1073,7 +1071,7 @@ export default function DashboardPage() {
                       <span className="capitalize">{r.syncStatus}</span>
                     </span>
                     <span className="w-full text-xs text-black/45 sm:w-auto">
-                      {new Date(r.createdAt).toLocaleString()}
+                      {formatDateTime(r.createdAt)}
                     </span>
                   </li>
                 ))}

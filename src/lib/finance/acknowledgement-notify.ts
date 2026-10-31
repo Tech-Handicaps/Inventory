@@ -13,6 +13,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
+import { formatDateTime } from "@/lib/dates/format";
 
 function appBaseUrl(): string {
   return (
@@ -440,13 +441,7 @@ export async function createWrittenOffAcknowledgementAndNotify(params: {
 }
 
 function formatBookedAt(d: Date): string {
-  return d.toLocaleString("en-ZA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTime(d);
 }
 
 function formatGeoLabel(parts: {

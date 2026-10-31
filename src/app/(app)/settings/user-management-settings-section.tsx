@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { PasswordInput } from "@/components/PasswordInput";
 import {
@@ -9,6 +10,7 @@ import {
   type AssignableRole,
 } from "@/lib/auth/assignable-roles";
 import type { AppRole } from "@/lib/auth/roles";
+import { formatDateTime } from "@/lib/dates/format";
 
 type Row = {
   id: string;
@@ -290,7 +292,7 @@ export function UserManagementSettingsSection() {
   }
 
   if (loading) {
-    return <p className="text-sm text-black/55">Loading users…</p>;
+    return <SectionSkeleton label="Loading users" />;
   }
 
   return (
@@ -601,9 +603,7 @@ export function UserManagementSettingsSection() {
                     {roleLabel(row.role)}
                   </td>
                   <td className="px-4 py-2.5 text-black/55 tabular-nums">
-                    {row.lastSignInAt
-                      ? new Date(row.lastSignInAt).toLocaleString()
-                      : "—"}
+                    {formatDateTime(row.lastSignInAt)}
                   </td>
                   <td className="px-4 py-2">
                     {row.readOnly ? (

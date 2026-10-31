@@ -1,7 +1,10 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useToast } from "@/components/ToastProvider";
+import { ConfirmDeleteDialog } from "@/components/ui/ConfirmDeleteDialog";
+import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { apiErrorMessage } from "@/lib/client/api-error";
 
 const CLUBS_PAGE_SIZE = 10;
@@ -17,6 +20,8 @@ export function ClubsSettingsSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Club | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState("");
   const [page, setPage] = useState(0);
 
@@ -90,26 +95,28 @@ export function ClubsSettingsSection() {
     }
   }
 
-  async function remove(id: string) {
-    if (
-      !confirm(
-        "Delete this club? Devices linked to it will have club cleared (not deleted)."
-      )
-    )
-      return;
-    const res = await fetch(`/api/clubs/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.showError(await apiErrorMessage(res));
-      return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/clubs/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.showError(await apiErrorMessage(res));
+        return;
+      }
+      setPendingDelete(null);
+      if (editingId === id) resetForm();
+      await load();
+    } finally {
+      setDeleting(false);
     }
-    if (editingId === id) resetForm();
-    await load();
   }
 
   if (loading) {
     return (
       <div className="rounded-xl border border-black/10 bg-white p-8 shadow-sm">
-        <p className="text-sm text-black/55">Loading clubs…</p>
+        <SectionSkeleton label="Loading clubs" />
       </div>
     );
   }
@@ -181,20 +188,25 @@ export function ClubsSettingsSection() {
                 <tr key={c.id} className="border-b border-black/5">
                   <td className="py-2 pr-4 font-medium">{c.name}</td>
                   <td className="py-2 pr-0 text-right">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(c)}
-                      className="mr-2 text-xs font-semibold uppercase text-brand hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(c.id)}
-                      className="text-xs font-semibold uppercase text-red-700 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(c)}
+                        className="text-xs font-semibold uppercase text-brand hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <OverflowMenu
+                        label={c.name}
+                        items={[
+                          {
+                            label: "Delete",
+                            destructive: true,
+                            onSelect: () => setPendingDelete(c),
+                          },
+                        ]}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -246,6 +258,16 @@ export function ClubsSettingsSection() {
           )}
         </div>
       </section>
+
+      <ConfirmDeleteDialog
+        open={pendingDelete !== null}
+        title="Delete club?"
+        itemName={pendingDelete?.name ?? ""}
+        consequence="Devices linked to this club keep their record. Only the club on those devices is cleared."
+        busy={deleting}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

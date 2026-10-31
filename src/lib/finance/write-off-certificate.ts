@@ -3,6 +3,7 @@ import { newWriteOffCertificateReference } from "@/lib/finance/write-off-referen
 import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderWriteOffCertificatePdf } from "@/lib/pdf/write-off-certificate-html";
 import { prisma } from "@/lib/prisma";
+import { formatDateTime } from "@/lib/dates/format";
 
 export type WriteOffCertificateRecord = {
   id: string;
@@ -29,13 +30,7 @@ export type WriteOffCertificateRecord = {
 };
 
 function formatWrittenOffAt(d: Date): string {
-  return d.toLocaleString("en-ZA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTime(d);
 }
 
 function trimOrNull(v: string | null | undefined): string | null {

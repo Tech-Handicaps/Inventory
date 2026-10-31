@@ -612,7 +612,7 @@ function ClubAssignedAssetsPanel({
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="font-medium text-black">{asset.assetName}</span>
                     {asset.dataSource === "zoho_assist" ? (
-                      <span className="rounded border border-violet-200 bg-violet-50 px-1 py-px text-[9px] font-bold uppercase tracking-wide text-violet-900">
+                      <span className="rounded border border-brand/30 bg-brand-muted px-1 py-px text-[9px] font-bold uppercase tracking-wide text-brand-deep">
                         Assist
                       </span>
                     ) : null}

@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolveAssetSkuModelLabel } from "@/lib/inventory/device-template-label";
+import { formatDate } from "@/lib/dates/format";
 
 const TIMELINE_LIMIT = 80;
 
@@ -193,7 +194,7 @@ function mapAssetToUnit(
     model: resolveAssetSkuModelLabel(a),
     serialNumber: a.serialNumber ?? "",
     category: a.category,
-    lastUpdated: a.dateUpdated.toISOString().slice(0, 10),
+    lastUpdated: formatDate(a.dateUpdated),
     ...(cert
       ? {
           writeOffReference: cert.referenceNumber,
@@ -681,7 +682,7 @@ export function buildClubMovementReply(
       `**Recent movement** (${timelineTotal} event${timelineTotal === 1 ? "" : "s"} total)`
     );
     for (const e of recent) {
-      const day = e.at.slice(0, 10);
+      const day = formatDate(e.at);
       lines.push(`• ${day} — ${e.assetName}: ${e.summary}`);
     }
   }

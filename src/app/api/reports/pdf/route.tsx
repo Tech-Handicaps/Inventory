@@ -21,6 +21,7 @@ import {
   stockStatusInclude,
   type StockStatusFilter,
 } from "@/lib/reports/stock-reconcile";
+import { formatDate as formatDisplayDate, formatDateTime } from "@/lib/dates/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,11 +47,7 @@ function isReportType(s: string | null): s is ReportType {
 }
 
 function formatDate(d: Date) {
-  return d.toLocaleDateString("en-ZA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDisplayDate(d);
 }
 
 type AssetWithStatus = Prisma.AssetGetPayload<{
@@ -151,7 +148,7 @@ export async function GET(request: NextRequest) {
     const respondPdf = (buffer: Buffer, filenameBase: string) =>
       pdfResponse(buffer, filenameBase, asAttachment);
     const raw = request.nextUrl.searchParams.get("type");
-    const generatedAt = new Date().toLocaleString("en-ZA");
+    const generatedAt = formatDateTime(new Date());
     const logoSource = await loadLogoForPdf();
 
     if (raw === "catalog") {

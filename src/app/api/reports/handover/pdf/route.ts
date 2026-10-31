@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderStockHandoverPdf } from "@/lib/pdf/render-stock-handover";
 import { buildStockHandover } from "@/lib/reports/stock-handover";
+import { formatDateTime } from "@/lib/dates/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,9 +18,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const logoSource = await loadLogoForPdf();
-    const generatedAt = new Date().toLocaleString("en-ZA", {
-      timeZone: "Africa/Johannesburg",
-    });
+    const generatedAt = formatDateTime(new Date());
     const buffer = await renderStockHandoverPdf({
       handover: buildStockHandover(),
       generatedAt,

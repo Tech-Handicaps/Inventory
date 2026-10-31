@@ -12,6 +12,7 @@ import {
   Legend,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import { formatDate } from "@/lib/dates/format";
 
 ChartJS.register(
   CategoryScale,
@@ -32,7 +33,7 @@ export function RefurbishedLineChart({ data }: { data: Asset[] }) {
       new Date(a.dateUpdated).getTime() - new Date(b.dateUpdated).getTime()
   );
   const labels = sorted.map((a) =>
-    new Date(a.dateUpdated).toLocaleDateString()
+    formatDate(a.dateUpdated)
   );
   const values = sorted.map((_, i) => i + 1);
 

@@ -8,6 +8,7 @@ import {
   wantsCsvExport,
 } from "@/lib/csv/download-csv";
 import { buildModalWelcomeMessage } from "@/lib/handicaper/welcome";
+import { formatDate, formatDateTime } from "@/lib/dates/format";
 
 export type HandicaperRequest = {
   mode?: "metric" | "chat";
@@ -192,7 +193,7 @@ function downloadClubMovementCsv(snapshot: ClubMovementSnapshot): void {
     e.summary,
     "",
     "",
-    e.at.slice(0, 10),
+    formatDate(e.at),
     "",
     "",
   ]);
@@ -346,13 +347,7 @@ function ClubMovementPanel({
                   dateTime={e.at}
                   className="text-[10px] font-medium tabular-nums text-black/40"
                 >
-                  {new Date(e.at).toLocaleString(undefined, {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {formatDateTime(e.at)}
                 </time>
                 <p className="text-xs font-medium text-black/80">{e.summary}</p>
                 <p className="text-[10px] text-black/40">
@@ -553,14 +548,12 @@ export function HandicaperModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal>
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        aria-label="Close"
-        onClick={onClose}
-      />
-      <div className="relative mx-4 flex w-full max-w-lg flex-col rounded-2xl bg-white shadow-2xl ring-1 ring-black/10 max-h-[85vh]">
+    <div
+      className="fixed bottom-20 right-4 z-50 w-[min(400px,calc(100vw-2rem))]"
+      role="dialog"
+      aria-label="Handicaper assistant"
+    >
+      <div className="relative flex max-h-[min(70vh,640px)] w-full flex-col rounded-lg border border-[#e5e9ec] bg-white">
         <div className="flex items-center gap-3 border-b border-black/10 px-5 py-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10">
             <span className="text-sm font-black text-brand">H</span>

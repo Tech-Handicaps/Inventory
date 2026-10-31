@@ -7,6 +7,7 @@ import {
   draftFromStoredReport,
   type LegacyMonthEndLine,
 } from "@/lib/reports/legacy-month-end";
+import { formatDateTime } from "@/lib/dates/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,9 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     const logoSource = await loadLogoForPdf();
-    const generatedAt = new Date().toLocaleString("en-ZA", {
-      timeZone: "Africa/Johannesburg",
-    });
+    const generatedAt = formatDateTime(new Date());
     const buffer = await renderLegacyMonthEndPdf({
       draft: draftFromStoredReport({
         ...report,

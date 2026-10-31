@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderAuditorIndexPdf } from "@/lib/pdf/render-auditor-index";
 import { buildAuditorIndex } from "@/lib/reports/auditor-index";
+import { formatDateTime } from "@/lib/dates/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,9 +19,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const logoSource = await loadLogoForPdf();
-    const generatedAt = new Date().toLocaleString("en-ZA", {
-      timeZone: "Africa/Johannesburg",
-    });
+    const generatedAt = formatDateTime(new Date());
     const buffer = await renderAuditorIndexPdf({
       index: buildAuditorIndex(),
       generatedAt,

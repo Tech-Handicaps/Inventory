@@ -1,7 +1,9 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { AUDIT_ACTION_TYPES } from "@/lib/audit/action-types";
+import { formatDateTime } from "@/lib/dates/format";
 
 type AuditRow = {
   id: string;
@@ -144,7 +146,7 @@ export function AuditLogSettingsSection() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-black/55">Loading audit log…</p>
+        <SectionSkeleton label="Loading audit log" />
       ) : (
         <>
           <p className="text-xs text-black/55">
@@ -169,13 +171,7 @@ export function AuditLogSettingsSection() {
                   <Fragment key={row.id}>
                     <tr className="border-b border-black/5 align-top">
                       <td className="py-2.5 pl-3 pr-2 font-mono text-xs text-black/80 whitespace-nowrap">
-                        {new Date(row.timestamp).toLocaleString("en-ZA", {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatDateTime(row.timestamp)}
                       </td>
                       <td className="py-2.5 pr-2 font-mono text-xs text-black">
                         {row.actionType}

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
@@ -23,6 +24,8 @@ type HandicaperContextValue = {
 
 const HandicaperContext = createContext<HandicaperContextValue | null>(null);
 
+const OPEN_KEY = "hna.handicaper.open";
+
 function pageFromPath(pathname: string): string {
   if (pathname.startsWith("/dashboard")) return "dashboard";
   if (pathname.startsWith("/inventory")) return "inventory";
@@ -37,6 +40,16 @@ export function HandicaperProvider({ children }: { children: React.ReactNode }) 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState<HandicaperRequest | null>(null);
+  const restoredRef = useRef(false);
+
+  const setPanelOpen = useCallback((next: boolean) => {
+    try {
+      window.sessionStorage.setItem(OPEN_KEY, next ? "1" : "0");
+    } catch {
+      /* sessionStorage unavailable */
+    }
+    setOpen(next);
+  }, []);
 
   useEffect(() => {
     void fetch("/api/me", { cache: "no-store" })
@@ -55,8 +68,37 @@ export function HandicaperProvider({ children }: { children: React.ReactNode }) 
       mode: "chat",
       page: pageFromPath(pathname),
     });
-    setOpen(true);
-  }, [pathname]);
+    setPanelOpen(true);
+  }, [pathname, setPanelOpen]);
+
+  useEffect(() => {
+    let wasOpen = false;
+    try {
+      wasOpen = window.sessionStorage.getItem(OPEN_KEY) === "1";
+    } catch {
+      /* sessionStorage unavailable */
+    }
+    if (!wasOpen) {
+      restoredRef.current = true;
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      restoredRef.current = true;
+      setRequest({ mode: "chat", page: pageFromPath(window.location.pathname) });
+      setOpen(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  const close = useCallback(() => setPanelOpen(false), [setPanelOpen]);
+
+  const toggle = useCallback(() => {
+    if (open) {
+      setPanelOpen(false);
+    } else {
+      openChat();
+    }
+  }, [open, openChat, setPanelOpen]);
 
   const openMetric = useCallback(
     (metricKey: string, metricLabel: string) => {
@@ -66,9 +108,9 @@ export function HandicaperProvider({ children }: { children: React.ReactNode }) 
         metricLabel,
         page: pageFromPath(pathname),
       });
-      setOpen(true);
+      setPanelOpen(true);
     },
-    [pathname]
+    [pathname, setPanelOpen]
   );
 
   const value = useMemo(
@@ -79,12 +121,12 @@ export function HandicaperProvider({ children }: { children: React.ReactNode }) 
   return (
     <HandicaperContext.Provider value={value}>
       {children}
-      <HandicaperMascot displayName={displayName} onOpenChat={openChat} />
+      <HandicaperMascot open={open} onToggle={toggle} />
       <HandicaperModal
         open={open}
         request={request}
         displayName={displayName}
-        onClose={() => setOpen(false)}
+        onClose={close}
       />
     </HandicaperContext.Provider>
   );

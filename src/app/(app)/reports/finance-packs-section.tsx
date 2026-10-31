@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useEffect, useState } from "react";
 
 type FinancePackMonth = {
@@ -67,7 +68,7 @@ export function FinancePacksSection() {
       {error ? (
         <p className="text-sm text-red-700">{error}</p>
       ) : months === null ? (
-        <p className="text-sm text-black/50">Loading official finance packs…</p>
+        <SectionSkeleton label="Loading official finance packs" />
       ) : months.length === 0 ? (
         <p className="text-sm text-black/60">
           No official finance pack has been kept yet. The next scheduled send

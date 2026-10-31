@@ -1,8 +1,10 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AssetSearchFields } from "@/lib/inventory/asset-search";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
+import { formatDate, formatDateTime } from "@/lib/dates/format";
 
 type WriteOffSummary = {
   referenceNumber: string;
@@ -107,13 +109,8 @@ function assetPickerLabel(a: PickerAsset): string {
 
 function formatShortDate(iso: string | undefined): string | null {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const formatted = formatDate(iso, "");
+  return formatted || null;
 }
 
 function AssetStageCard({
@@ -261,7 +258,7 @@ function TimelinePanel({
   }
 
   if (loading) {
-    return <p className="text-sm text-black/55">Loading history…</p>;
+    return <SectionSkeleton label="Loading history" />;
   }
 
   if (timeline.length === 0) {
@@ -291,7 +288,7 @@ function TimelinePanel({
               dateTime={row.timestamp}
               className="text-xs font-medium tabular-nums text-black/45"
             >
-              {new Date(row.timestamp).toLocaleString()}
+              {formatDateTime(row.timestamp)}
             </time>
             <p className="mt-0.5 text-sm font-medium text-black">
               {formatTransitionSummary(row)}
@@ -481,7 +478,7 @@ export function AssetLifecycleSection({ auditAccess = true }: Props) {
         ) : null}
 
         {loadingAssets ? (
-          <p className="text-sm text-black/55">Loading hardware…</p>
+          <SectionSkeleton label="Loading hardware" />
         ) : clubMode ? (
           <div className="space-y-8">
             <div className="grid gap-6 lg:grid-cols-2">

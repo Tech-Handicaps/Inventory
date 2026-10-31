@@ -13,6 +13,7 @@ import {
 import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderDispatchVoucherPdf } from "@/lib/pdf/render-dispatch-voucher-pdf";
 import { prisma } from "@/lib/prisma";
+import { formatDateTime } from "@/lib/dates/format";
 
 function appBaseUrl(): string {
   return (
@@ -21,13 +22,7 @@ function appBaseUrl(): string {
 }
 
 function formatDispatchDate(d: Date): string {
-  return d.toLocaleString("en-ZA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTime(d);
 }
 
 export { shouldIssueDispatchVoucher };

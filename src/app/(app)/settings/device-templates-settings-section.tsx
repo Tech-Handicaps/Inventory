@@ -1,12 +1,16 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmDeleteDialog } from "@/components/ui/ConfirmDeleteDialog";
+import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { TagInput } from "@/components/ui/TagInput";
 import { useToast } from "@/components/ToastProvider";
 import { apiErrorMessage } from "@/lib/client/api-error";
 import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
 import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
+import { TemplateDuplicatesPanel } from "./template-duplicates-panel";
 
 type DeviceTemplate = {
   id: string;
@@ -28,6 +32,9 @@ export function DeviceTemplatesSettingsSection() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<DeviceTemplate | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [reviewVersion, setReviewVersion] = useState(0);
 
   const [labelPreview, setLabelPreview] = useState("");
 
@@ -125,6 +132,7 @@ export function DeviceTemplatesSettingsSection() {
       }
       resetForm();
       await load();
+      setReviewVersion((v) => v + 1);
     } catch (err) {
       console.error(err);
       toast.showError(err instanceof Error ? err.message : "Save failed");
@@ -133,26 +141,29 @@ export function DeviceTemplatesSettingsSection() {
     }
   }
 
-  async function remove(id: string) {
-    if (
-      !confirm(
-        "Delete this template? Existing assets keep their make/model; only the link is cleared."
-      )
-    )
-      return;
-    const res = await fetch(`/api/device-templates/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.showError(await apiErrorMessage(res));
-      return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const id = pendingDelete.id;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/device-templates/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.showError(await apiErrorMessage(res));
+        return;
+      }
+      setPendingDelete(null);
+      if (editingId === id) resetForm();
+      await load();
+      setReviewVersion((v) => v + 1);
+    } finally {
+      setDeleting(false);
     }
-    if (editingId === id) resetForm();
-    await load();
   }
 
   if (loading) {
     return (
       <div className="rounded-xl border border-black/10 bg-white p-8 shadow-sm">
-        <p className="text-sm text-black/55">Loading device templates…</p>
+        <SectionSkeleton label="Loading device templates" />
       </div>
     );
   }
@@ -352,20 +363,25 @@ export function DeviceTemplatesSettingsSection() {
                   </td>
                   <td className="py-2 pr-4 text-black/60">{t.notes ?? "—"}</td>
                   <td className="py-2 pr-0 text-right">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(t)}
-                      className="mr-2 text-xs font-semibold uppercase text-brand hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(t.id)}
-                      className="text-xs font-semibold uppercase text-red-700 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(t)}
+                        className="text-xs font-semibold uppercase text-brand hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <OverflowMenu
+                        label={displayDeviceTemplateLabel(t)}
+                        items={[
+                          {
+                            label: "Delete",
+                            destructive: true,
+                            onSelect: () => setPendingDelete(t),
+                          },
+                        ]}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -378,6 +394,19 @@ export function DeviceTemplatesSettingsSection() {
           )}
         </div>
       </section>
+
+      <TemplateDuplicatesPanel key={reviewVersion} onChanged={() => void load()} />
+
+      <ConfirmDeleteDialog
+        open={pendingDelete !== null}
+        title="Delete device template?"
+        itemName={pendingDelete ? displayDeviceTemplateLabel(pendingDelete) : ""}
+        itemDetail={pendingDelete ? `${pendingDelete.manufacturer} ${pendingDelete.model}` : null}
+        consequence="Assets that use this template keep their make and model. Only the link to the template is cleared."
+        busy={deleting}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

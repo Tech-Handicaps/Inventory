@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useEffect, useState } from "react";
 import {
   formatSigned,
@@ -59,7 +60,7 @@ export function MonthOnMonthSection() {
       {error ? (
         <p className="text-sm text-red-700">{error}</p>
       ) : audit === null ? (
-        <p className="text-sm text-black/50">Loading month-on-month audit…</p>
+        <SectionSkeleton label="Loading month-on-month audit" />
       ) : (
         <>
           <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-black/70">

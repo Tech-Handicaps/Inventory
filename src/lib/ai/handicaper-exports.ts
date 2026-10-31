@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveAssetSkuModelLabel } from "@/lib/inventory/device-template-label";
 import { wantsCsvExport } from "@/lib/csv/download-csv";
 import { wantsStockBreakdown } from "@/lib/ai/handicaper-context";
+import { formatDate } from "@/lib/dates/format";
 
 export type AssetRegistryExportRow = {
   assetName: string;
@@ -48,7 +49,7 @@ export async function buildAssetRegistryExportRows(): Promise<
     tags: (a.tags ?? []).join("; "),
     dataSource: a.dataSource,
     deviceLocation: a.deviceLocation ?? "",
-    dateUpdated: a.dateUpdated.toISOString().slice(0, 10),
+    dateUpdated: formatDate(a.dateUpdated),
   }));
 }
 

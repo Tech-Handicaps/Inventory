@@ -501,7 +501,7 @@ export function EditAssetModal({
                 </div>
               ) : null}
 
-              <div className="rounded-lg border border-violet-200 bg-violet-50/40 px-3 py-3">
+              <div className="rounded-lg border border-brand/20 bg-brand-muted/40 px-3 py-3">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
                   Zoho Assist
                 </p>
@@ -546,7 +546,7 @@ export function EditAssetModal({
               </div>
 
               {assistLinked ? (
-                <div className="rounded-lg border border-violet-200 bg-violet-50/50 px-3 py-3">
+                <div className="rounded-lg border border-brand/20 bg-brand-muted/50 px-3 py-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wide text-black/45">
@@ -561,7 +561,7 @@ export function EditAssetModal({
                       type="button"
                       disabled={ipRefreshing}
                       onClick={() => void refreshPublicIpFromAssist()}
-                      className="shrink-0 rounded-lg border border-violet-600 bg-white px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-violet-950 disabled:opacity-50"
+                      className="shrink-0 rounded-lg border border-brand bg-brand px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-brand-hover disabled:opacity-50"
                     >
                       {ipRefreshing ? "Refreshing…" : "Refresh from Assist"}
                     </button>

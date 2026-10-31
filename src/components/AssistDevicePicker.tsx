@@ -192,7 +192,7 @@ export function AssistDevicePicker({
                 onClick={() => setSelectedId(r.resourceId)}
                 className={`w-full rounded-md px-2 py-1.5 text-left text-xs ${
                   selectedId === r.resourceId
-                    ? "bg-violet-100 font-medium text-violet-950"
+                    ? "bg-brand-muted font-medium text-brand-deep"
                     : "hover:bg-black/[0.04]"
                 }`}
               >
@@ -216,7 +216,7 @@ export function AssistDevicePicker({
         type="button"
         disabled={disabled || !selectedId || listBusy}
         onClick={() => void onLink({ resourceId: selectedId })}
-        className="font-heading w-full rounded-lg border-2 border-violet-600 bg-violet-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-violet-950 disabled:opacity-50"
+        className="font-heading w-full rounded-lg border-2 border-brand bg-brand px-3 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-brand-hover disabled:opacity-50"
       >
         {linkLabel}
       </button>

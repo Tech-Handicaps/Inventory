@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BoardSkeleton } from "@/components/Skeleton";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { LogRepairModal } from "@/components/LogRepairModal";
@@ -9,6 +10,8 @@ import { useToast } from "@/components/ToastProvider";
 import { WriteOffModal } from "@/components/WriteOffModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AssetTagChips } from "@/components/ui/AssetTagChips";
+import { ConfirmDeleteDialog } from "@/components/ui/ConfirmDeleteDialog";
+import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
 import {
   displayAssetManufacturer,
@@ -173,6 +176,8 @@ export default function InventoryPage() {
   } | null>(null);
   const [assessAsset, setAssessAsset] = useState<Asset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Asset | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
   const [columnSearchByStatusId, setColumnSearchByStatusId] = useState<
     Record<string, string>
@@ -345,10 +350,11 @@ export default function InventoryPage() {
     }
   }
 
-  const removeAsset = useCallback(
-    async (id: string, name: string) => {
-      if (!confirm(`Delete “${name}”? This cannot be undone.`)) return;
-      const res = await fetch(`/api/assets/${id}`, { method: "DELETE" });
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/assets/${pendingDelete.id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         toast.showError(
@@ -356,17 +362,15 @@ export default function InventoryPage() {
         );
         return;
       }
+      setPendingDelete(null);
       await load();
-    },
-    [load, toast]
-  );
+    } finally {
+      setDeleting(false);
+    }
+  }, [pendingDelete, load, toast]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
-        <p className="text-black/55">Loading hardware inventory…</p>
-      </div>
-    );
+    return <BoardSkeleton />;
   }
 
   return (
@@ -592,7 +596,7 @@ export default function InventoryPage() {
                           }
                         }}
                         onEdit={() => setEditingId(asset.id)}
-                        onDelete={() => void removeAsset(asset.id, asset.assetName)}
+                        onDelete={() => setPendingDelete(asset)}
                       />
                     </li>
                   ))}
@@ -687,25 +691,25 @@ export default function InventoryPage() {
                           </select>
                         </td>
                         <td className="px-4 py-2 text-right whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setEditingId(asset.id)}
-                            className="text-xs font-semibold text-brand hover:underline"
-                          >
-                            Edit
-                          </button>
-                          <span className="mx-1.5 text-black/25" aria-hidden>
-                            ·
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void removeAsset(asset.id, asset.assetName)
-                            }
-                            className="text-xs font-semibold text-red-700 hover:underline"
-                          >
-                            Delete
-                          </button>
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(asset.id)}
+                              className="text-xs font-semibold text-brand hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <OverflowMenu
+                              label={asset.assetName}
+                              items={[
+                                {
+                                  label: "Delete",
+                                  destructive: true,
+                                  onSelect: () => setPendingDelete(asset),
+                                },
+                              ]}
+                            />
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -780,8 +784,18 @@ export default function InventoryPage() {
             }}
           />
         ) : null}
+
+        <ConfirmDeleteDialog
+          open={pendingDelete !== null}
+          title="Delete asset?"
+          itemName={pendingDelete?.assetName ?? ""}
+          itemDetail={pendingDelete?.serialNumber ? `S/N ${pendingDelete.serialNumber}` : "No serial number"}
+          consequence="This removes the asset from the register. It cannot be undone."
+          busy={deleting}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDelete()}
+        />
       </main>
-    
   );
 }
 
@@ -849,7 +863,7 @@ function HardwareCard({
               </span>
             ) : null}
             {asset.dataSource === "zoho_assist" ? (
-              <span className="rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-900">
+              <span className="rounded border border-brand/30 bg-brand-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-deep">
                 Assist
               </span>
             ) : null}
@@ -927,7 +941,7 @@ function HardwareCard({
           ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <div className="flex items-center gap-1.5 text-[11px]">
+          <div className="flex items-center gap-1 text-[11px]">
             <button
               type="button"
               disabled={disabled}
@@ -936,17 +950,11 @@ function HardwareCard({
             >
               Edit
             </button>
-            <span className="text-black/25" aria-hidden>
-              ·
-            </span>
-            <button
-              type="button"
+            <OverflowMenu
+              label={asset.assetName}
               disabled={disabled}
-              onClick={onDelete}
-              className="font-semibold text-red-700 hover:underline disabled:opacity-50"
-            >
-              Delete
-            </button>
+              items={[{ label: "Delete", destructive: true, onSelect: onDelete }]}
+            />
           </div>
         </div>
       </div>

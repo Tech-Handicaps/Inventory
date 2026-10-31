@@ -29,6 +29,7 @@ import {
 import { loadStoredFinancePositions, loadDecember2025Workbook } from "@/lib/reports/load-finance-month-positions";
 import { buildFinanceYearly } from "@/lib/reports/finance-yearly";
 import { storeOfficialFinancePack } from "@/lib/reports/store-finance-month-pack";
+import { formatDateTime } from "@/lib/dates/format";
 
 const TZ = "Africa/Johannesburg";
 
@@ -148,7 +149,7 @@ async function buildReconcilePdfs(
   const breakdownReport = buildStockBreakdownReport(assets);
   const fieldUnits = financeFieldListing(assets);
   const logoSource = await loadLogoForPdf();
-  const generatedAt = new Date().toLocaleString("en-ZA", { timeZone: TZ });
+  const generatedAt = formatDateTime(new Date());
 
   const [reconcileBuffer, breakdownBuffer] = await Promise.all([
     renderReconcileReportPdf({

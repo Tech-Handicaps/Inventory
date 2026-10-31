@@ -1,9 +1,11 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { PasswordInput } from "@/components/PasswordInput";
 import { useToast } from "@/components/ToastProvider";
 import { ZOHO_DATA_CENTERS } from "@/lib/zoho/constants";
+import { formatDateTime } from "@/lib/dates/format";
 
 type DeskGetResponse = {
   clientId: string | null;
@@ -270,7 +272,7 @@ export function ZohoDeskSettingsSection() {
   if (loading) {
     return (
       <div className="py-4">
-        <p className="text-sm text-black/55">Loading Zoho Desk settings…</p>
+        <SectionSkeleton label="Loading Zoho Desk settings" />
       </div>
     );
   }
@@ -294,10 +296,7 @@ export function ZohoDeskSettingsSection() {
     statusHint = "Desk API is authorized for ticketing.";
     if (lastDeskApiVerified) {
       statusHint +=
-        ` Tested ${new Date(lastDeskApiVerified).toLocaleString(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })}.`;
+        ` Tested ${formatDateTime(lastDeskApiVerified)}.`;
     }
   }
 

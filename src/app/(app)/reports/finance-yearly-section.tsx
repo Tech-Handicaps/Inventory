@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useEffect, useState } from "react";
 import { formatFinanceChange } from "@/lib/reports/finance-month-on-month";
 import type { FinanceTypeTotals } from "@/lib/reports/finance-month-on-month";
@@ -126,7 +127,7 @@ export function FinanceYearlySection() {
       {error ? (
         <p className="text-sm text-red-700">{error}</p>
       ) : report === null ? (
-        <p className="text-sm text-black/50">Loading finance yearly…</p>
+        <SectionSkeleton label="Loading finance yearly" />
       ) : (
         <>
           <div className="max-w-3xl space-y-3 text-sm leading-relaxed text-black/70">

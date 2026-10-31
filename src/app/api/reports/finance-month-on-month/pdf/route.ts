@@ -4,6 +4,7 @@ import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderFinanceMonthOnMonthPdf } from "@/lib/pdf/render-finance-month-on-month";
 import { buildFinanceMonthOnMonth } from "@/lib/reports/finance-month-on-month";
 import { loadStoredFinancePositions } from "@/lib/reports/load-finance-month-positions";
+import { formatDateTime } from "@/lib/dates/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,9 +22,7 @@ export async function GET(request: NextRequest) {
     const positions = await loadStoredFinancePositions();
     const report = buildFinanceMonthOnMonth(positions);
     const logoSource = await loadLogoForPdf();
-    const generatedAt = new Date().toLocaleString("en-ZA", {
-      timeZone: "Africa/Johannesburg",
-    });
+    const generatedAt = formatDateTime(new Date());
     const buffer = await renderFinanceMonthOnMonthPdf({
       report,
       generatedAt,

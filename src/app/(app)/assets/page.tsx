@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { TablePageSkeleton } from "@/components/Skeleton";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { ImportAssistAssetModal } from "@/components/ImportAssistAssetModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AssetTagChips } from "@/components/ui/AssetTagChips";
+import { ConfirmDeleteDialog } from "@/components/ui/ConfirmDeleteDialog";
+import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { useToast } from "@/components/ToastProvider";
 import { formatGeoLabel } from "@/lib/geo/region-display";
 import { matchesAssetSearch } from "@/lib/inventory/asset-search";
@@ -14,6 +17,7 @@ import {
   displayAssetModel,
 } from "@/lib/inventory/asset-hardware-display";
 import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
+import { formatDate } from "@/lib/dates/format";
 
 type Asset = {
   id: string;
@@ -71,6 +75,8 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(true);
   const [assistImportOpen, setAssistImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Asset | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [registrySearch, setRegistrySearch] = useState("");
   const [statusFilterId, setStatusFilterId] = useState("");
@@ -174,10 +180,11 @@ export default function AssetsPage() {
     [assets, load, toast]
   );
 
-  const removeAsset = useCallback(
-    async (id: string, name: string) => {
-      if (!confirm(`Delete “${name}”? This cannot be undone.`)) return;
-      const res = await fetch(`/api/assets/${id}`, { method: "DELETE" });
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/assets/${pendingDelete.id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         toast.showError(
@@ -185,17 +192,15 @@ export default function AssetsPage() {
         );
         return;
       }
+      setPendingDelete(null);
       await load();
-    },
-    [load, toast]
-  );
+    } finally {
+      setDeleting(false);
+    }
+  }, [pendingDelete, load, toast]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
-        <p className="text-black/55">Loading assets...</p>
-      </div>
-    );
+    return <TablePageSkeleton label="Loading assets" />;
   }
 
   return (
@@ -208,7 +213,7 @@ export default function AssetsPage() {
           <button
             type="button"
             onClick={() => setAssistImportOpen(true)}
-            className="btn-secondary border-violet-300 text-violet-900 hover:border-violet-500 hover:bg-violet-50"
+            className="btn-secondary"
           >
             Import from Zoho Assist
           </button>
@@ -364,7 +369,7 @@ export default function AssetsPage() {
                       <td className="py-2">{a.assetName}</td>
                       <td className="py-2 text-xs">
                         {a.dataSource === "zoho_assist" ? (
-                          <span className="rounded bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-900">
+                          <span className="rounded bg-brand-muted px-1.5 py-0.5 font-semibold text-brand-deep">
                             Assist
                           </span>
                         ) : (
@@ -405,12 +410,12 @@ export default function AssetsPage() {
                       </td>
                       <td className="whitespace-nowrap py-2 text-xs text-black/70">
                         {a.purchaseDate
-                          ? new Date(a.purchaseDate).toLocaleDateString()
+                          ? formatDate(a.purchaseDate)
                           : "—"}
                       </td>
                       <td className="whitespace-nowrap py-2 text-xs text-black/70">
                         {a.warrantyEndDate
-                          ? new Date(a.warrantyEndDate).toLocaleDateString()
+                          ? formatDate(a.warrantyEndDate)
                           : "—"}
                       </td>
                       <td className="py-2">
@@ -432,26 +437,28 @@ export default function AssetsPage() {
                       </td>
                       <td className="py-2">{a.reason ?? "—"}</td>
                       <td className="py-2">
-                        {new Date(a.dateUpdated).toLocaleDateString()}
+                        {formatDate(a.dateUpdated)}
                       </td>
                       <td className="py-2 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(a.id)}
-                          className="text-xs font-semibold text-brand hover:underline"
-                        >
-                          Edit
-                        </button>
-                        <span className="mx-1.5 text-black/25" aria-hidden>
-                          ·
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => void removeAsset(a.id, a.assetName)}
-                          className="text-xs font-semibold text-red-700 hover:underline"
-                        >
-                          Delete
-                        </button>
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(a.id)}
+                            className="text-xs font-semibold text-brand hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <OverflowMenu
+                            label={a.assetName}
+                            items={[
+                              {
+                                label: "Delete",
+                                destructive: true,
+                                onSelect: () => setPendingDelete(a),
+                              },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -487,6 +494,17 @@ export default function AssetsPage() {
             }}
           />
         ) : null}
+
+        <ConfirmDeleteDialog
+          open={pendingDelete !== null}
+          title="Delete asset?"
+          itemName={pendingDelete?.assetName ?? ""}
+          itemDetail={pendingDelete?.serialNumber ? `S/N ${pendingDelete.serialNumber}` : "No serial number"}
+          consequence="This removes the asset from the register. It cannot be undone."
+          busy={deleting}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDelete()}
+        />
 
         <div className="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
           <h3 className="font-heading mb-2 text-sm font-bold uppercase tracking-wide text-black">

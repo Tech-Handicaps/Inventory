@@ -1,9 +1,11 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { PasswordInput } from "@/components/PasswordInput";
 import { useToast } from "@/components/ToastProvider";
 import { ZOHO_DATA_CENTERS } from "@/lib/zoho/constants";
+import { formatDateTime } from "@/lib/dates/format";
 
 type ZohoGetResponse = {
   clientId: string | null;
@@ -178,10 +180,7 @@ export function ZohoAssistSettingsSection() {
       setRefreshToken("");
       setClearClientSecret(false);
       setClearRefreshToken(false);
-      const t = new Date().toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
+      const t = formatDateTime(new Date());
       setSaveNotice(`Credentials saved (${t}).`);
     } catch (err) {
       toast.showError(err instanceof Error ? err.message : "Save failed");
@@ -266,7 +265,7 @@ export function ZohoAssistSettingsSection() {
   if (loading) {
     return (
       <div className="py-4">
-        <p className="text-sm text-black/55">Loading Zoho Assist settings…</p>
+        <SectionSkeleton label="Loading Zoho Assist settings" />
       </div>
     );
   }
@@ -400,10 +399,7 @@ export function ZohoAssistSettingsSection() {
         {lastApiVerified ? (
           <p className="mt-3 border-t border-black/10 pt-3 text-xs text-black/65">
             Last successful <strong>Test API</strong>:{" "}
-            {new Date(lastApiVerified).toLocaleString(undefined, {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
+            {formatDateTime(lastApiVerified)}
           </p>
         ) : (
           <p className="mt-3 border-t border-black/10 pt-3 text-xs text-black/55">
@@ -591,7 +587,7 @@ export function ZohoAssistSettingsSection() {
             type="button"
             disabled={ipSyncBusy || !meta?.canTestApi}
             onClick={() => void runSyncPublicIps()}
-            className="font-heading rounded-lg border-2 border-violet-600 bg-violet-50 px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-violet-950 disabled:opacity-50"
+            className="font-heading rounded-lg border-2 border-brand bg-brand px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white hover:bg-brand-hover disabled:opacity-50"
           >
             {ipSyncBusy ? "Syncing IPs…" : "Sync public IPs (all Assist assets)"}
           </button>

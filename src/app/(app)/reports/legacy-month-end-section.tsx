@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionSkeleton } from "@/components/Skeleton";
 import { useEffect, useState } from "react";
 import type { LegacyColumnComposition } from "@/lib/reports/legacy-month-end";
 import { StockCompositionBlock } from "./stock-composition-block";
@@ -66,7 +67,7 @@ export function LegacyMonthEndSection() {
       {error ? (
         <p className="text-sm text-red-700">{error}</p>
       ) : months === null ? (
-        <p className="text-sm text-black/50">Loading month-end archive…</p>
+        <SectionSkeleton label="Loading month-end archive" />
       ) : months.length === 0 ? (
         <p className="text-sm text-black/60">
           No prior month-end stock has been imported yet.
