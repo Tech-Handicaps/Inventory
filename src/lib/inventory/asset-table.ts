@@ -49,6 +49,17 @@ const SORT_KEYS = new Set<string>(ASSET_COLUMNS.filter((c) => c.sortable).map((c
 
 export const NO_CLUB_PARAM = "none";
 
+/** Status filter value for stock ready to deploy (matches the Dashboard "Available" KPI). */
+export const AVAILABLE_STATUS_PARAM = "new_stock,refurbished";
+
+/** Status codes for a status param ("" = all; comma-separated = any of them). */
+export function statusCodesFromParam(status: string): string[] {
+  return status
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export type AssetListParams = {
   page: number;
   pageSize: PageSize;

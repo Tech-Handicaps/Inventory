@@ -563,7 +563,7 @@ export function HandicaperModal({
               Handicaper
             </p>
             <p className="text-xs text-muted">
-              {isChat ? "AI inventory assistant" : "Metric breakdown"}
+              {isChat ? "Inventory assistant" : "Metric breakdown"}
             </p>
           </div>
           <button
@@ -699,7 +699,7 @@ export function HandicaperModal({
               {metricResult.aiSummary ? (
                 <div className="mt-3 rounded-lg border border-line bg-brand/5 px-4 py-3">
                   <p className="mb-1 text-xs font-bold text-muted">
-                    Handicaper AI insight
+                    In plain words
                   </p>
                   <p className="text-sm leading-relaxed text-ink">
                     {metricResult.aiSummary}

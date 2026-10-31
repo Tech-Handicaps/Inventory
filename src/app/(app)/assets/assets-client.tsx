@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useOptimistic,
   useRef,
   useState,
   useTransition,
@@ -31,6 +30,7 @@ import {
 import {
   ASSET_COLUMNS,
   ASSET_COLUMNS_PREFERENCE_KEY,
+  AVAILABLE_STATUS_PARAM,
   DEFAULT_ASSET_COLUMNS,
   NO_CLUB_PARAM,
   PAGE_SIZES,
@@ -90,10 +90,37 @@ const DASH = "—";
 function Truncated({ value, mono }: { value: string | null | undefined; mono?: boolean }) {
   if (!value) return <span className="text-muted">{DASH}</span>;
   return (
-    <span className={`block truncate ${mono ? "font-mono text-xs" : ""}`} title={value}>
+    <span className={`block truncate ${mono ? "font-mono text-xs" : ""}`} data-tip={value}>
       {value}
     </span>
   );
+}
+
+type Tip = { text: string; left: number; top: number };
+
+/** Full text for a cut-off cell. Fixed-positioned so the scrolling table can't clip it. */
+function useCellTooltip() {
+  const [tip, setTip] = useState<Tip | null>(null);
+  const show = useCallback((target: EventTarget | null) => {
+    const el = target instanceof Element ? target.closest<HTMLElement>("[data-tip]") : null;
+    if (!el || el.scrollWidth <= el.clientWidth) {
+      setTip(null);
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    setTip({ text: el.dataset.tip ?? "", left: Math.min(r.left, window.innerWidth - 336), top: r.bottom + 6 });
+  }, []);
+  const hide = useCallback(() => setTip(null), []);
+  const node = tip ? (
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-40 max-w-xs rounded-md bg-ink px-2.5 py-1.5 text-xs leading-snug text-white shadow-lg"
+      style={{ left: Math.max(8, tip.left), top: tip.top }}
+    >
+      {tip.text}
+    </div>
+  ) : null;
+  return { show, hide, node };
 }
 
 export function StatusBadge({ status }: { status: Status }) {
@@ -133,7 +160,7 @@ function renderCell(id: AssetColumnId, a: AssetRow) {
     case "club":
       return <Truncated value={a.club?.name} />;
     case "name":
-      return <span className="block truncate font-medium text-ink" title={a.assetName}>{a.assetName}</span>;
+      return <span className="block truncate font-medium text-ink" data-tip={a.assetName}>{a.assetName}</span>;
     case "model":
       return <Truncated value={displayAssetModel(a)} />;
     case "serial":
@@ -180,7 +207,6 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
   const searchParams = useSearchParams();
   const toast = useToast();
   const [isPending, startTransition] = useTransition();
-  const [view, setOptimisticView] = useOptimistic(params);
 
   const openAssetId = searchParams.get("asset");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -191,25 +217,47 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
   const [columns, setColumns] = useState<AssetColumnId[]>(initialColumns);
   const [search, setSearch] = useState(params.q);
   const lastRowFocus = useRef<HTMLElement | null>(null);
+  const cellTip = useCellTooltip();
+
+  // The view the user last asked for. Every change builds on it (not on the last server
+  // render), so quick successive clicks and the debounced search never undo each other.
+  const [pendingView, setPendingView] = useState<AssetListParams | null>(null);
+  const pendingRef = useRef<AssetListParams | null>(null);
+  const [seenParams, setSeenParams] = useState(params);
+  if (seenParams !== params) {
+    setSeenParams(params);
+    if (!pendingView || assetListSearch(pendingView) === assetListSearch(params) || !isPending) {
+      setPendingView(null);
+      // Navigation from elsewhere (e.g. top-bar search) brings its own query.
+      if (!pendingView) setSearch(params.q);
+    }
+  }
+  useEffect(() => {
+    if (!pendingView) pendingRef.current = null;
+  }, [pendingView]);
+  const view = pendingView ?? params;
 
   const navigate = useCallback(
     (patch: Partial<AssetListParams>) => {
-      const next: AssetListParams = { ...view, page: 1, ...patch };
+      const next: AssetListParams = { ...(pendingRef.current ?? params), page: 1, ...patch };
+      pendingRef.current = next;
+      setPendingView(next);
       const sp = new URLSearchParams(assetListSearch(next));
       if (openAssetId) sp.set("asset", openAssetId);
       const qs = sp.toString();
+      const url = `/assets${qs ? `?${qs}` : ""}`;
+      window.history.replaceState(null, "", url);
       startTransition(() => {
-        setOptimisticView(next);
-        router.replace(`/assets${qs ? `?${qs}` : ""}`, { scroll: false });
+        router.replace(url, { scroll: false });
       });
     },
-    [view, openAssetId, router, setOptimisticView]
+    [params, openAssetId, router]
   );
 
   // Debounced server-side search.
   useEffect(() => {
     if (search.trim() === view.q.trim()) return;
-    const t = window.setTimeout(() => navigate({ q: search }), 350);
+    const t = window.setTimeout(() => navigate({ q: search }), 300);
     return () => window.clearTimeout(t);
   }, [search, view.q, navigate]);
 
@@ -345,6 +393,7 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
                 className="mt-1 w-full rounded-lg border border-line bg-white px-2 py-2 text-sm"
               >
                 <option value="">All statuses</option>
+                <option value={AVAILABLE_STATUS_PARAM}>Available (New + Refurbished)</option>
                 {statuses.map((s) => (
                   <option key={s.id} value={s.code}>
                     {s.label}
@@ -423,6 +472,7 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
 
         <div
           className={`max-h-[calc(100dvh-17rem)] min-h-[16rem] overflow-auto border-t border-line transition-opacity ${isPending ? "opacity-60" : ""}`}
+          onScroll={cellTip.hide}
         >
           <table className="w-full table-fixed text-sm" style={{ minWidth: tableMinWidth }}>
             <colgroup>
@@ -471,7 +521,12 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody
+              onMouseOver={(e) => cellTip.show(e.target)}
+              onMouseLeave={cellTip.hide}
+              onFocus={(e) => cellTip.show(e.target instanceof HTMLElement ? e.target.querySelector("[data-tip]") : null)}
+              onBlur={cellTip.hide}
+            >
               {assets.map((a) => {
                 const selected = openAssetId === a.id;
                 return (
@@ -628,6 +683,7 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => void confirmDelete()}
       />
+      {cellTip.node}
     </main>
   );
 }

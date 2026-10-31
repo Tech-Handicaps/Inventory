@@ -9,6 +9,7 @@ import { LegacyMonthEndSection } from "./legacy-month-end-section";
 import { MonthOnMonthSection } from "./month-on-month-section";
 import { ReportsLifecycleSlot } from "./reports-lifecycle-slot";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useAppRole } from "@/components/RoleProvider";
 
 type ReportDef = {
   id: string;
@@ -231,6 +232,8 @@ function ReportTile({ report }: { report: ReportDef }) {
 }
 
 export default function ReportsPage() {
+  const { role } = useAppRole();
+  const showFinancePacks = role !== "operations";
   return (
     <main className="mx-auto max-w-7xl space-y-10 p-6 pb-16">
         <PageHeader
@@ -245,9 +248,11 @@ export default function ReportsPage() {
             <a href="#pdf-library" className="filter-pill filter-pill-inactive">
               PDF library
             </a>
-            <a href="#finance-packs" className="filter-pill filter-pill-inactive">
-              Finance packs
-            </a>
+            {showFinancePacks ? (
+              <a href="#finance-packs" className="filter-pill filter-pill-inactive">
+                Finance packs
+              </a>
+            ) : null}
             <a href="#finance-month-on-month" className="filter-pill filter-pill-inactive">
               Finance month on month
             </a>
@@ -307,7 +312,7 @@ export default function ReportsPage() {
           ))}
         </section>
 
-        <FinancePacksSection />
+        {showFinancePacks ? <FinancePacksSection /> : null}
 
         <FinanceMonthOnMonthSection />
 

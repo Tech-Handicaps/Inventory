@@ -82,6 +82,18 @@ const METRIC_HANDLERS: Record<
     );
   },
 
+  available: (assets) => {
+    const matching = assets.filter(
+      (a) => a.status.code === "new_stock" || a.status.code === "refurbished"
+    );
+    return buildAvailableBreakdown(
+      matching,
+      "Available to deploy",
+      "new and refurbished stock of every type",
+      "Includes terminals, computers and card readers; the card shows each type separately."
+    );
+  },
+
   deployed: (assets) => {
     const matching = assets.filter((a) => a.status.code === "deployed");
     return buildByTypeBreakdown(

@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   NO_CLUB_PARAM,
+  statusCodesFromParam,
   type AssetListParams,
   type SortKey,
 } from "@/lib/inventory/asset-table";
@@ -67,7 +68,9 @@ export async function listAssetsSimple(opts: {
 
 export function buildAssetWhere(params: AssetListParams): Prisma.AssetWhereInput {
   const and: Prisma.AssetWhereInput[] = [];
-  if (params.status) and.push({ status: { code: params.status } });
+  const statusCodes = statusCodesFromParam(params.status);
+  if (statusCodes.length === 1) and.push({ status: { code: statusCodes[0] } });
+  else if (statusCodes.length > 1) and.push({ status: { code: { in: statusCodes } } });
   if (params.club === NO_CLUB_PARAM) and.push({ clubId: null });
   else if (params.club) and.push({ clubId: params.club });
   if (params.source) and.push({ dataSource: params.source });

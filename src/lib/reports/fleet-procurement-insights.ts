@@ -68,54 +68,54 @@ export function generateProcurementInsightBullets(
   const topMfg = input.byManufacturer[0];
   if (topMfg) {
     lines.push(
-      `Largest OEM share: ${topMfg.name} at ${round1(topMfg.percent)}% of the operational fleet (${topMfg.count} units).`
+      `Largest brand: ${topMfg.name} at ${round1(topMfg.percent)}% of units in use (${topMfg.count} units).`
     );
     if (input.topManufacturerShare >= 50) {
       lines.push(
-        "High single-vendor concentration — negotiate volume pricing, but plan dual-sourcing or a second qualified OEM to reduce supply and security risk."
+        "One brand makes up most of the fleet — good for volume pricing, but consider a second approved brand to reduce supply risk."
       );
     } else if (input.topManufacturerShare >= 35) {
       lines.push(
-        "Moderate OEM concentration — acceptable if support contracts align; track failure/write-off rates by manufacturer outside this dashboard."
+        "One brand makes up a large part of the fleet — fine if support contracts cover it; keep an eye on failures and write-offs per brand."
       );
     }
   }
 
   if (input.topThreeModelsShare >= 70) {
     lines.push(
-      `The top three SKUs represent ${round1(input.topThreeModelsShare)}% of units — strong standardisation (easier imaging/spares) but a spike in defects or EOS on those SKUs hits a large share of the estate.`
+      `The three most common models make up ${round1(input.topThreeModelsShare)}% of units — easier to image and keep spares for, but a fault or end of support on those models would affect a large share of the fleet.`
     );
   } else if (input.topThreeModelsShare <= 35 && input.distinctModels >= 8) {
     lines.push(
-      `Fleet is spread across many SKUs (top three only ${round1(input.topThreeModelsShare)}%) — consider consolidating on fewer templates for procurement and support efficiency.`
+      `The fleet is spread across many models (the top three are only ${round1(input.topThreeModelsShare)}%) — standardising on fewer models would simplify buying and support.`
     );
   }
 
   if (input.herfindahlManufacturers > 0.25 && input.distinctManufacturers >= 4) {
     lines.push(
-      "Manufacturer mix is relatively fragmented — spare parts and engineer training may cost more than a more uniform OEM strategy."
+      "The fleet is spread across many brands — spare parts and technician training may cost more than with fewer brands."
     );
   }
 
   if (input.registeredLast24MonthsPct >= 45) {
     lines.push(
-      `${round1(input.registeredLast24MonthsPct)}% of operational rows were added to this register in the last 24 months — a recent intake wave; align warranty, rollout, and training with that cohort.`
+      `${round1(input.registeredLast24MonthsPct)}% of in-use units were added to this register in the last 24 months — plan warranty, rollout and training around that recent intake.`
     );
   } else if (input.registeredLast24MonthsPct <= 15 && t >= 20) {
     lines.push(
-      "Few recent registrations vs fleet size — refresh planning should lean on purchase dates and warranty ends where captured, not only register dates."
+      "Few units were added recently — base replacement planning on purchase and warranty dates where they are recorded, not on the date added."
     );
   }
 
   if (input.purchaseDateCoveragePct < 40 && t >= 15) {
     lines.push(
-      `Purchase dates are on ${round1(input.purchaseDateCoveragePct)}% of operational assets — capturing invoice/PO dates improves depreciation, refresh timing, and TCO versus competitors.`
+      `Purchase dates are on ${round1(input.purchaseDateCoveragePct)}% of in-use units — recording invoice dates improves depreciation, replacement timing and cost tracking.`
     );
   }
 
   if (input.warrantyEndCoveragePct < 35 && t >= 15) {
     lines.push(
-      `Warranty end dates are on ${round1(input.warrantyEndCoveragePct)}% of units — recording them unlocks renewal planning and avoids surprise post-warranty support spend.`
+      `Warranty end dates are on ${round1(input.warrantyEndCoveragePct)}% of units — recording them makes renewal planning possible and avoids surprise repair costs.`
     );
   }
 
@@ -125,7 +125,7 @@ export function generateProcurementInsightBullets(
     input.averageFleetAgeYears >= 4.5
   ) {
     lines.push(
-      `Average fleet age (where purchase date is known) is about ${round1(input.averageFleetAgeYears)} years — align security baselines, spare stock, and replacement waves with policy.`
+      `Average fleet age (where purchase date is known) is about ${round1(input.averageFleetAgeYears)} years — plan spares and replacements accordingly.`
     );
   }
 
@@ -143,7 +143,7 @@ export function generateProcurementInsightBullets(
     const pastPct = (input.warrantyExpired / input.withWarrantyEnd) * 100;
     if (pastPct >= 35) {
       lines.push(
-        `Among assets with a warranty end on file, ${round1(pastPct)}% are already past that date — use repair/write-off history to steer the next manufacturer shortlist.`
+        `Among assets with a warranty end on file, ${round1(pastPct)}% are already past that date — use repair and write-off history when choosing the next brand.`
       );
     }
   }
@@ -154,14 +154,14 @@ export function generateProcurementInsightBullets(
       : 0;
   if (input.totalWrittenOff > 0 && woRate >= 12) {
     lines.push(
-      `Written-off units are ${round1(woRate)}% of all registered assets — review whether failure modes cluster on specific models or manufacturers before the next tender.`
+      `Written-off units are ${round1(woRate)}% of all units — check whether failures cluster on particular models or brands before the next purchase.`
     );
   }
 
   lines.push(
     input.usePurchaseYearForAge
-      ? "Purchase-year and warranty metrics are populated enough to support buying discussions; keep dates updated as you receive hardware."
-      : "Keep adding purchase and warranty dates on register or edit — the dashboard prioritises acquisition signals as coverage grows."
+      ? "Enough purchase and warranty dates are recorded to support buying decisions; keep adding them as hardware arrives."
+      : "Keep adding purchase and warranty dates when registering or editing units — age and warranty figures become reliable as more are filled in."
   );
 
   return lines;

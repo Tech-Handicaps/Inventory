@@ -6,6 +6,7 @@ import {
   type FleetProcurementMetrics,
 } from "@/lib/reports/fleet-procurement-insights";
 import { resolveAssetSkuModelLabel } from "@/lib/inventory/device-template-label";
+import { UNKNOWN_BRAND, manufacturerBrand } from "@/lib/inventory/manufacturer-brand";
 import { prisma } from "@/lib/prisma";
 import { REPORT_ASSET_LIST_LIMIT } from "@/lib/reports/limits";
 
@@ -66,15 +67,13 @@ export async function GET(request: NextRequest) {
     let warrantyActiveKnown = 0;
 
     for (const a of assets) {
-      const mfg =
-        (a.manufacturer ?? a.deviceTemplate?.manufacturer ?? "").trim() ||
-        "Unknown";
+      const mfg = manufacturerBrand(a.manufacturer, a.deviceTemplate?.manufacturer);
       byManufacturer.set(mfg, (byManufacturer.get(mfg) ?? 0) + 1);
 
       const label = resolveAssetSkuModelLabel(a);
       const prev = byModel.get(label) ?? {
         count: 0,
-        manufacturer: mfg === "Unknown" ? null : mfg,
+        manufacturer: mfg === UNKNOWN_BRAND ? null : mfg,
       };
       byModel.set(label, {
         count: prev.count + 1,

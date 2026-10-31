@@ -5,6 +5,7 @@ const ZOHO_SETTINGS_PREFIX = "/api/settings/zoho";
 const ZOHO_DESK_SETTINGS_PREFIX = "/api/settings/zoho-desk";
 const AUDIT_LOGS_PATH = "/api/audit-logs";
 const FINANCE_API_PREFIX = "/api/finance/";
+const FINANCE_PACKS_PREFIX = "/api/reports/finance-packs";
 const EMAIL_SETTINGS_PATH = "/api/settings/email-notifications";
 /** Session role for nav — must be reachable by reports_only */
 const ME_PATH = "/api/me";
@@ -33,6 +34,7 @@ export function apiAccessAllowedForRole(
     if (pathname.startsWith(ZOHO_DESK_SETTINGS_PREFIX)) return false;
     if (pathname === AUDIT_LOGS_PATH) return false;
     if (pathname.startsWith(FINANCE_API_PREFIX)) return false;
+    if (pathname.startsWith(FINANCE_PACKS_PREFIX)) return false;
     if (pathname.startsWith(EMAIL_SETTINGS_PATH)) return false;
     return true;
   }

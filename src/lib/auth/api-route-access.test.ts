@@ -25,6 +25,16 @@ describe("apiAccessAllowedForRole", () => {
     ).toBe(false);
   });
 
+  it("limits finance packs to admin, accountant and reports_only", () => {
+    for (const path of ["/api/reports/finance-packs", "/api/reports/finance-packs/pdf"]) {
+      expect(apiAccessAllowedForRole(path, "operations")).toBe(false);
+      expect(apiAccessAllowedForRole(path, "accountant")).toBe(true);
+      expect(apiAccessAllowedForRole(path, "reports_only")).toBe(true);
+      expect(apiAccessAllowedForRole(path, "admin")).toBe(true);
+    }
+    expect(apiAccessAllowedForRole("/api/reports/stock", "operations")).toBe(true);
+  });
+
   it("blocks accountant from zoho settings, audit, and admin", () => {
     expect(apiAccessAllowedForRole("/api/assets", "accountant")).toBe(true);
     expect(

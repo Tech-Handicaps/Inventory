@@ -20,7 +20,8 @@ export function GlobalSearch() {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<GlobalSearchHit[]>([]);
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
+  /** -1 = nothing highlighted, so Enter searches All assets instead of opening a hit. */
+  const [active, setActive] = useState(-1);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export function GlobalSearch() {
         .then((r) => (r.ok ? r.json() : { hits: [] }))
         .then((data: { hits?: GlobalSearchHit[] }) => {
           setHits(data.hits ?? []);
-          setActive(0);
+          setActive(-1);
           setOpen(true);
         })
         .catch(() => {})
@@ -72,10 +73,25 @@ export function GlobalSearch() {
     router.push(`/assets?asset=${encodeURIComponent(hit.id)}`);
   }
 
+  function searchAllAssets(q: string) {
+    setOpen(false);
+    setQuery("");
+    setHits([]);
+    inputRef.current?.blur();
+    router.push(`/assets?q=${encodeURIComponent(q)}`);
+  }
+
   function onInputKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Escape") {
       setOpen(false);
       inputRef.current?.blur();
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const hit = open && active >= 0 ? hits[active] : undefined;
+      if (hit) openHit(hit);
+      else if (query.trim()) searchAllAssets(query.trim());
       return;
     }
     if (!open || hits.length === 0) return;
@@ -84,10 +100,7 @@ export function GlobalSearch() {
       setActive((i) => (i + 1) % hits.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActive((i) => (i - 1 + hits.length) % hits.length);
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      openHit(hits[active]);
+      setActive((i) => (i <= 0 ? hits.length - 1 : i - 1));
     }
   }
 
@@ -162,6 +175,9 @@ export function GlobalSearch() {
               </li>
             ))
           )}
+          <li role="presentation" className="border-t border-line px-3 pb-1 pt-2 text-xs text-muted">
+            Press Enter to see every match in All assets
+          </li>
         </ul>
       ) : null}
     </div>

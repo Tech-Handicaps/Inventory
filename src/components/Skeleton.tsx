@@ -76,14 +76,16 @@ export function BoardSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <main className="mx-auto max-w-7xl space-y-8 p-6" role="status" aria-label="Loading dashboard">
+    <main className="mx-auto max-w-7xl space-y-6 p-6" role="status" aria-label="Loading dashboard">
       <SkeletonHeader />
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {Array.from({ length: 5 }, (_, i) => (
           <SkeletonCard key={i} />
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <SkeletonBlock className="h-10 w-full max-w-md" />
+      <SkeletonBlock className="h-28 w-full" />
+      <div className="grid gap-6 xl:grid-cols-2">
         <SkeletonBlock className="h-64 w-full" />
         <SkeletonBlock className="h-64 w-full" />
       </div>

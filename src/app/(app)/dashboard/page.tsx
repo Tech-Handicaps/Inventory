@@ -1,17 +1,16 @@
-import { headers } from "next/headers";
-import { DashboardView, type DashboardBundle } from "./dashboard-client";
+import { DashboardView } from "./dashboard-client";
+import { parseDashboardTab } from "@/lib/reports/dashboard-tabs";
 import { requireOperationalSession } from "@/lib/auth/get-session-role";
-import { loadDashboardBundle } from "@/lib/reports/dashboard-bundle";
+import { loadDashboardOverview } from "@/lib/reports/dashboard-overview";
 
-/** Loads every dashboard section on the server so the first paint already has figures. */
-export default async function DashboardPage() {
+/** The Overview tab renders on the server; the other tabs load their figures in the browser. */
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireOperationalSession();
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const bundle = await loadDashboardBundle(`${proto}://${host}`, new Headers(h)).catch((e) => {
-    console.error("dashboard page: server load failed; the dashboard will load in the browser", e);
-    return null;
-  });
-  return <DashboardView initialBundle={bundle as DashboardBundle | null} />;
+  const [overview, sp] = await Promise.all([loadDashboardOverview(), searchParams]);
+  const tab = parseDashboardTab(typeof sp.tab === "string" ? sp.tab : undefined);
+  return <DashboardView overview={overview} initialTab={tab} />;
 }
