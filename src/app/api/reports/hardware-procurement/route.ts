@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const [writtenOffStatus, assets] = await Promise.all([
-      prisma.assetStatus.findFirst({ where: { code: "written_off" } }),
+    const [totalWrittenOff, assets, totalRegistered] = await Promise.all([
+      prisma.asset.count({ where: { status: { code: "written_off" } } }),
       prisma.asset.findMany({
         where: {
           NOT: {
@@ -44,14 +44,8 @@ export async function GET(request: NextRequest) {
         },
         take: REPORT_ASSET_LIST_LIMIT,
       }),
+      prisma.asset.count(),
     ]);
-
-    const totalRegistered = await prisma.asset.count();
-    const totalWrittenOff = writtenOffStatus
-      ? await prisma.asset.count({
-          where: { statusId: writtenOffStatus.id },
-        })
-      : 0;
 
     const totalOperational = assets.length;
     const now = Date.now();

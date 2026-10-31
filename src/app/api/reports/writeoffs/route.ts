@@ -8,29 +8,16 @@ export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
   try {
-    const writtenOffStatus = await prisma.assetStatus.findFirst({
-      where: { code: "written_off" },
-    });
-
-    if (!writtenOffStatus) {
-      return NextResponse.json({
-        assets: [],
-        total: 0,
-        byReason: [],
-        truncated: false,
-      });
-    }
-
-    const total = await prisma.asset.count({
-      where: { statusId: writtenOffStatus.id },
-    });
-
-    const assets = await prisma.asset.findMany({
-      where: { statusId: writtenOffStatus.id },
-      include: { status: true },
-      orderBy: { dateUpdated: "desc" },
-      take: REPORT_ASSET_LIST_LIMIT,
-    });
+    const where = { status: { code: "written_off" } };
+    const [total, assets] = await Promise.all([
+      prisma.asset.count({ where }),
+      prisma.asset.findMany({
+        where,
+        include: { status: true },
+        orderBy: { dateUpdated: "desc" },
+        take: REPORT_ASSET_LIST_LIMIT,
+      }),
+    ]);
 
     const byReason = assets.reduce<Record<string, number>>((acc, a) => {
       const r = a.reason || "Unspecified";

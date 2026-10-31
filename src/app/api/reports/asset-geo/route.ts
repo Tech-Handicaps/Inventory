@@ -11,14 +11,7 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const writtenOff = await prisma.assetStatus.findFirst({
-      where: { code: "written_off" },
-    });
-
-    const baseWhere =
-      writtenOff != null
-        ? { NOT: { statusId: writtenOff.id } }
-        : {};
+    const baseWhere = { NOT: { status: { code: "written_off" } } };
 
     const [
       totalOperational,

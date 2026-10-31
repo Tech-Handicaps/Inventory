@@ -16,6 +16,7 @@ import { StockPieChart } from "@/components/charts/StockPieChart";
 import { WriteoffsDonutChart } from "@/components/charts/WriteoffsDonutChart";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
+import { MessageCircleQuestion } from "lucide-react";
 import { formatDateTime } from "@/lib/dates/format";
 
 type StockRow = { status: string; count: number; code: string };
@@ -129,7 +130,8 @@ function KpiCard({
   const clickable = Boolean(metricKey && onExplain);
   return (
     <div
-      className={`kpi-card p-4 ${clickable ? "cursor-pointer transition hover:ring-2 hover:ring-brand/30" : ""}`}
+      className={`kpi-card group p-4 ${clickable ? "cursor-pointer transition hover:ring-2 hover:ring-brand/30" : ""}`}
+      aria-label={clickable ? `${label}: ${value}. Ask Handicaper to explain` : undefined}
       onClick={clickable ? () => onExplain!(metricKey!, label) : undefined}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
@@ -143,16 +145,17 @@ function KpiCard({
             }
           : undefined
       }
-      title={clickable ? "Click to ask Handicaper for a breakdown" : undefined}
+      title={clickable ? "Ask Handicaper to explain this figure" : undefined}
     >
       <div className="flex items-start justify-between gap-1">
         <p className="text-xs font-medium text-muted">
           {label}
         </p>
         {clickable ? (
-          <span className="shrink-0 text-xs font-bold text-muted">
-            AI
-          </span>
+          <MessageCircleQuestion
+            className="h-4 w-4 shrink-0 text-muted opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100"
+            aria-hidden
+          />
         ) : null}
       </div>
       <p className="mt-1 font-heading text-3xl font-bold tabular-nums text-ink">
@@ -164,6 +167,16 @@ function KpiCard({
     </div>
   );
 }
+
+/** Last bundle for this tab session, shown instantly while a fresh one loads. */
+const DASHBOARD_CACHE_KEY = "hna:dashboard-bundle";
+
+type DashboardBundle = Partial<
+  Record<
+    "stock" | "repairs" | "refurbished" | "writeoffs" | "summary" | "xeroHealth" | "fleet" | "assetGeo",
+    { data: unknown; error: string | null }
+  >
+>;
 
 export default function DashboardPage() {
   const [stock, setStock] = useState<StockData | null>(null);
@@ -179,50 +192,22 @@ export default function DashboardPage() {
   const { openMetric } = useHandicaper();
 
   useEffect(() => {
-    async function softLoad<T>(url: string): Promise<{ data: T | null; error: string | null }> {
-      try {
-        const r = await fetch(url);
-        const j = await r.json().catch(() => null);
-        if (!r.ok) {
-          const msg =
-            j && typeof j === "object" && "error" in j && typeof (j as { error: unknown }).error === "string"
-              ? (j as { error: string }).error
-              : `Failed to load ${url}`;
-          return { data: null, error: msg };
-        }
-        return { data: j as T, error: null };
-      } catch (e) {
-        return {
-          data: null,
-          error: e instanceof Error ? e.message : `Failed to load ${url}`,
-        };
-      }
-    }
+    let cancelled = false;
 
-    void (async () => {
-      const results = await Promise.all([
-        softLoad<StockData>("/api/reports/stock"),
-        softLoad<RepairsData>("/api/reports/repairs"),
-        softLoad<RefurbishedData>("/api/reports/refurbished"),
-        softLoad<WriteoffsData>("/api/reports/writeoffs"),
-        softLoad<DashboardSummary>("/api/reports/dashboard-summary"),
-        softLoad<XeroHealth>("/api/xero/health"),
-        softLoad<FleetProcurement>("/api/reports/hardware-procurement"),
-        softLoad<AssetGeoReport>("/api/reports/asset-geo"),
-      ]);
+    function apply(bundle: DashboardBundle) {
+      const section = <T,>(key: keyof DashboardBundle) => (bundle[key]?.data ?? null) as T | null;
+      setStock(section<StockData>("stock"));
+      setRepairs(section<RepairsData>("repairs"));
+      setRefurbished(section<RefurbishedData>("refurbished"));
+      setWriteoffs(section<WriteoffsData>("writeoffs"));
+      setSummary(section<DashboardSummary>("summary"));
+      setXeroHealth(section<XeroHealth>("xeroHealth"));
+      setFleet(section<FleetProcurement>("fleet"));
+      setAssetGeo(section<AssetGeoReport>("assetGeo"));
 
-      const [s, r, ref, w, sum, x, fl, geo] = results;
-      setStock(s.data);
-      setRepairs(r.data);
-      setRefurbished(ref.data);
-      setWriteoffs(w.data);
-      setSummary(sum.data);
-      setXeroHealth(x.data);
-      setFleet(fl.data);
-      setAssetGeo(geo.data);
-
-      const failures = results.filter((row) => row.error);
-      if (failures.length === results.length) {
+      const results = Object.values(bundle);
+      const failures = results.filter((row) => row?.error);
+      if (results.length > 0 && failures.length === results.length) {
         setLoadError(failures[0]?.error ?? "Failed to load dashboard");
       } else if (failures.length > 0) {
         setLoadError(
@@ -232,7 +217,45 @@ export default function DashboardPage() {
         setLoadError(null);
       }
       setLoading(false);
+    }
+
+    const frame = requestAnimationFrame(() => {
+      try {
+        const cached = sessionStorage.getItem(DASHBOARD_CACHE_KEY);
+        if (cached && !cancelled) apply(JSON.parse(cached) as DashboardBundle);
+      } catch {
+        /* ignore unreadable cache */
+      }
+    });
+
+    void (async () => {
+      try {
+        const r = await fetch("/api/reports/dashboard-bundle");
+        const j = (await r.json().catch(() => null)) as DashboardBundle | { error?: string } | null;
+        if (cancelled) return;
+        if (!r.ok || !j) {
+          const msg = j && "error" in j && typeof j.error === "string" ? j.error : "Failed to load dashboard";
+          setLoadError(msg);
+          setLoading(false);
+          return;
+        }
+        apply(j as DashboardBundle);
+        try {
+          sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(j));
+        } catch {
+          /* storage full or disabled */
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setLoadError(e instanceof Error ? e.message : "Failed to load dashboard");
+        setLoading(false);
+      }
     })();
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
   }, []);
 
   const kpis = useMemo(() => {

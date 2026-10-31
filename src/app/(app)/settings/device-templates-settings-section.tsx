@@ -194,6 +194,8 @@ export function DeviceTemplatesSettingsSection() {
         </p>
       </div>
 
+      <TemplateDuplicatesPanel key={reviewVersion} onChanged={() => void load()} />
+
       <section className="rounded-lg border border-line bg-white p-6">
         <h3 className="font-heading text-sm font-bold text-ink">
           {editingId ? "Edit template" : "Add template"}
@@ -393,8 +395,6 @@ export function DeviceTemplatesSettingsSection() {
           )}
         </div>
       </section>
-
-      <TemplateDuplicatesPanel key={reviewVersion} onChanged={() => void load()} />
 
       <ConfirmDeleteDialog
         open={pendingDelete !== null}

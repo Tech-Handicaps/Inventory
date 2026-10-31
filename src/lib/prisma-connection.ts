@@ -126,6 +126,14 @@ function wantsTransactionPoolerInDev(): boolean {
  * In local development, port 6543 with `connection_limit=1` causes Prisma P2024 timeouts
  * when Next.js serves many API routes concurrently — use session pooler (5432) instead.
  */
+const DEFAULT_TXN_POOLER_CONNECTION_LIMIT = 5;
+
+/** `PRISMA_CONNECTION_LIMIT` overrides the per-instance pool size on the transaction pooler. */
+function transactionPoolerConnectionLimit(): number {
+  const n = Number(process.env.PRISMA_CONNECTION_LIMIT);
+  return Number.isInteger(n) && n > 0 ? n : DEFAULT_TXN_POOLER_CONNECTION_LIMIT;
+}
+
 export function normalizeDatabaseUrlForPrisma(
   raw: string | undefined
 ): string | undefined {
@@ -146,7 +154,8 @@ export function normalizeDatabaseUrlForPrisma(
     ) {
       u.port = "5432";
       u.searchParams.delete("pgbouncer");
-      u.searchParams.delete("connection_limit");
+      // Session mode caps clients at the pool size (15); Prisma's default pool can exceed it.
+      u.searchParams.set("connection_limit", String(transactionPoolerConnectionLimit()));
       if (!u.searchParams.get("sslmode")) u.searchParams.set("sslmode", "require");
       if (!loggedDevSessionPoolerSwitch) {
         loggedDevSessionPoolerSwitch = true;
@@ -161,12 +170,20 @@ export function normalizeDatabaseUrlForPrisma(
 
     if (!isSupabaseTxnPooler) return raw.trim();
 
-    if (u.searchParams.get("pgbouncer") === "true") return raw.trim();
+    // connection_limit=1 serialises every Promise.all in a request; Supavisor
+    // transaction mode multiplexes small per-instance pools safely.
+    const wantedLimit = transactionPoolerConnectionLimit();
+    const currentLimit = Number(u.searchParams.get("connection_limit") ?? "0");
+    if (currentLimit > 0 && currentLimit < wantedLimit) {
+      u.searchParams.set("connection_limit", String(wantedLimit));
+    }
+
+    if (u.searchParams.get("pgbouncer") === "true") return u.toString();
 
     u.searchParams.set("pgbouncer", "true");
     if (!u.searchParams.get("sslmode")) u.searchParams.set("sslmode", "require");
     if (!u.searchParams.get("connection_limit"))
-      u.searchParams.set("connection_limit", "1");
+      u.searchParams.set("connection_limit", String(wantedLimit));
 
     const out = u.toString();
     if (!loggedAutoPgbouncerAppend) {

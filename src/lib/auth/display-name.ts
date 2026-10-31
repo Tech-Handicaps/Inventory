@@ -1,7 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 
 /** First name or friendly label for greetings (never the full email). */
-export function displayNameFromUser(user: User): string {
+export function displayNameFromUser(user: Pick<User, "email" | "user_metadata">): string {
   const meta = user.user_metadata as Record<string, unknown> | undefined;
   const candidates = [meta?.full_name, meta?.name, meta?.display_name];
   for (const c of candidates) {

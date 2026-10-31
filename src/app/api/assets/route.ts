@@ -75,17 +75,6 @@ export async function GET(request: NextRequest) {
       if (st) where.statusId = st.id;
     }
 
-    const [rows, total] = await Promise.all([
-      prisma.asset.findMany({
-        where,
-        include: { status: true, deviceTemplate: true, club: true },
-        orderBy: { dateUpdated: "desc" },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.asset.count({ where }),
-    ]);
-
     /** Open assessments (one per asset, latest first) — merged here so GET works even if `prisma generate` is stale (Windows EPERM while dev locks the query engine DLL). */
     type OpenAssessmentRow = {
       id: string;
@@ -94,18 +83,17 @@ export async function GET(request: NextRequest) {
       workflowStatus: string;
     };
 
-    let openAssessByAssetId = new Map<
-      string,
-      Pick<
-        OpenAssessmentRow,
-        "id" | "referenceNumber" | "workflowStatus"
-      >
-    >();
-
-    if (rows.length > 0) {
-      const assetIds = rows.map((r) => r.id);
-      try {
-        const openRows = await prisma.$queryRaw<OpenAssessmentRow[]>(
+    const [rows, total, openRows] = await Promise.all([
+      prisma.asset.findMany({
+        where,
+        include: { status: true, deviceTemplate: true, club: true },
+        orderBy: { dateUpdated: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.asset.count({ where }),
+      prisma
+        .$queryRaw<OpenAssessmentRow[]>(
           Prisma.sql`
             SELECT DISTINCT ON ("assetId")
               id,
@@ -114,27 +102,28 @@ export async function GET(request: NextRequest) {
               "workflowStatus"
             FROM "Assessment"
             WHERE "workflowStatus" = 'open'
-              AND "assetId" IN (${Prisma.join(assetIds)})
             ORDER BY "assetId", "createdAt" DESC
           `
-        );
-        openAssessByAssetId = new Map(
-          openRows.map((a) => [
-            a.assetId,
-            {
-              id: a.id,
-              referenceNumber: a.referenceNumber,
-              workflowStatus: a.workflowStatus,
-            },
-          ])
-        );
-      } catch (e) {
-        console.warn(
-          "GET /api/assets: could not load open assessments (table missing or DB error); continuing without.",
-          e
-        );
-      }
-    }
+        )
+        .catch((e) => {
+          console.warn(
+            "GET /api/assets: could not load open assessments (table missing or DB error); continuing without.",
+            e
+          );
+          return [] as OpenAssessmentRow[];
+        }),
+    ]);
+
+    const openAssessByAssetId = new Map(
+      openRows.map((a) => [
+        a.assetId,
+        {
+          id: a.id,
+          referenceNumber: a.referenceNumber,
+          workflowStatus: a.workflowStatus,
+        },
+      ])
+    );
 
     const assets = rows.map((a) => {
       const one = openAssessByAssetId.get(a.id);

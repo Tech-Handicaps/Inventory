@@ -1,11 +1,11 @@
-import type { User } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { apiAccessAllowedForRole } from "@/lib/auth/api-route-access";
 import type { AppRole } from "@/lib/auth/roles";
 import { resolveAppRole } from "@/lib/auth/resolve-app-role";
+import { getVerifiedUser, type VerifiedUser } from "@/lib/auth/verified-user";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-export type ApiAuthContext = { user: User; role: AppRole };
+export type ApiAuthContext = { user: VerifiedUser; role: AppRole };
 
 /**
  * Authenticates via Supabase session, resolves `AppRole`, and enforces API access
@@ -15,12 +15,9 @@ export async function requireApiAuth(
   request: NextRequest
 ): Promise<ApiAuthContext | NextResponse> {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { user } = await getVerifiedUser(supabase);
 
-  if (error || !user) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -42,6 +39,6 @@ export async function requireApiAuth(
 }
 
 /** @deprecated Import `resolveAppRole` from `@/lib/auth/resolve-app-role` */
-export async function resolveUserRole(user: User): Promise<AppRole | null> {
+export async function resolveUserRole(user: VerifiedUser): Promise<AppRole | null> {
   return resolveAppRole(user);
 }

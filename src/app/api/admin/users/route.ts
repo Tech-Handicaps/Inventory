@@ -1,3 +1,4 @@
+import { clearAuthCache } from "@/lib/auth/resolve-app-role";
 import { NextRequest, NextResponse } from "next/server";
 import {
   formatPersonDisplayName,
@@ -294,6 +295,7 @@ async function syncUserRole(
     create: { userId, role: stored },
     update: { role: stored },
   });
+  clearAuthCache(userId);
   // Prefer app_metadata only (Admin API); do not write user_metadata.role.
   const { error } = await admin.auth.admin.updateUserById(userId, {
     app_metadata: { role: stored },
@@ -314,4 +316,5 @@ async function syncUserRole(
     }
     throw new Error("Failed to sync role to Auth");
   }
+  clearAuthCache(userId);
 }

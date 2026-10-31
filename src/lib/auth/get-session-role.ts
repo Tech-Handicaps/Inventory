@@ -1,5 +1,6 @@
 import type { AppRole } from "@/lib/auth/roles";
 import { resolveAppRole } from "@/lib/auth/resolve-app-role";
+import { getVerifiedUser } from "@/lib/auth/verified-user";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type SessionWithRole = {
@@ -14,12 +15,9 @@ export type SessionWithRole = {
  */
 export async function getSessionRole(): Promise<SessionWithRole | null> {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { user } = await getVerifiedUser(supabase);
 
-  if (error || !user) return null;
+  if (!user) return null;
 
   const role = await resolveAppRole(user);
   return {

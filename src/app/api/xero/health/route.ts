@@ -7,10 +7,17 @@ export async function GET(request: NextRequest) {
   const auth = await requireApiAuth(request);
   if (auth instanceof NextResponse) return auth;
   try {
-    const byStatus = await prisma.xeroSync.groupBy({
-      by: ["syncStatus", "xeroType"],
-      _count: { id: true },
-    });
+    const [byStatus, recent] = await Promise.all([
+      prisma.xeroSync.groupBy({
+        by: ["syncStatus", "xeroType"],
+        _count: { id: true },
+      }),
+      prisma.xeroSync.findMany({
+        take: 10,
+        orderBy: { createdAt: "desc" },
+        include: { asset: true },
+      }),
+    ]);
 
     const summary = byStatus.reduce<
       Record<string, { fixed_asset: number; inventory: number }>
@@ -20,12 +27,6 @@ export async function GET(request: NextRequest) {
       acc[key][s.xeroType as "fixed_asset" | "inventory"] = s._count.id;
       return acc;
     }, {});
-
-    const recent = await prisma.xeroSync.findMany({
-      take: 10,
-      orderBy: { createdAt: "desc" },
-      include: { asset: true },
-    });
 
     return NextResponse.json({
       configured: !!(

@@ -1,3 +1,4 @@
+import { clearAuthCache } from "@/lib/auth/resolve-app-role";
 import { NextRequest, NextResponse } from "next/server";
 import {
   formatPersonDisplayName,
@@ -225,6 +226,7 @@ export async function PATCH(
         create: { userId, role: toStoredRole(assignRole) },
         update: { role: toStoredRole(assignRole) },
       });
+      clearAuthCache(userId);
     }
 
     const update: Record<string, unknown> = {};
@@ -275,6 +277,7 @@ export async function PATCH(
         ? nextEmail
         : currentEmail;
 
+    clearAuthCache(userId);
     return NextResponse.json({
       ok: true,
       role: assignRole ?? current,
