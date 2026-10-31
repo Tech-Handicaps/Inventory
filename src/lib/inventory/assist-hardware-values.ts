@@ -5,6 +5,8 @@ const ASSIST_PLACEHOLDER_VALUES = new Set([
   "unknown manufacturer",
   "none",
   "not available",
+  "empty",
+  "null",
   "-",
   "—",
 ]);

@@ -15,6 +15,7 @@ import {
   type HandicaperRequest,
 } from "@/components/HandicaperModal";
 import { HandicaperMascot } from "@/components/HandicaperMascot";
+import { useAppRole } from "@/components/RoleProvider";
 
 type HandicaperContextValue = {
   displayName: string | null;
@@ -37,7 +38,7 @@ function pageFromPath(pathname: string): string {
 
 export function HandicaperProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const { displayName } = useAppRole();
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState<HandicaperRequest | null>(null);
   const restoredRef = useRef(false);
@@ -49,18 +50,6 @@ export function HandicaperProvider({ children }: { children: React.ReactNode }) 
       /* sessionStorage unavailable */
     }
     setOpen(next);
-  }, []);
-
-  useEffect(() => {
-    void fetch("/api/me", { cache: "no-store" })
-      .then(async (r) => {
-        if (!r.ok) return null;
-        return (await r.json()) as { displayName?: string };
-      })
-      .then((j) => {
-        if (j?.displayName) setDisplayName(j.displayName);
-      })
-      .catch(() => {});
   }, []);
 
   const openChat = useCallback(() => {

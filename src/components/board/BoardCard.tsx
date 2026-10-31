@@ -119,7 +119,12 @@ export const BoardCard = memo(function BoardCard({
         {asset.club?.name ?? <span className="text-muted">No club</span>}
       </p>
       {showReason ? (
-        <p className="truncate text-xs text-muted" title={asset.reason ?? undefined}>
+        <p
+          tabIndex={0}
+          className="cursor-help truncate rounded text-xs text-muted outline-none hover:whitespace-pre-line hover:break-words hover:text-ink focus:whitespace-pre-line focus:break-words focus:text-ink focus-visible:ring-2 focus-visible:ring-brand/40"
+          title={asset.reason ?? undefined}
+          aria-label={`${asset.status.code === "written_off" ? "Write-off" : "Repair"} reason: ${asset.reason}`}
+        >
           {asset.reason}
         </p>
       ) : null}

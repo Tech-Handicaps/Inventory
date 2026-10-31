@@ -24,7 +24,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await getSessionRole();
-  const initialRole = session?.role ?? null;
 
   return (
     <html
@@ -33,7 +32,11 @@ export default async function RootLayout({
     >
       <body className={`${fontBody.className} min-h-full flex flex-col`}>
         <ToastProvider>
-          <RoleProvider initialRole={initialRole}>
+          <RoleProvider
+            initialRole={session?.role ?? null}
+            initialEmail={session?.email ?? null}
+            initialDisplayName={session?.displayName ?? null}
+          >
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </RoleProvider>
           <SiteFooter />

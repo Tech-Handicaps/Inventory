@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AssistDevicePicker } from "@/components/AssistDevicePicker";
 import { TagInput } from "@/components/ui/TagInput";
 import { toDateInputValue } from "@/lib/dates/optional-iso-date";
@@ -151,6 +151,29 @@ export function EditAssetModal({
     void load();
   }, [load]);
 
+  const savingRef = useRef(saving);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    savingRef.current = saving;
+    onCloseRef.current = onClose;
+  }, [saving, onClose]);
+
+  // Capture phase so Esc closes this dialog before anything underneath (e.g. the asset side panel).
+  useEffect(() => {
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      if (!savingRef.current) onCloseRef.current();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      document.body.style.overflow = overflow;
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, []);
+
   async function linkToAssist(body: { resourceId: string }) {
     setAssistLinkBusy(true);
     setAssistLinkError(null);
@@ -282,7 +305,7 @@ export function EditAssetModal({
 
   return (
     <div
-      className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="modal-overlay fixed inset-0 z-[60] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-asset-title"

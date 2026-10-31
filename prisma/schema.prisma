@@ -475,3 +475,13 @@ model FinanceAcknowledgement {
   emailSkippedReason     String?
   emailError             String?
 }
+
+/// Per-user UI preferences (e.g. All assets column picker). Key is a short namespaced id.
+model UserPreference {
+  userId    String // Supabase auth user id
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, key])
+}

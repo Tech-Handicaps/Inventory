@@ -95,33 +95,7 @@ function SidebarNav({
 function SidebarUser({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
   const toast = useToast();
-  const { loadError } = useAppRole();
-  const [email, setEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    try {
-      const supabase = createClient();
-      void supabase.auth
-        .getUser()
-        .then(({ data: { user }, error }) => {
-          if (cancelled) return;
-          if (error) {
-            setEmail(null);
-            return;
-          }
-          setEmail(user?.email ?? null);
-        })
-        .catch(() => {
-          if (!cancelled) setEmail(null);
-        });
-    } catch {
-      /* missing env */
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { loadError, email } = useAppRole();
 
   async function signOut() {
     try {
