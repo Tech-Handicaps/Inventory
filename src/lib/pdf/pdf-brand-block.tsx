@@ -1,6 +1,7 @@
 import { View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 
 const brandGreen = "#469b56";
+const brandGreenText = "#3c854a";
 
 const styles = StyleSheet.create({
   logoWrap: {
@@ -27,7 +28,7 @@ const styles = StyleSheet.create({
   wordmark: {
     fontSize: 14,
     fontFamily: "Helvetica-Bold",
-    color: brandGreen,
+    color: brandGreenText,
     letterSpacing: 0.4,
     textTransform: "uppercase",
   },

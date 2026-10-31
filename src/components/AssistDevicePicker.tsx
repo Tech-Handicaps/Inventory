@@ -192,7 +192,7 @@ export function AssistDevicePicker({
                 onClick={() => setSelectedId(r.resourceId)}
                 className={`w-full rounded-md px-2 py-1.5 text-left text-xs ${
                   selectedId === r.resourceId
-                    ? "bg-brand-muted font-medium text-brand-deep"
+                    ? "bg-brand-muted font-medium text-hna-green-text"
                     : "hover:bg-black/[0.04]"
                 }`}
               >

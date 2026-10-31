@@ -614,7 +614,7 @@ export function UserManagementSettingsSection() {
                           type="button"
                           disabled={saving}
                           onClick={() => void saveProfile(row.id, row)}
-                          className="rounded bg-brand px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-hover disabled:opacity-50"
+                          className="rounded bg-hna-green-strong px-2.5 py-1 text-xs font-medium text-white hover:bg-hna-green-hover disabled:opacity-50"
                         >
                           Save
                         </button>

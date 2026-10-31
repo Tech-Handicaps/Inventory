@@ -117,7 +117,7 @@ export function TemplateDuplicatesPanel({ onChanged }: { onChanged: () => void }
         type="button"
         disabled={busyKey !== null}
         onClick={onClick}
-        className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-hover disabled:opacity-50"
+        className="rounded-md bg-hna-green-strong px-3 py-1.5 text-xs font-semibold text-white hover:bg-hna-green-hover disabled:opacity-50"
       >
         {label}
       </button>

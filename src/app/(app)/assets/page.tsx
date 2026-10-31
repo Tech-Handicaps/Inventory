@@ -387,7 +387,7 @@ function AssetsPageContent() {
                       <td className="py-2">{a.assetName}</td>
                       <td className="py-2 text-xs">
                         {a.dataSource === "zoho_assist" ? (
-                          <span className="rounded bg-brand-muted px-1.5 py-0.5 font-semibold text-brand-deep">
+                          <span className="rounded bg-brand-muted px-1.5 py-0.5 font-semibold text-hna-green-text">
                             Assist
                           </span>
                         ) : (

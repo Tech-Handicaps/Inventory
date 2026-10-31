@@ -183,7 +183,7 @@ export function buildDispatchVoucherEmail(params: {
     <p style="margin:0 0 12px 0;">Hardware has been <strong>dispatched to the field</strong> (moved to <strong>Deployed</strong>) from <strong>${esc(params.fromStageLabel)}</strong>. The dispatch voucher is attached as a PDF and summarised below.</p>
     <p style="margin:0 0 16px 0;padding:12px 14px;background:#f0fdf4;border-left:4px solid ${BRAND};font-size:15px;">
       <span style="color:${MUTED};font-size:11px;display:block;margin-bottom:4px;">Dispatch voucher number</span>
-      <strong style="color:#2f7a3c;">${esc(params.voucherReference)}</strong>
+      <strong style="color:#377943;">${esc(params.voucherReference)}</strong>
     </p>
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <tr><td style="padding:6px 0;color:${MUTED};width:160px;">Dispatch date</td><td style="padding:6px 0;">${esc(params.dispatchedAt)}</td></tr>

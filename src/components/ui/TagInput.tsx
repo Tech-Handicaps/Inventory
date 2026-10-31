@@ -97,7 +97,7 @@ export function TagInput({
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-brand-muted/80 px-2.5 py-0.5 text-xs font-medium text-brand-deep ring-1 ring-brand/20"
+            className="inline-flex items-center gap-1 rounded-full bg-brand-muted/80 px-2.5 py-0.5 text-xs font-medium text-hna-green-text ring-1 ring-brand/20"
           >
             {tag}
             {!disabled ? (

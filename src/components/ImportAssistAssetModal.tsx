@@ -482,7 +482,7 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
                         type="button"
                         disabled={busy}
                         onClick={() => importRow(r)}
-                        className="shrink-0 rounded bg-brand px-2 py-1 text-xs font-bold text-white disabled:opacity-50"
+                        className="shrink-0 rounded bg-hna-green-strong px-2 py-1 text-xs font-bold text-white hover:bg-hna-green-hover disabled:opacity-50"
                       >
                         Import
                       </button>
@@ -612,7 +612,7 @@ function ClubAssignedAssetsPanel({
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="font-medium text-ink">{asset.assetName}</span>
                     {asset.dataSource === "zoho_assist" ? (
-                      <span className="rounded border border-brand/30 bg-brand-muted px-1 py-px text-xs font-bold text-brand-deep">
+                      <span className="rounded border border-brand/30 bg-brand-muted px-1 py-px text-xs font-bold text-hna-green-text">
                         Assist
                       </span>
                     ) : null}

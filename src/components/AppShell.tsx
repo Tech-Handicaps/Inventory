@@ -151,7 +151,7 @@ function SidebarUser({ onNavigate }: { onNavigate?: () => void }) {
       <button
         type="button"
         onClick={() => void signOut()}
-        className="mt-2 text-sm font-medium text-white hover:text-brand-hover hover:underline"
+        className="mt-2 text-sm font-medium text-white hover:underline"
       >
         Sign out
       </button>

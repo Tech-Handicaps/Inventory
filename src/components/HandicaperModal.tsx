@@ -589,7 +589,7 @@ export function HandicaperModal({
                   <div
                     className={`max-w-[90%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
                       m.role === "user"
-                        ? "bg-brand text-white"
+                        ? "bg-hna-green-strong text-white"
                         : "border border-line bg-black/[0.03] text-ink"
                     }`}
                   >
@@ -778,7 +778,7 @@ export function HandicaperModal({
               <button
                 type="submit"
                 disabled={chatLoading || !chatInput.trim()}
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:opacity-50"
+                className="rounded-lg bg-hna-green-strong px-4 py-2 text-sm font-semibold text-white transition hover:bg-hna-green-hover disabled:opacity-50"
               >
                 Send
               </button>

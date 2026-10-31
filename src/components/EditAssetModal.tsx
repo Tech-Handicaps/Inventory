@@ -561,7 +561,7 @@ export function EditAssetModal({
                       type="button"
                       disabled={ipRefreshing}
                       onClick={() => void refreshPublicIpFromAssist()}
-                      className="shrink-0 rounded-lg border border-brand bg-brand px-2 py-1.5 text-xs font-bold text-white hover:bg-brand-hover disabled:opacity-50"
+                      className="shrink-0 rounded-lg border border-hna-green-strong bg-hna-green-strong px-2 py-1.5 text-xs font-bold text-white hover:bg-hna-green-hover disabled:opacity-50"
                     >
                       {ipRefreshing ? "Refreshing…" : "Refresh from Assist"}
                     </button>

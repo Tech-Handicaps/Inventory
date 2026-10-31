@@ -18,6 +18,7 @@ export type PdfAssetRow = {
 };
 
 const brandGreen = "#469b56";
+const brandGreenText = "#3c854a";
 const black = "#111111";
 const muted = "#555555";
 
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     marginTop: 8,
     marginBottom: 8,
-    color: brandGreen,
+    color: brandGreenText,
     textTransform: "uppercase",
     letterSpacing: 0.3,
   },

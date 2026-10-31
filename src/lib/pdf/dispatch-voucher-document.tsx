@@ -26,6 +26,7 @@ export type DispatchVoucherPdfFields = {
 };
 
 const brandGreen = "#469b56";
+const brandGreenText = "#3c854a";
 const black = "#111111";
 const muted = "#555555";
 
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
   voucherNo: {
     fontSize: 14,
     fontFamily: "Helvetica-Bold",
-    color: brandGreen,
+    color: brandGreenText,
     marginBottom: 8,
   },
   subtitle: {
@@ -76,7 +77,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontFamily: "Helvetica-Bold",
-    color: brandGreen,
+    color: brandGreenText,
     textTransform: "uppercase",
     letterSpacing: 0.3,
     marginBottom: 10,

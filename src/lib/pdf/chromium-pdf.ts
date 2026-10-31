@@ -231,7 +231,7 @@ export function pdfDocumentChrome(params: {
       font-weight: 800;
       font-size: 14px;
       text-transform: uppercase;
-      color: #469b56;
+      color: #3c854a;
       letter-spacing: 0.04em;
     }
     h1 {
@@ -244,7 +244,7 @@ export function pdfDocumentChrome(params: {
       margin: 0 0 8px 0;
       font-size: 14px;
       font-weight: 700;
-      color: #469b56;
+      color: #3c854a;
     }
     .subtitle { margin: 0 0 16px 0; color: #555; font-size: 10px; }
     .meta {
@@ -260,7 +260,7 @@ export function pdfDocumentChrome(params: {
     h2 {
       margin: 0 0 10px 0;
       font-size: 11px;
-      color: #469b56;
+      color: #3c854a;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }

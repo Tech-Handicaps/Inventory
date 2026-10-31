@@ -152,7 +152,7 @@ const columnAccent: Record<string, string> = {
   deployed: "border-t-sky-500 bg-sky-50/90",
   assessment: "border-t-amber-500 bg-amber-50/90",
   repair: "border-t-orange-500 bg-orange-50/90",
-  refurbished: "border-t-[#2f7a3c] bg-emerald-50/80",
+  refurbished: "border-t-hna-green-strong bg-emerald-50/80",
   written_off: "border-t-neutral-400 bg-neutral-100",
 };
 
@@ -502,7 +502,7 @@ export default function InventoryPage() {
               return (
               <div
                 key={st.id}
-                className={`flex max-h-[min(70vh,720px)] flex-col rounded-lg border border-line border-t-4 bg-white ${
+                className={`on-tint flex max-h-[min(70vh,720px)] flex-col rounded-lg border border-line border-t-4 bg-white ${
                   columnAccent[st.code] ?? "border-t-neutral-400 bg-white"
                 }`}
               >
@@ -608,7 +608,7 @@ export default function InventoryPage() {
               {writtenOff.label}
             </h2>
             <div
-              className={`overflow-hidden rounded-lg border border-line border-t-4 ${columnAccent.written_off}`}
+              className={`on-tint overflow-hidden rounded-lg border border-line border-t-4 ${columnAccent.written_off}`}
             >
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -848,12 +848,12 @@ function HardwareCard({
               </>
             ) : null}
             {asset.club ? (
-              <span className="rounded border border-brand/40 bg-brand-muted/60 px-1.5 py-0.5 text-xs font-bold text-brand-deep">
+              <span className="rounded border border-brand/40 bg-brand-muted/60 px-1.5 py-0.5 text-xs font-bold text-hna-green-text">
                 {asset.club.name}
               </span>
             ) : null}
             {asset.dataSource === "zoho_assist" ? (
-              <span className="rounded border border-brand/30 bg-brand-muted px-1.5 py-0.5 text-xs font-bold text-brand-deep">
+              <span className="rounded border border-brand/30 bg-brand-muted px-1.5 py-0.5 text-xs font-bold text-hna-green-text">
                 Assist
               </span>
             ) : null}

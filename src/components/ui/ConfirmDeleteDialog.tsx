@@ -90,7 +90,7 @@ export function ConfirmDeleteDialog({
             disabled={busy}
             onClick={onConfirm}
             className={`rounded-md px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
-              destructive ? "bg-red-700 hover:bg-red-800" : "bg-brand hover:bg-brand-hover"
+              destructive ? "bg-red-700 hover:bg-red-800" : "bg-hna-green-strong hover:bg-hna-green-hover"
             }`}
           >
             {busy ? busyLabel : confirmLabel}
