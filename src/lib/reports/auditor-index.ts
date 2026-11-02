@@ -20,7 +20,7 @@ export type AuditorIndex = {
  */
 export function buildAuditorIndex(): AuditorIndex {
   return {
-    title: "Auditor index",
+    title: "Documents for auditors",
     paragraphs: [
       "Stock takes before this system are the prior-company (Albatros Solutions) workbooks for October, November and December 2025 and 31 January 2026. February to April 2026 carry the January count forward because Albatros held the stock and provided no counts or reporting. May 2026 is the hand-over, with no receiving count; Finance confirmed the stock against the 31 January 2026 count. June 2026 has no count on record.",
       "This system recorded its first asset on 18 April 2026 and was still loading the field fleet through 13 August 2026. The two series are joined by the hand-over and the reconciliation page. Their totals are not added together.",
@@ -37,19 +37,19 @@ export function buildAuditorIndex(): AuditorIndex {
         title: "History (before this system)",
         href: "?tab=history",
         covers:
-          "Every month from October 2025: prior-company counts with their source workbooks and SHA-256 hashes, the January 2026 movements, the carried-forward months, the May 2026 hand-over record, and the emailed-not-stored months.",
+          "Every month from October 2025: prior-company counts with their source workbooks (each kept exactly as uploaded), the January 2026 movements, the carried-forward months, the May 2026 hand-over record, and the emailed-not-stored months.",
       },
       {
         title: "Reconciliation: prior count to system register",
         href: "?tab=reconciliation",
         covers:
-          "The bridge from the 31 January 2026 count (132) to the register (136), with excluded lines, additions and any difference shown as \"to be confirmed\".",
+          "The bridge from the 31 January 2026 count (132) to the register (136), with excluded lines, additions and every part of the difference itemised. Also the field capture against the terminal export.",
       },
       {
         title: "Monthly pack",
         href: "?tab=monthly",
         covers:
-          "Stored official finance packs from October 2026: reconcile, breakdown, month-on-month, yearly, deployed field listing and CSV, each with a hash, recipients and send log.",
+          "Stored official finance packs from October 2026: reconcile, breakdown, month-on-month, yearly, deployed field listing and CSV, each kept exactly as sent, with recipients and send log.",
       },
       {
         title: "Year to date",

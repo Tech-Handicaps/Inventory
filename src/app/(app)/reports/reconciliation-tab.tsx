@@ -170,11 +170,11 @@ function Bridge({ view, canEdit, onChanged }: { view: ReconciliationView; canEdi
             </tr>
             <tr className={view.unexplained === 0 ? "" : "bg-amber-50"}>
               <td className="px-4 py-3 font-medium" colSpan={3}>
-                Difference
+                Difference{view.unexplained === 0 ? "" : " – broken down below"}
               </td>
               <td className="px-4 py-3 text-right font-bold tabular-nums">{view.unexplained}</td>
               <td className="px-4 py-3 text-xs" colSpan={canEdit ? 2 : 1}>
-                {view.unexplained === 0 ? "Balanced" : "To be confirmed"}
+                {view.unexplained === 0 ? "Balanced" : "See breakdown"}
               </td>
             </tr>
           </tbody>
@@ -204,7 +204,59 @@ function Bridge({ view, canEdit, onChanged }: { view: ReconciliationView; canEdi
         Written off: {reg.writtenOffWithCertificate} with a disposal certificate; {reg.pendingDisposal} pending disposal
         (no certificate yet). The difference is never forced to zero.
       </p>
+      <DifferenceTable view={view} />
     </section>
+  );
+}
+
+function DifferenceTable({ view }: { view: ReconciliationView }) {
+  const d = view.differenceBreakdown;
+  if (d.difference === 0 && d.parts.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <h3 className="font-heading text-base font-bold text-ink">What makes up the difference of {d.difference}</h3>
+      <p className="max-w-3xl text-sm text-muted">
+        After modems and card-reader brackets, the 31 January 2026 count leaves {d.priorLeft} items. The bridge adds every
+        Deployed unit on top of them, so the difference is what the register holds as stock and write-offs, set against
+        those {d.priorLeft} items model by model.
+        {d.inRegister.length ? ` Found in the register as stock: ${d.inRegister.join(", ")}.` : ""}
+      </p>
+      <div className="overflow-x-auto rounded-lg border border-line bg-white">
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-line">
+              <th className="px-4 py-3 font-medium">Part</th>
+              <th className="px-4 py-3 text-right font-medium">Qty</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.parts.map((p) => (
+              <tr key={p.reason} className="border-b border-line align-top">
+                <td className="px-4 py-3">
+                  <div>{p.label}</div>
+                  {p.items.length ? <div className="text-xs text-ink">{p.items.join(", ")}</div> : null}
+                  <div className="text-xs text-muted">{p.note}</div>
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums">{p.quantity > 0 ? `+${p.quantity}` : p.quantity}</td>
+                <td className="px-4 py-3 text-xs">
+                  {p.status === "explained" ? (
+                    <span className="text-emerald-800">Explained</span>
+                  ) : (
+                    <span className="text-amber-800">To be confirmed</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+            <tr className="bg-slate-50 font-medium">
+              <td className="px-4 py-3">Total = difference</td>
+              <td className="px-4 py-3 text-right tabular-nums">{d.parts.reduce((s, p) => s + p.quantity, 0)}</td>
+              <td className="px-4 py-3" />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -331,8 +383,8 @@ export default function ReconciliationTab() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex-1">
           <TabIntro title="Reconciliation: prior count to system register">
-            How the 31 January 2026 count of 132 becomes today&apos;s register, line by line; anything unexplained stays
-            visible as &quot;to be confirmed&quot;.
+            How the 31 January 2026 count of 132 becomes today&apos;s register, line by line, with every part of the
+            difference itemised.
           </TabIntro>
         </div>
         <PdfButtons open={PDF} download={`${PDF}?download=1`} compact />

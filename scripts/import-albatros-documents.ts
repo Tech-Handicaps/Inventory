@@ -155,7 +155,11 @@ async function main() {
     }
 
     const note = await prisma.reportNote.findUnique({ where: { key: AUDITOR_NOTES_KEY } });
-    const signedAlready = note?.markdown === AUDITOR_NOTES_SEED.markdown && note?.title === AUDITOR_NOTES_SEED.title;
+    const signedAlready =
+      (note?.markdown === AUDITOR_NOTES_SEED.markdown && note?.title === AUDITOR_NOTES_SEED.title) ||
+      (await prisma.reportNoteVersion.count({
+        where: { noteKey: AUDITOR_NOTES_KEY, markdown: AUDITOR_NOTES_SEED.markdown },
+      })) > 0;
     const nextVersion = (note?.version ?? 0) + 1;
     log(signedAlready ? `notes: signed text already saved (version ${note?.version})` : `notes: save signed text as version ${nextVersion}`);
     if (APPLY && !signedAlready) {

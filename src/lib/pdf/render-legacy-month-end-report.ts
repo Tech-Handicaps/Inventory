@@ -204,6 +204,8 @@ export async function renderLegacyMonthEndPdf(
       title: `Prior company month-end stock — ${label}`,
       bodyHtml,
       watermarkText: period.watermark,
+      watermarkDetail: period.watermarkDetail,
+      watermarkTone: "warning",
       logoDataUrl,
       landscape: true,
     }),

@@ -152,9 +152,17 @@ export type FieldCapture = {
   baseline: FieldExportBaseline;
   /** The stored export the breakdown was read from; null when only the fallback totals are available. */
   sourceDocumentId: string | null;
+  /** HNA-owned export terminals matched to a Deployed unit at the same club (see `FieldCaptureBreakdown`). */
   captured: number;
   notYetCaptured: number;
   capturedPct: number;
+  /** Deployed hardware in the register, which includes units that match no HNA-owned export terminal. */
+  deployed: number;
+  /**
+   * False when the stored export could not be read: captured is then Deployed hardware capped at HNA-owned, an
+   * estimate that counts units at sites outside the export.
+   */
+  matched: boolean;
   breakdown: FieldCaptureBreakdown | null;
 };
 
@@ -164,12 +172,14 @@ export function fieldCapture(
   breakdown: FieldCaptureBreakdown | null = null,
   sourceDocumentId: string | null = null
 ): FieldCapture {
-  const captured = Math.min(deployedHardware, base.hnaOwned);
+  const captured = breakdown ? breakdown.matched : Math.min(deployedHardware, base.hnaOwned);
   return {
     baseline: base,
     sourceDocumentId,
     captured,
-    notYetCaptured: Math.max(base.hnaOwned - deployedHardware, 0),
+    notYetCaptured: base.hnaOwned - captured,
+    deployed: deployedHardware,
+    matched: breakdown !== null,
     capturedPct: base.hnaOwned ? Math.round((captured / base.hnaOwned) * 1000) / 10 : 0,
     breakdown,
   };

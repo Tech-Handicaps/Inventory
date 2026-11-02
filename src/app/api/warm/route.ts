@@ -4,6 +4,7 @@ import { loadDashboardActivity, loadDashboardSync } from "@/lib/reports/dashboar
 import { loadPeriodsOverview } from "@/lib/reports/period-records";
 import { loadReconciliation } from "@/lib/reports/load-reconciliation";
 import { loadAuditorNotes } from "@/lib/reports/auditor-notes";
+import { loadLegacyMonthEndList, loadMonthOnMonthAudit } from "@/lib/reports/load-legacy-month-end";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ export async function GET() {
     loadPeriodsOverview(),
     loadReconciliation(),
     loadAuditorNotes(),
+    loadLegacyMonthEndList(),
+    loadMonthOnMonthAudit(),
   ]);
   const failed = results.filter((r) => r.status === "rejected").length;
   if (failed > 0) {

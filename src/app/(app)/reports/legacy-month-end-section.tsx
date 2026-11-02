@@ -3,6 +3,7 @@
 import { SectionSkeleton } from "@/components/Skeleton";
 import { useEffect, useState } from "react";
 import type { LegacyColumnComposition } from "@/lib/reports/legacy-month-end";
+import { LazyDetails } from "./lazy-details";
 import { StockCompositionBlock } from "./stock-composition-block";
 
 type MonthRow = {
@@ -124,7 +125,9 @@ export function LegacyMonthEndSection() {
         </div>
       )}
       {months && months.length > 0 ? (
-        <CompositionMonths months={months} />
+        <LazyDetails summary="Show the models behind each month's totals">
+          {() => <CompositionMonths months={months} />}
+        </LazyDetails>
       ) : null}
     </section>
   );

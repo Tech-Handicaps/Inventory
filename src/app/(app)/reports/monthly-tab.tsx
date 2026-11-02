@@ -8,8 +8,9 @@ const LIVE: ReportDef[] = [
   {
     id: "reconcile",
     type: "reconcile",
-    title: "Monthly stock reconcile (today)",
-    description: "New stock, refurbished and total stock by asset type, from the register as it is right now.",
+    title: "Stock reconcile as at today",
+    description:
+      "New stock, refurbished and total stock by asset type, from the register as it is right now. Not a month-end pack.",
     audience: "Finance · Accounting",
   },
   {

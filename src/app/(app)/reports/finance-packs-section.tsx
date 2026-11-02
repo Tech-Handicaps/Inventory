@@ -230,8 +230,11 @@ export function FinancePacksSection() {
                               </a>
                             ) : null}
                             {hash ? (
-                              <span className="font-mono text-[10px] text-muted" title={`SHA-256 ${hash}`}>
-                                {hash.slice(0, 10)}…
+                              <span
+                                className="text-[10px] text-muted underline decoration-dotted underline-offset-2"
+                                title={`Kept exactly as sent. SHA-256 ${hash}`}
+                              >
+                                unchanged
                               </span>
                             ) : null}
                           </li>

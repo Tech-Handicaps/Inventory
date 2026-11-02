@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
-import { prisma } from "@/lib/prisma";
-import {
-  draftFromStoredReport,
-  type LegacyMonthEndLine,
-} from "@/lib/reports/legacy-month-end";
-import { buildMonthOnMonthAudit } from "@/lib/reports/month-on-month-audit";
+import { loadMonthOnMonthAudit } from "@/lib/reports/load-legacy-month-end";
 
 /**
  * GET /api/reports/month-on-month
@@ -16,19 +11,7 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const reports = await prisma.monthEndStockReport.findMany({
-      orderBy: { monthKey: "asc" },
-      include: { lines: { orderBy: { sortOrder: "asc" } } },
-    });
-    const audit = buildMonthOnMonthAudit(
-      reports.map((report) =>
-        draftFromStoredReport({
-          ...report,
-          lines: report.lines as LegacyMonthEndLine[],
-        })
-      )
-    );
-    return NextResponse.json(audit);
+    return NextResponse.json(await loadMonthOnMonthAudit());
   } catch (error) {
     console.error("GET /api/reports/month-on-month", error);
     return NextResponse.json(

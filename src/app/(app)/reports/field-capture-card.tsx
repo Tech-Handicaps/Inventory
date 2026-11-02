@@ -8,11 +8,11 @@ import { monthLabelOf } from "@/lib/reports/period-catalog";
 
 function Arithmetic({ a }: { a: CaptureArithmetic }) {
   const rows: [string, number][] = [
-    ["matched to a Deployed unit at the same club", a.matched],
+    ["captured: matched to a Deployed unit at the same club", a.matched],
     ["not yet captured (list below)", a.notCaptured],
   ];
   const extra: [string, number][] = [
-    ["matched to an HNA-owned export terminal", a.matched],
+    ["matched to an HNA-owned export terminal (captured)", a.matched],
     ["at sites not in the export", a.outsideExport],
     ["at clubs whose export rows are all club-owned or unowned", a.noHnaRows],
     ["extra units at a club beyond its HNA-owned export rows", a.beyondExportCount],
@@ -42,10 +42,10 @@ function Arithmetic({ a }: { a: CaptureArithmetic }) {
         </ul>
       </div>
       <p className="text-xs text-muted md:col-span-2">
-        {a.deployed} captured + {a.notCaptured} not yet captured = {a.deployed + a.notCaptured}, which is {a.hnaOwned} +{" "}
-        {a.notMatched}: the {a.notMatched} Deployed unit(s) that do not match an HNA-owned export terminal. Matched strictly,{" "}
-        {a.matched} of {a.hnaOwned} ({Math.round((a.matched / a.hnaOwned) * 1000) / 10}%) are captured; the headline uses all{" "}
-        {a.deployed} Deployed units.
+        {a.matched} captured + {a.notCaptured} not yet captured = {a.hnaOwned} HNA-owned terminals. These are the only
+        captured and not-yet-captured figures on this report: the headline, the model, club and month tables all use them.
+        The {a.notMatched} Deployed unit(s) that match no HNA-owned export terminal are listed below and are not counted as
+        captured.
       </p>
     </div>
   );
@@ -53,7 +53,7 @@ function Arithmetic({ a }: { a: CaptureArithmetic }) {
 
 function Trend({ view }: { view: ReconciliationView }) {
   const t = view.captureTrend;
-  const max = Math.max(view.fieldCapture.baseline.hnaOwned, ...t.points.map((p) => p.deployed), 1);
+  const max = Math.max(view.fieldCapture.baseline.hnaOwned, 1);
   return (
     <div className="space-y-2">
       <h4 className="text-sm font-semibold text-ink">Captured by month</h4>
@@ -62,7 +62,7 @@ function Trend({ view }: { view: ReconciliationView }) {
           <thead>
             <tr className="border-b border-line">
               <Th>Month end</Th>
-              <Th num>Deployed</Th>
+              <Th num>Captured</Th>
               <Th num>% of HNA-owned</Th>
               <Th>
                 <span className="sr-only">Bar</span>
@@ -76,11 +76,11 @@ function Trend({ view }: { view: ReconciliationView }) {
                   {monthLabelOf(p.monthKey)}
                   {p.toDate ? <span className="ml-1 text-xs text-muted">(to date)</span> : null}
                 </Td>
-                <Td num>{p.deployed}</Td>
+                <Td num>{p.captured}</Td>
                 <Td num>{p.pct}%</Td>
                 <td className="w-1/2 px-3 py-2">
                   <div className="h-2 rounded-full bg-slate-100" aria-hidden>
-                    <div className="h-full rounded-full bg-brand" style={{ width: `${(p.deployed / max) * 100}%` }} />
+                    <div className="h-full rounded-full bg-brand" style={{ width: `${(p.captured / max) * 100}%` }} />
                   </div>
                 </td>
               </tr>
@@ -89,8 +89,9 @@ function Trend({ view }: { view: ReconciliationView }) {
         </table>
       </div>
       <p className="max-w-3xl text-xs text-muted">
-        Hardware in Deployed at each month end (SAST), replayed for each asset from the audit log, which starts with the
-        first asset on 18 April 2026, and checked against today&apos;s register. Deleted records are not counted.
+        At each month end (SAST): the hardware Deployed at that time, replayed for each asset from the audit log (which
+        starts with the first asset on 18 April 2026), matched to the export with the same rule as above, using each
+        unit&apos;s current club. The replay is checked against today&apos;s register. Deleted records are not counted.
         {t.unreconciled
           ? ` For ${t.unreconciled} asset(s) the replay does not end at today's status, so earlier months may be off by up to that number.`
           : ""}
@@ -136,8 +137,7 @@ export function FieldCaptureCard({ view }: { view: ReconciliationView }) {
   }, [bd, q]);
 
   const deployed = view.register.hardware.deployed;
-  const modelGap = bd ? bd.byModel.reduce((s, m) => s + m.notYetCaptured, 0) : 0;
-  const beyondExport = bd ? bd.byModel.reduce((s, m) => s + m.beyondExport, 0) : 0;
+  const total = (key: "sameModel" | "otherModel") => (bd ? bd.byModel.reduce((s, m) => s + m[key], 0) : 0);
 
   return (
     <section className="section-card space-y-5 p-5">
@@ -154,8 +154,11 @@ export function FieldCaptureCard({ view }: { view: ReconciliationView }) {
           <div className="h-full bg-brand" style={{ width: `${Math.min(100, fc.capturedPct)}%` }} />
         </div>
         <p className="text-sm text-ink">
-          <strong>{fc.captured}</strong> of {b.hnaOwned} HNA-owned terminals captured in the register as Deployed (
-          {fc.capturedPct}%); {fc.notYetCaptured} not yet captured.
+          <strong>{fc.captured}</strong> of {b.hnaOwned} HNA-owned terminals captured ({fc.capturedPct}%);{" "}
+          {fc.notYetCaptured} not yet captured.
+          {fc.matched
+            ? " A terminal counts as captured when a Deployed unit is recorded at its club."
+            : ` Estimate: the stored export could not be read, so this is the ${fc.deployed} Deployed units, at most ${b.hnaOwned}.`}
         </p>
       </div>
 
@@ -170,12 +173,13 @@ export function FieldCaptureCard({ view }: { view: ReconciliationView }) {
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-ink">By model</h4>
             <div className="overflow-x-auto rounded-lg border border-line bg-white">
-              <table className="w-full min-w-[520px] text-left text-sm">
+              <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-line">
-                    <Th>Model</Th>
+                    <Th>Model in the export</Th>
                     <Th num>HNA-owned in export</Th>
-                    <Th num>Captured (Deployed)</Th>
+                    <Th num>Captured by the same model</Th>
+                    <Th num>Captured by another model</Th>
                     <Th num>Not yet captured</Th>
                   </tr>
                 </thead>
@@ -184,34 +188,35 @@ export function FieldCaptureCard({ view }: { view: ReconciliationView }) {
                     <tr key={m.model} className="border-b border-line">
                       <Td>
                         {m.model}
-                        {m.inExport === 0 ? (
-                          <span className="ml-2 text-xs text-muted">not named in the export</span>
-                        ) : null}
                         {MODEL_ROW_NOTES[m.model] ? (
                           <span className="block text-xs text-amber-800">{MODEL_ROW_NOTES[m.model]}</span>
                         ) : null}
                       </Td>
                       <Td num>{m.inExport}</Td>
-                      <Td num>{m.captured}</Td>
+                      <Td num>{m.sameModel || "–"}</Td>
+                      <Td num>{m.otherModel || "–"}</Td>
                       <Td num>{m.notYetCaptured || "–"}</Td>
                     </tr>
                   ))}
                   <tr className="bg-slate-50 font-medium">
                     <Td>Total</Td>
                     <Td num>{b.hnaOwned}</Td>
-                    <Td num>{deployed}</Td>
-                    <Td num>{modelGap}</Td>
+                    <Td num>{total("sameModel")}</Td>
+                    <Td num>{total("otherModel")}</Td>
+                    <Td num>{fc.notYetCaptured}</Td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <p className="max-w-3xl text-xs text-muted">
-              Lenovo M810z (named in the export) and Lenovo 10Q0 (in the register) are different models and are never
-              merged or aliased. An NUC is counted once whichever screen it came with. Spellings are combined through the
-              alias table below.
-              {modelGap !== fc.notYetCaptured
-                ? ` Per model the gaps add up to ${modelGap} rather than ${fc.notYetCaptured}, because ${beyondExport} deployed unit(s) are models the export does not name, or more units of a model than the export lists.`
+              {`Captured by the same model + by another model = ${fc.captured} captured. `}&ldquo;Another model&rdquo; means the
+              club&apos;s terminal position is filled by a different model in the register
+              {bd.crossModel.length
+                ? ` (${bd.crossModel.map((c) => `${c.count} ${c.exportModel} by ${c.registerModel}`).join(", ")})`
                 : ""}
+              ; the register keeps the model it holds, nothing is merged or aliased. Lenovo M810z and Lenovo 10Q0 are
+              different models. An NUC is counted once whichever screen it came with. Spellings are combined through the
+              alias table.
             </p>
           </div>
 

@@ -50,7 +50,18 @@ describe("reconciliation", () => {
     expect(registerComposition(assets(1, "written_off")).pendingDisposal).toBe(1);
   });
 
-  it("measures field capture against the HNA-owned terminals", () => {
-    expect(fieldCapture(115)).toMatchObject({ captured: 115, notYetCaptured: 190, capturedPct: 37.7 });
+  it("estimates field capture from Deployed when the export cannot be read", () => {
+    expect(fieldCapture(115)).toMatchObject({ captured: 115, notYetCaptured: 190, capturedPct: 37.7, matched: false });
+  });
+
+  it("uses the matched count when the export breakdown is available", () => {
+    const breakdown = { matched: 108 } as Parameters<typeof fieldCapture>[2];
+    expect(fieldCapture(115, undefined, breakdown)).toMatchObject({
+      captured: 108,
+      notYetCaptured: 197,
+      capturedPct: 35.4,
+      deployed: 115,
+      matched: true,
+    });
   });
 });

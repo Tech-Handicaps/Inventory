@@ -19,6 +19,8 @@ export type PeriodInfo = {
   detail: string | null;
   /** Printed across every page of the PDF. Null for real counts and system packs. */
   watermark: string | null;
+  /** Second, smaller watermark line saying what the month is. */
+  watermarkDetail: string | null;
   /** Month whose quantities are shown, when there was no count in this month. */
   carriedFromMonthKey: string | null;
   /** True only for a real count taken at the month-end. */
@@ -29,6 +31,8 @@ export type PeriodInfo = {
 export const FIRST_PERIOD = "2025-10";
 export const FIRST_SYSTEM_PACK_MONTH = "2026-10";
 export const LAST_PRIOR_COUNT = "2026-01";
+
+export const CARRIED_FORWARD_WATERMARK = "Carried forward – not counted";
 
 const SYSTEM_START_NOTE =
   "This system recorded its first asset on 18 Apr 2026 (system start-up); loading ran until 13 Aug 2026.";
@@ -85,6 +89,7 @@ function priorCount(title: string, detail: string | null): Spec {
     title,
     detail,
     watermark: null,
+    watermarkDetail: null,
     carriedFromMonthKey: null,
     isMonthEndCount: true,
   };
@@ -95,7 +100,8 @@ const ALBATROS_NO_COUNT: Spec = {
   title:
     "Stock held by Albatros – no count or reporting provided – carried forward from 31 Jan 2026 count",
   detail: `The technical side moved from Albatros to HNA in Feb 2026. Albatros kept holding the stock but provided no counts or reporting. This is not a month-end count. ${SYSTEM_START_NOTE}`,
-  watermark: "Stock held by Albatros – carried forward from 31 Jan 2026",
+  watermark: CARRIED_FORWARD_WATERMARK,
+  watermarkDetail: "Stock held by Albatros – figures from the 31 Jan 2026 count",
   carriedFromMonthKey: LAST_PRIOR_COUNT,
   isMonthEndCount: false,
 };
@@ -120,7 +126,8 @@ const SPECS: Record<string, Spec> = {
       "Stock received at HNA offices – hand-over. No count taken; stock confirmed by Finance against the 31 Jan 2026 Albatros count",
     detail:
       "Stock physically received from Albatros at HNA's offices. Receiving count: none taken. Figures are carried forward from the 31 Jan 2026 count.",
-    watermark: "Hand-over – no count taken – carried forward from 31 Jan 2026",
+    watermark: CARRIED_FORWARD_WATERMARK,
+    watermarkDetail: "Hand-over, no count taken – figures from the 31 Jan 2026 count",
     carriedFromMonthKey: LAST_PRIOR_COUNT,
     isMonthEndCount: false,
   },
@@ -129,7 +136,8 @@ const SPECS: Record<string, Spec> = {
     title:
       "No count on record – carried forward from 31 Jan 2026 (as confirmed at the May 2026 hand-over)",
     detail: "No count was taken in June 2026. This is not a month-end count.",
-    watermark: "No count on record – carried forward from 31 Jan 2026",
+    watermark: CARRIED_FORWARD_WATERMARK,
+    watermarkDetail: "No count on record – figures from the 31 Jan 2026 count",
     carriedFromMonthKey: LAST_PRIOR_COUNT,
     isMonthEndCount: false,
   },
@@ -141,6 +149,7 @@ const EMAILED_NOT_STORED: Spec = {
   detail:
     "This month's finance pack was emailed but not kept by the system. An administrator can upload the emailed PDF; it is recorded as re-imported.",
   watermark: null,
+  watermarkDetail: null,
   carriedFromMonthKey: null,
   isMonthEndCount: false,
 };
@@ -150,6 +159,7 @@ const SYSTEM_PACK: Spec = {
   title: "System month-end",
   detail: "Generated and stored automatically on the 1st of the following month.",
   watermark: null,
+  watermarkDetail: null,
   carriedFromMonthKey: null,
   isMonthEndCount: true,
 };

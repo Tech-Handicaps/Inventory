@@ -4,7 +4,8 @@ import { INVENTORY_STATS_TAG } from "@/lib/cache/inventory-stats";
 import { applyAlias, loadAliasMap } from "@/lib/inventory/model-aliases";
 import { classifyReportAssetType } from "@/lib/reports/asset-types";
 import { buildCaptureTrend, statusEventsFromAudit, type CaptureTrend } from "@/lib/reports/capture-trend";
-import { buildFieldCaptureBreakdown } from "@/lib/reports/field-export";
+import { buildDifferenceBreakdown, type DifferenceBreakdown } from "@/lib/reports/difference-breakdown";
+import { buildFieldCaptureBreakdown, registerModelFamily } from "@/lib/reports/field-export";
 import { loadLatestFieldExport } from "@/lib/reports/load-field-export";
 import {
   baselineFromTerminals,
@@ -20,6 +21,7 @@ export const RECONCILIATION_TAG = "report-reconciliation";
 export type ReconciliationView = ReconciliationReport & {
   fieldCapture: FieldCapture;
   captureTrend: CaptureTrend;
+  differenceBreakdown: DifferenceBreakdown;
   generatedAt: string;
 };
 
@@ -71,37 +73,73 @@ async function compute(): Promise<ReconciliationView> {
     register
   );
 
+  const isHardware = (a: (typeof assets)[number]) =>
+    !["usb_hid_msr", "other"].includes(classifyReportAssetType(a.category, a.tags));
+  const units = assets.filter(isHardware).map((a) => ({
+    id: a.id,
+    statusCode: a.status.code,
+    unit: {
+      assetName: a.assetName,
+      serialNumber: a.serialNumber,
+      manufacturer: applyAlias(aliases, "manufacturer", a.manufacturer),
+      model: applyAlias(aliases, "model", a.model),
+      raw: { manufacturer: a.manufacturer, model: a.model },
+      club: a.club?.name ?? null,
+    },
+  }));
+
   let capture = fieldCapture(register.hardware.deployed);
+  let capturedOf: ((ids: Set<string>) => number) | undefined;
   if (fieldExport) {
-    const deployed = assets
-      .filter((a) => a.status.code === "deployed")
-      .filter((a) => !["usb_hid_msr", "other"].includes(classifyReportAssetType(a.category, a.tags)))
-      .map((a) => ({
-        assetName: a.assetName,
-        serialNumber: a.serialNumber,
-        manufacturer: applyAlias(aliases, "manufacturer", a.manufacturer),
-        model: applyAlias(aliases, "model", a.model),
-        raw: { manufacturer: a.manufacturer, model: a.model },
-        club: a.club?.name ?? null,
-      }));
+    const terminals = fieldExport.terminals;
     capture = fieldCapture(
       register.hardware.deployed,
-      baselineFromTerminals(fieldExport.terminals, { fileName: fieldExport.fileName, exportDate: fieldExport.exportDate }),
-      buildFieldCaptureBreakdown(fieldExport.terminals, deployed),
+      baselineFromTerminals(terminals, { fileName: fieldExport.fileName, exportDate: fieldExport.exportDate }),
+      buildFieldCaptureBreakdown(
+        terminals,
+        units.filter((u) => u.statusCode === "deployed").map((u) => u.unit)
+      ),
       fieldExport.documentId
     );
+    capturedOf = (ids) =>
+      buildFieldCaptureBreakdown(
+        terminals,
+        units.filter((u) => ids.has(u.id)).map((u) => u.unit)
+      ).matched;
   }
   const captureTrend = buildCaptureTrend(
-    assets.map((a) => ({
-      id: a.id,
-      statusCode: a.status.code,
-      dateAdded: a.dateAdded,
-      hardware: !["usb_hid_msr", "other"].includes(classifyReportAssetType(a.category, a.tags)),
-    })),
+    assets.map((a) => ({ id: a.id, statusCode: a.status.code, dateAdded: a.dateAdded, hardware: isHardware(a) })),
     statusEventsFromAudit(auditRows),
-    { fromMonthKey: TREND_FROM_MONTH, now: new Date(), hnaOwned: capture.baseline.hnaOwned }
+    { fromMonthKey: TREND_FROM_MONTH, now: new Date(), hnaOwned: capture.baseline.hnaOwned, capturedOf }
   );
-  return { ...report, fieldCapture: capture, captureTrend, generatedAt: new Date().toISOString() };
+  const sumOf = (...sections: string[]) =>
+    report.lines.filter((l) => sections.includes(l.section)).reduce((s, l) => s + l.quantity, 0);
+  const differenceBreakdown = buildDifferenceBreakdown({
+    difference: report.unexplained,
+    priorLeft: sumOf("opening", "excluded"),
+    addedLines: sumOf("added"),
+    writtenOffLines: sumOf("written_off"),
+    deployed: assets.filter((a) => a.status.code === "deployed").length,
+    notDeployed: assets
+      .filter((a) => a.status.code !== "deployed")
+      .map((a) => {
+        const manufacturer = applyAlias(aliases, "manufacturer", a.manufacturer);
+        const model = applyAlias(aliases, "model", a.model);
+        return {
+          statusCode: a.status.code,
+          family: registerModelFamily(manufacturer, model, { manufacturer: a.manufacturer, model: a.model }),
+          text: [a.manufacturer, a.model, manufacturer, model].filter(Boolean).join(" "),
+          label: a.assetName.startsWith("HNA-") ? a.assetName : (a.serialNumber ?? a.assetName),
+        };
+      }),
+  });
+  return {
+    ...report,
+    fieldCapture: capture,
+    captureTrend,
+    differenceBreakdown,
+    generatedAt: new Date().toISOString(),
+  };
 }
 
 /** The register's first asset was recorded on 18 April 2026. */
@@ -121,7 +159,7 @@ const STATUS_ACTIONS = [
   "dispatch.created",
 ] as const;
 
-const cached = unstable_cache(compute, ["report-reconciliation-v5"], {
+const cached = unstable_cache(compute, ["report-reconciliation-v6"], {
   tags: [RECONCILIATION_TAG, INVENTORY_STATS_TAG],
   revalidate: 300,
 });

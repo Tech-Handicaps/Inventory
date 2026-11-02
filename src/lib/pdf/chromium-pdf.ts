@@ -167,12 +167,18 @@ export function pdfDocumentChrome(params: {
   bodyHtml: string;
   logoDataUrl?: string | null;
   watermarkText?: string | null;
+  /** Smaller second watermark line. */
+  watermarkDetail?: string | null;
+  /** `warning` for figures that must not be read as a count. */
+  watermarkTone?: "brand" | "warning";
   landscape?: boolean;
   /** Printed on its own page(s) before the report, e.g. the Notes for auditors and finance. */
   prefaceHtml?: string | null;
 }): string {
   const watermark = params.watermarkText?.trim()
-    ? `<div class="watermark" aria-hidden="true">${escHtml(params.watermarkText.trim())}</div>`
+    ? `<div class="watermark${params.watermarkTone === "warning" ? " warning" : ""}" aria-hidden="true">${escHtml(params.watermarkText.trim())}${
+        params.watermarkDetail?.trim() ? `<div class="watermark-detail">${escHtml(params.watermarkDetail.trim())}</div>` : ""
+      }</div>`
     : "";
   const logo = params.logoDataUrl
     ? `<img class="logo" src="${params.logoDataUrl}" alt="Handicaps Network Africa" />`
@@ -208,6 +214,16 @@ export function pdfDocumentChrome(params: {
       pointer-events: none;
       z-index: 0;
     }
+    .watermark.warning {
+      top: 50%;
+      font-size: 40px;
+      letter-spacing: 0.05em;
+      text-align: center;
+      color: rgba(185, 28, 28, 0.2);
+      border: 4px solid rgba(185, 28, 28, 0.2);
+      padding: 10px 28px;
+    }
+    .watermark-detail { font-size: 15px; letter-spacing: 0.04em; margin-top: 6px; }
     .sheet { position: relative; z-index: 1; overflow: visible; }
     .bar {
       height: 5px;

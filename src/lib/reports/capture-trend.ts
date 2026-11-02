@@ -1,6 +1,7 @@
 /**
- * Field capture by month (spec 5.10): Deployed hardware at each month end (SAST), replayed per asset from the
- * audit log, which starts with the first asset (18 April 2026). Today's register is the check on the replay.
+ * Field capture by month (spec 5.10): the hardware Deployed at each month end (SAST), replayed per asset from the
+ * audit log, which starts with the first asset (18 April 2026), then matched to the export like the headline.
+ * Today's register is the check on the replay.
  */
 
 export type TrendAsset = { id: string; statusCode: string; dateAdded: Date; hardware: boolean };
@@ -28,7 +29,9 @@ export type AuditRow = { actionType: string; timestamp: Date; metadata: unknown 
 export type CaptureTrendPoint = {
   monthKey: string;
   deployed: number;
-  /** % of the HNA-owned terminals in the field export. */
+  /** HNA-owned export terminals matched by the units Deployed at that month end (same rule as the headline). */
+  captured: number;
+  /** `captured` as a % of the HNA-owned terminals in the field export. */
   pct: number;
   /** The current month, counted up to now. */
   toDate: boolean;
@@ -124,7 +127,13 @@ function statusAt(asset: TrendAsset, events: StatusEvent[], at: Date): string | 
 export function buildCaptureTrend(
   assets: TrendAsset[],
   events: StatusEvent[],
-  opts: { fromMonthKey: string; now: Date; hnaOwned: number }
+  opts: {
+    fromMonthKey: string;
+    now: Date;
+    hnaOwned: number;
+    /** Captured terminals for a set of Deployed asset ids; without it, Deployed capped at HNA-owned is used. */
+    capturedOf?: (deployedIds: Set<string>) => number;
+  }
 ): CaptureTrend {
   const byAsset = new Map<string, StatusEvent[]>();
   for (const e of events) byAsset.set(e.assetId, [...(byAsset.get(e.assetId) ?? []), e]);
@@ -136,11 +145,13 @@ export function buildCaptureTrend(
 
   const months = monthEnds(opts.fromMonthKey, opts.now);
   const points = months.map(({ monthKey, end }, i) => {
-    const deployed = hardware.filter((a) => statusAt(a, byAsset.get(a.id) ?? [], end) === "deployed").length;
+    const ids = new Set(hardware.filter((a) => statusAt(a, byAsset.get(a.id) ?? [], end) === "deployed").map((a) => a.id));
+    const captured = opts.capturedOf ? opts.capturedOf(ids) : Math.min(ids.size, opts.hnaOwned);
     return {
       monthKey,
-      deployed,
-      pct: opts.hnaOwned ? Math.round((Math.min(deployed, opts.hnaOwned) / opts.hnaOwned) * 1000) / 10 : 0,
+      deployed: ids.size,
+      captured,
+      pct: opts.hnaOwned ? Math.round((captured / opts.hnaOwned) * 1000) / 10 : 0,
       toDate: i === months.length - 1,
     };
   });

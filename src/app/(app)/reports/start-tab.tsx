@@ -94,11 +94,13 @@ function NotesEditor({
 function NotesForAuditors() {
   const { role } = useAppRole();
   const canEdit = isReportsAdmin(role);
+  const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState<AuditorNotes | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
+    if (!open || notes) return;
     let cancelled = false;
     fetch("/api/reports/notes")
       .then(async (res) => {
@@ -110,7 +112,7 @@ function NotesForAuditors() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [open, notes]);
 
   const html = useMemo(() => (notes ? markdownToHtml(notes.markdown) : ""), [notes]);
   const onSaved = useCallback((saved: AuditorNotes) => {
@@ -119,35 +121,78 @@ function NotesForAuditors() {
   }, []);
 
   return (
-    <section id="notes" className="section-card space-y-4 p-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-heading text-lg font-bold text-ink">{notes?.title ?? "Notes for auditors and finance"}</h2>
-          <p className="mt-1 text-xs text-muted">
-            {notes
-              ? notes.version > 0
-                ? `Version ${notes.version} · last updated ${formatDate(notes.updatedAt)}`
-                : "Draft — not yet saved by an administrator"
-              : " "}
-            {" · "}Printed as page 1 of every PDF covering a month before October 2026.
-          </p>
+    <details
+      id="notes"
+      className="section-card group p-5"
+      open={open}
+      onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
+    >
+      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3">
+        <span>
+          <span className="font-heading text-base font-bold text-ink">
+            <span aria-hidden className="mr-1 inline-block transition-transform group-open:rotate-90">
+              ›
+            </span>
+            Read notes for auditors
+          </span>
+          <span className="mt-1 block text-xs text-muted">
+            Notes for auditors and finance. Printed as page 1 of every PDF covering a month before October 2026.
+          </span>
+        </span>
+      </summary>
+      {open ? (
+        <div className="mt-4 space-y-4">
+          <header className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-heading text-lg font-bold text-ink">{notes?.title ?? "Notes for auditors and finance"}</h2>
+              <p className="mt-1 text-xs text-muted">
+                {notes
+                  ? notes.version > 0
+                    ? `Version ${notes.version} · last updated ${formatDate(notes.updatedAt)}`
+                    : "Draft — not yet saved by an administrator"
+                  : " "}
+              </p>
+            </div>
+            {canEdit && notes && !editing ? (
+              <button type="button" className="btn-secondary py-2 text-xs" onClick={() => setEditing(true)}>
+                Edit notes
+              </button>
+            ) : null}
+          </header>
+          <NotesBody notes={notes} error={error} editing={editing} html={html} onSaved={onSaved} onCancel={() => setEditing(false)} />
         </div>
-        {canEdit && notes && !editing ? (
-          <button type="button" className="btn-secondary py-2 text-xs" onClick={() => setEditing(true)}>
-            Edit notes
-          </button>
-        ) : null}
-      </header>
+      ) : null}
+    </details>
+  );
+}
+
+function NotesBody({
+  notes,
+  error,
+  editing,
+  html,
+  onSaved,
+  onCancel,
+}: {
+  notes: AuditorNotes | null;
+  error: string | null;
+  editing: boolean;
+  html: string;
+  onSaved: (notes: AuditorNotes) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <>
       {error ? (
         <p className="text-sm text-red-700">{error}</p>
       ) : !notes ? (
         <SectionSkeleton label="Loading notes" />
       ) : editing ? (
-        <NotesEditor notes={notes} onSaved={onSaved} onCancel={() => setEditing(false)} />
+        <NotesEditor notes={notes} onSaved={onSaved} onCancel={onCancel} />
       ) : (
         <div className="notes-body max-w-3xl text-sm leading-relaxed text-ink" dangerouslySetInnerHTML={{ __html: html }} />
       )}
-    </section>
+    </>
   );
 }
 
@@ -157,7 +202,7 @@ function AuditorIndex({ onOpenTab }: { onOpenTab: (tab: ReportsTabId) => void })
     <section id="auditor-index" className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
         <div>
-          <h2 className="font-heading text-lg font-bold text-ink">Auditor index</h2>
+          <h2 className="font-heading text-lg font-bold text-ink">{index.title}</h2>
           <p className="mt-1 text-sm text-muted">Where each document for an audit is kept, and what it covers.</p>
         </div>
         <PdfButtons open={AUDITOR_PDF} download={`${AUDITOR_PDF}?download=1`} compact />

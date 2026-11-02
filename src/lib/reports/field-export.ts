@@ -151,8 +151,15 @@ export type DeployedUnit = {
 
 const unitFamily = (u: DeployedUnit) => registerModelFamily(u.manufacturer, u.model, u.raw);
 
+/**
+ * The one definition used everywhere: an HNA-owned export terminal is captured when it is matched to a Deployed
+ * register unit at the same club; otherwise it is not yet captured. So captured + not yet captured = HNA-owned.
+ */
 export type FieldCaptureBreakdown = {
-  byModel: { model: string; inExport: number; captured: number; notYetCaptured: number; beyondExport: number }[];
+  /** By the model named in the export. `captured` = `sameModel` + `otherModel`. */
+  byModel: { model: string; inExport: number; captured: number; sameModel: number; otherModel: number; notYetCaptured: number }[];
+  /** Export terminals matched by a Deployed unit of a different model at that club (never an alias). */
+  crossModel: { exportModel: string; registerModel: string; count: number }[];
   byClub: {
     clubId: string;
     club: string;
@@ -237,22 +244,6 @@ function describeModels(terminals: FieldTerminal[]): string {
 export function buildFieldCaptureBreakdown(terminals: FieldTerminal[], deployed: DeployedUnit[]): FieldCaptureBreakdown {
   const hna = terminals.filter((t) => t.ownership === "HNA");
 
-  const exportByModel = countBy(hna, (t) => modelFamily(t.type));
-  const registerByModel = countBy(deployed, unitFamily);
-  const byModel = [...new Set([...exportByModel.keys(), ...registerByModel.keys()])]
-    .map((model) => {
-      const inExport = exportByModel.get(model) ?? 0;
-      const captured = registerByModel.get(model) ?? 0;
-      return {
-        model,
-        inExport,
-        captured,
-        notYetCaptured: Math.max(inExport - captured, 0),
-        beyondExport: Math.max(captured - inExport, 0),
-      };
-    })
-    .sort((a, b) => b.inExport - a.inExport || b.captured - a.captured || a.model.localeCompare(b.model));
-
   type ClubGroup = { clubId: string; club: string; hna: FieldTerminal[]; all: number; units: DeployedUnit[] };
   const clubs = new Map<string, ClubGroup>();
   const byFullName = new Map<string, ClubGroup>();
@@ -292,6 +283,13 @@ export function buildFieldCaptureBreakdown(terminals: FieldTerminal[], deployed:
   const notCaptured: FieldCaptureBreakdown["notCaptured"] = [];
   const unmatchedAtClubs: FieldCaptureBreakdown["unmatchedAtClubs"] = [];
   const byClub: FieldCaptureBreakdown["byClub"] = [];
+  const models = new Map<string, { inExport: number; sameModel: number; otherModel: number }>();
+  const cross = new Map<string, { exportModel: string; registerModel: string; count: number }>();
+  for (const t of hna) {
+    const m = models.get(modelFamily(t.type)) ?? { inExport: 0, sameModel: 0, otherModel: 0 };
+    m.inExport += 1;
+    models.set(modelFamily(t.type), m);
+  }
   for (const group of clubs.values()) {
     if (group.hna.length === 0 && group.units.length === 0) continue;
     const open = group.hna.map((t) => ({ t, model: modelFamily(t.type), taken: false }));
@@ -299,13 +297,22 @@ export function buildFieldCaptureBreakdown(terminals: FieldTerminal[], deployed:
     for (const unit of group.units) {
       const family = unitFamily(unit);
       const hit = open.find((o) => !o.taken && o.model === family);
-      if (hit) hit.taken = true;
-      else spare.push(unit);
+      if (hit) {
+        hit.taken = true;
+        models.get(hit.model)!.sameModel += 1;
+      } else spare.push(unit);
     }
     for (const unit of spare) {
       const any = open.find((o) => !o.taken);
-      if (any) any.taken = true;
-      else
+      if (any) {
+        any.taken = true;
+        models.get(any.model)!.otherModel += 1;
+        const registerModel = unitFamily(unit);
+        const key = `${any.model}\u0000${registerModel}`;
+        const c = cross.get(key) ?? { exportModel: any.model, registerModel, count: 0 };
+        c.count += 1;
+        cross.set(key, c);
+      } else
         unmatchedAtClubs.push({
           assetName: unit.assetName,
           model: unitFamily(unit),
@@ -319,7 +326,7 @@ export function buildFieldCaptureBreakdown(terminals: FieldTerminal[], deployed:
       clubId: group.clubId,
       club: group.club,
       inExport: group.hna.length,
-      captured: group.units.length,
+      captured: group.hna.length - left.length,
       notYetCaptured: left.length,
       exportModels: describeModels(group.hna),
     });
@@ -329,8 +336,18 @@ export function buildFieldCaptureBreakdown(terminals: FieldTerminal[], deployed:
 
   unmatchedAtClubs.sort((a, b) => a.club.localeCompare(b.club));
 
+  const byModel = [...models]
+    .map(([model, m]) => ({
+      model,
+      ...m,
+      captured: m.sameModel + m.otherModel,
+      notYetCaptured: m.inExport - m.sameModel - m.otherModel,
+    }))
+    .sort((a, b) => b.inExport - a.inExport || a.model.localeCompare(b.model));
+
   return {
     byModel,
+    crossModel: [...cross.values()].sort((a, b) => b.count - a.count || a.exportModel.localeCompare(b.exportModel)),
     byClub,
     notCaptured,
     matched: hna.length - notCaptured.length,

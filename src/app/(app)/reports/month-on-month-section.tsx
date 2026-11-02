@@ -6,11 +6,41 @@ import {
   formatSigned,
   type MonthOnMonthAudit,
 } from "@/lib/reports/month-on-month-audit";
+import { LazyDetails } from "./lazy-details";
 import { StockCompositionBlock } from "./stock-composition-block";
 
 const PDF_HREF = "/api/reports/month-on-month/pdf";
 
 export function MonthOnMonthSection() {
+  return (
+    <section id="month-on-month" className="scroll-mt-6 space-y-4">
+      <header className="border-b border-line pb-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="font-heading text-base font-bold text-ink">Prior-company month-on-month</h3>
+            <p className="mt-1 max-w-2xl text-sm text-muted">The Albatros quantity counts side by side, October 2025 to June 2026, with carried-forward months marked.</p>
+          </div>
+          <div className="flex gap-2">
+            <a
+              href={PDF_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary py-2 text-xs"
+            >
+              Open PDF
+            </a>
+            <a href={`${PDF_HREF}?download=1`} className="btn-secondary py-2 text-xs">
+              Download
+            </a>
+          </div>
+        </div>
+      </header>
+      <LazyDetails summary="Show the month-on-month audit">{() => <MonthOnMonthBody />}</LazyDetails>
+    </section>
+  );
+}
+
+function MonthOnMonthBody() {
   const [audit, setAudit] = useState<MonthOnMonthAudit | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,29 +65,7 @@ export function MonthOnMonthSection() {
   }, []);
 
   return (
-    <section id="month-on-month" className="scroll-mt-6 space-y-4">
-      <header className="border-b border-line pb-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h3 className="font-heading text-base font-bold text-ink">Prior-company month-on-month</h3>
-            <p className="mt-1 max-w-2xl text-sm text-muted">The Albatros quantity counts side by side, October 2025 to June 2026, with carried-forward months marked.</p>
-          </div>
-          <div className="flex gap-2">
-            <a
-              href={PDF_HREF}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary py-2 text-xs"
-            >
-              Open PDF
-            </a>
-            <a href={`${PDF_HREF}?download=1`} className="btn-secondary py-2 text-xs">
-              Download
-            </a>
-          </div>
-        </div>
-      </header>
-
+    <>
       {error ? (
         <p className="text-sm text-red-700">{error}</p>
       ) : audit === null ? (
@@ -187,6 +195,6 @@ export function MonthOnMonthSection() {
           ) : null}
         </>
       )}
-    </section>
+    </>
   );
 }

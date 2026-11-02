@@ -185,13 +185,9 @@ export async function GET(request: NextRequest) {
         include: stockStatusInclude,
       });
       const report = buildStockReconcileReport(assets);
-      const monthLabel = new Date().toLocaleDateString("en-ZA", {
-        year: "numeric",
-        month: "long",
-      });
       const buffer = await renderReconcileReportPdf({
-        title: "Monthly Stock Reconcile Report",
-        subtitle: `Finance reconciliation — For month ending ${monthLabel} · stock and full register by asset type`,
+        title: "Stock Reconcile Report",
+        subtitle: `Finance reconciliation — as at ${formatDisplayDate(new Date())} (live register, not a month-end pack) · stock and full register by asset type`,
         generatedAt,
         logoSource,
         report,
@@ -204,13 +200,9 @@ export async function GET(request: NextRequest) {
         include: stockStatusInclude,
       });
       const report = buildStockBreakdownReport(assets);
-      const monthLabel = new Date().toLocaleDateString("en-ZA", {
-        year: "numeric",
-        month: "long",
-      });
       const buffer = await renderStockBreakdownPdf({
         title: "Stock Breakdown by Make / Model",
-        subtitle: `For month ending ${monthLabel} · new stock, refurbished, and written-off itemised`,
+        subtitle: `As at ${formatDisplayDate(new Date())} (live register, not a month-end pack) · new stock, refurbished, and written-off itemised`,
         generatedAt,
         logoSource,
         report,

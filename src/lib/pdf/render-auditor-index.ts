@@ -49,7 +49,7 @@ export async function renderAuditorIndexPdf(
       </thead>
       <tbody>${rows}</tbody>
     </table>
-    <p class="footer">Handicaps Network Africa Inventory · Auditor index · the two series are not added</p>
+    <p class="footer">Handicaps Network Africa Inventory · Documents for auditors · the two series are not added</p>
     <style>
       .note { font-size: 9px; color: #333; margin: 0 0 8px 0; line-height: 1.45; }
       h1 { font-size: 16px; }

@@ -3,6 +3,7 @@
 import { SectionSkeleton } from "@/components/Skeleton";
 import { useEffect, useState } from "react";
 import type { StockHandover } from "@/lib/reports/stock-handover";
+import { LazyDetails } from "./lazy-details";
 
 const PDF_HREF = "/api/reports/handover/pdf";
 
@@ -87,8 +88,8 @@ export function HandoverSection() {
               </tbody>
             </table>
           </div>
-          <div className="space-y-6">
-            {handover.outcomes.map((outcome) => (
+          <LazyDetails summary="Show how each prior-company model maps onto the register">
+            {() => handover.outcomes.map((outcome) => (
               <div key={outcome.id} className="space-y-2">
                 <h3 className="font-heading text-sm font-bold text-ink">
                   {outcome.title}
@@ -116,7 +117,7 @@ export function HandoverSection() {
                 </div>
               </div>
             ))}
-          </div>
+          </LazyDetails>
         </>
       )}
     </section>

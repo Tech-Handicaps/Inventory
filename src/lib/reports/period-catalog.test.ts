@@ -17,11 +17,15 @@ describe("period catalogue", () => {
         "Stock held by Albatros – no count or reporting provided – carried forward from 31 Jan 2026 count"
       );
       expect(period.isMonthEndCount).toBe(false);
-      expect(period.watermark).toContain("carried forward from 31 Jan 2026");
+      expect(period.watermark).toBe("Carried forward – not counted");
+      expect(period.watermarkDetail).toContain("31 Jan 2026 count");
     }
     expect(periodInfo("2026-04").detail).toContain("18 Apr 2026");
     expect(periodInfo("2026-05").title).toContain("No count taken; stock confirmed by Finance against the 31 Jan 2026 Albatros count");
-    expect(periodInfo("2026-06").watermark).toBe("No count on record – carried forward from 31 Jan 2026");
+    expect(periodInfo("2026-05").watermark).toBe("Carried forward – not counted");
+    expect(periodInfo("2026-06").watermark).toBe("Carried forward – not counted");
+    expect(periodInfo("2026-06").watermarkDetail).toBe("No count on record – figures from the 31 Jan 2026 count");
+    expect(periodInfo("2026-01").watermark).toBeNull();
     expect(periodInfo("2026-08").title).toBe("Pack emailed, not stored");
     expect(periodInfo("2026-10").kind).toBe("system_pack");
     expect(periodInfo("2027-03").kind).toBe("system_pack");

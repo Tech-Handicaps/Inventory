@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
-import { prisma } from "@/lib/prisma";
-import {
-  composeLegacyColumns,
-  monthKeyLabel,
-  summarizeLegacyLines,
-  type LegacyMonthEndLine,
-} from "@/lib/reports/legacy-month-end";
+import { loadLegacyMonthEndList } from "@/lib/reports/load-legacy-month-end";
 
 /**
  * GET /api/reports/legacy-month-end
@@ -17,25 +11,7 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const reports = await prisma.monthEndStockReport.findMany({
-      orderBy: { monthKey: "asc" },
-      include: { lines: true },
-    });
-
-    return NextResponse.json({
-      months: reports.map((report) => {
-        const totals = summarizeLegacyLines(report.lines as LegacyMonthEndLine[]);
-        return {
-          monthKey: report.monthKey,
-          label: monthKeyLabel(report.monthKey),
-          sourceKind: report.sourceKind,
-          sourceFileName: report.sourceFileName,
-          carriedForwardFromMonthKey: report.carriedForwardFromMonthKey,
-          ...totals,
-          composition: composeLegacyColumns(report.lines as LegacyMonthEndLine[]),
-        };
-      }),
-    });
+    return NextResponse.json({ months: await loadLegacyMonthEndList() });
   } catch (error) {
     console.error("GET /api/reports/legacy-month-end", error);
     return NextResponse.json(

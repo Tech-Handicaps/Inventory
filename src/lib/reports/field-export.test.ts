@@ -73,8 +73,11 @@ describe("buildFieldCaptureBreakdown", () => {
     expect(b.outsideExport.map((u) => u.club)).toEqual(["UMTATA COUNTRY CLUB"]);
     expect(b.matched).toBe(2);
     expect(b.byClub.find((c) => c.clubId === "69")).toMatchObject({ inExport: 1, captured: 1, notYetCaptured: 0 });
-    expect(b.byModel.find((m) => m.model === "Lenovo 10Q0")).toMatchObject({ inExport: 0, captured: 1, beyondExport: 1 });
+    expect(b.byModel.find((m) => m.model === "Lenovo 10Q0")).toBeUndefined();
     expect(b.byModel.find((m) => m.model === "Mecer X22S")).toMatchObject({ inExport: 1, captured: 0, notYetCaptured: 1 });
+    expect(b.byModel.reduce((s, m) => s + m.captured, 0)).toBe(b.matched);
+    expect(b.byModel.reduce((s, m) => s + m.notYetCaptured, 0)).toBe(b.notCaptured.length);
+    expect(b.byClub.reduce((s, c) => s + c.captured, 0)).toBe(b.matched);
     expect(b.clubOwnedByModel).toEqual([{ model: "Club machine", count: 1 }]);
     expect(b.blankOwnership).toHaveLength(1);
   });
@@ -102,6 +105,8 @@ describe("buildFieldCaptureBreakdown", () => {
   it("counts a different model at the right club as captured there", () => {
     const b = buildFieldCaptureBreakdown(terminals, [unit("KRIEL GOLF CLUB", "LENOVO", "10Q0S0CU00")]);
     expect(b.byClub.find((c) => c.clubId === "70")).toMatchObject({ captured: 1, notYetCaptured: 1 });
+    expect(b.crossModel).toEqual([{ exportModel: "Posiflex PS-3316", registerModel: "Lenovo 10Q0", count: 1 }]);
+    expect(b.byModel.find((m) => m.model === "Posiflex PS-3316")).toMatchObject({ sameModel: 0, otherModel: 1 });
   });
 });
 

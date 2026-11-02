@@ -105,8 +105,14 @@ function UploadForm({ period, onDone }: { period: PeriodRow; onDone: () => void 
         {reimport ? "Re-import the emailed pack or add a file" : "Attach a file to this month"}
       </p>
       <p className="text-xs text-muted">
-        Files are stored unchanged with a SHA-256 hash and cannot be edited afterwards. Service Desk Reports and the
-        Master sheet are marked as supporting documents only.
+        Files are{" "}
+        <span
+          className="underline decoration-dotted underline-offset-2"
+          title="Each file is stored with its SHA-256 hash, so any later change to the file would show."
+        >
+          kept exactly as uploaded
+        </span>{" "}
+        and cannot be edited afterwards. Service Desk Reports and the Master sheet are marked as supporting documents only.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-medium text-ink">
