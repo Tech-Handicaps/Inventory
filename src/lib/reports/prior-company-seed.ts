@@ -268,41 +268,81 @@ export const HANDOVER_SEED = {
 
 export const AUDITOR_NOTES_KEY = "auditor-notes";
 
+/** Signed note "HNA-Notes-for-Auditors-and-Finance.pdf" (prepared 31 Oct 2026), transcribed. */
 export const AUDITOR_NOTES_SEED = {
-  title: "Notes for auditors and finance",
-  markdown: `## What these reports cover
+  title: "Notes for auditors and finance – inventory reporting Oct 2025 to Oct 2026",
+  markdown: `*Handicaps Network Africa · Hardware Inventory · Prepared 31 Oct 2026*
 
-Two series of figures sit side by side. They are **not added together**.
+Read this note before relying on any inventory report for Oct 2025 – Sep 2026. During this period the reporting moved from the prior company's quantity-only stock-take workbooks to a serial-number register in the new inventory system. The two series are not directly comparable. The notes below explain which figures can be relied on for each month.
 
-1. **Prior-company counts (Albatros Solutions)** – quantity-only month-end stock takes for Oct, Nov and Dec 2025 and 31 Jan 2026. They count units by make and model and list no serial numbers.
-2. **This system's register** – serialised assets, from the first asset recorded on 18 Apr 2026. Loading of the field fleet ran until 13 Aug 2026. Monthly finance packs are generated and stored automatically from October 2026.
+## 1. Data sources by period
 
-## How each month is labelled
+| Period | Status | What it means |
+| --- | --- | --- |
+| Oct – Dec 2025 | Prior-company count | Month-end stock-take workbooks from the prior service provider (Albatros Solutions): 130, 132 and 132 units. Quantities only, no serial numbers. All three source files are on record (Month End Stock Take 20251031 / 20251130 / 20251231.xlsx). |
+| Jan 2026 | Prior-company count | A real January count exists (Month End Stock Take 20260131.xlsx), with a Terminal Movement Report and voucher PDFs. The total is 132 units, as in December, but the mix by model differs. It replaces the December copy previously shown for January. |
+| Feb – Apr 2026 | Held by Albatros | From February 2026 the technical service moved from Albatros to HNA. Albatros kept holding the stock but provided no counts or reporting. Figures are carried forward from the 31 Jan 2026 count and must not be read as month-end counts. The new inventory system recorded its first asset on 18 Apr 2026; devices were loaded until 13 Aug 2026. |
+| May 2026 | Hand-over | Stock physically received from Albatros at HNA's offices. No count was taken. Finance confirmed the actual stock against the last Albatros report (the 31 Jan 2026 count), which is the basis of the hand-over. |
+| Jun 2026 | No count taken | No count was taken. Figures are carried forward from the 31 Jan 2026 count confirmed at hand-over and must not be read as a month-end count. |
+| Jul – Sep 2026 | Packs not stored | Monthly finance packs were emailed but not kept in the system. Copies may be in the finance team's mailboxes; they will be re-imported where found. |
+| Oct 2026 onward | System month-end | Generated from the serial register and stored in the system (see section 6). |
 
-- **Oct–Dec 2025:** prior-company count, quantities only (no serials). Source workbook attached with its SHA-256 hash.
-- **Jan 2026:** prior-company count, 31 Jan 2026, with 7 movement events from the January vouchers.
-- **Feb–Apr 2026:** stock held by Albatros – no count or reporting provided – carried forward from the 31 Jan 2026 count. Not a month-end count.
-- **May 2026:** stock received at HNA's offices (hand-over). No receiving count was taken; Finance confirmed the stock against the 31 Jan 2026 Albatros count.
-- **Jun 2026:** no count on record – carried forward from 31 Jan 2026.
-- **Jul–Sep 2026:** finance pack emailed, not stored. Re-uploaded copies are marked as re-imported.
-- **Oct 2026 onward:** system month-end packs, stored with a hash, recipients and an audit trail.
+## 2. From 132 units to 136 assets
 
-## Categories
+The December 2025 workbook counts 132 units by quantity. The system register holds 136 serialised assets. The totals differ because each source counts different things:
 
-| Prior workbook | This system |
-|---|---|
-| New | New |
-| Repaired/Used | Refurbished |
-| To assess | Assessment/Maintenance |
-| To dispose | Written off (only with a disposal certificate; otherwise "Pending disposal") |
+| Item | Count | Note |
+| --- | --- | --- |
+| Prior-company count, Dec 2025 | 132 | Quantity only, no serials |
+| Included in it: modems and routers | ≈ 57 | Not tracked by serial in the new system |
+| Included in it: Mecer card-reader brackets | 32 | Accessories, not tracked as assets |
+| Not included: Mecer UST-TP01 WiFi dongles (memo) | 12 | Derived from the Posiflex line, not counted. Since written off in full and not tracked |
+| System hardware assets | 129 | 10 new · 1 refurbished · 115 deployed · 3 written off |
+| System USB card readers | 7 | Serialised |
+| **System register total** | **136** | Individually serialised hardware |
 
-## Points to note
+Figures are not netted against each other here. A detailed line-by-line reconciliation, including additions, write-offs and any unexplained difference, will be added as a reconciliation page in the system.
 
-- **Mecer** is the brand; **Mustek** is the manufacturing company. They are one OEM.
-- The **Mecer UST-TP01 WiFi dongle** line is a memo line, excluded from totals. Its cells copy the Posiflex PS-3316E row. Dongles were written off in full and are not tracked.
-- **Modems/routers (57)** and **Mecer card-reader brackets (32)** on the prior count are not tracked by serial. The reconciliation page bridges the 132 prior count to the 136-asset register and shows any difference as "to be confirmed".
-- **Service Desk Reports** from the prior company are supporting documents only; their stock tables disagree with the workbooks, which are the count of record.
-- All times are shown in **SAST (Africa/Johannesburg)**.
+## 3. January 2026 movements (backed by vouchers)
 
-*Draft prepared from the reporting spec. Replace with the signed auditor note when it is supplied.*`,
+| Date | Event | Item · serial | Document |
+| --- | --- | --- | --- |
+| 22 Dec 2025 | Disposed (Thabazimbi) | Mecer X22S · WA0292U160500189 | DIS4601364122 |
+| 07 Jan 2026 | Replacement sent (Thabazimbi) | Posiflex PS-3316E · PSN40589 | DIS4605548808 |
+| 08 Jan 2026 | Stolen (Riverside) | Posiflex PS-3316E · PSM70594 | DIS4603053200 |
+| 26 Jan 2026 | Returned faulty (Uitenhage) | Dell OptiPlex 3050 · GGFPDN2 | REC4604972969 |
+| 29 Jan 2026 | Returned faulty (Komga) | Dell OptiPlex 3050 · 66S5NX2 | REC4605171900 |
+| 29 Jan 2026 | Disposed | Dell OptiPlex 7440 · GF01KF2 | DIS4606261331 |
+| 29 Jan 2026 | Disposed | Intel NUC7CJYH · G6JY05100G51 | DIS4606254722 |
+
+## 4. Category mapping
+
+| Prior workbook | Inventory system | Comment |
+| --- | --- | --- |
+| New | New | Unchanged |
+| Repaired/Used | Refurbished | Same meaning |
+| To assess | Assessment/Maintenance | Same meaning |
+| To dispose | Written off (only with a disposal certificate) | Without a certificate, read as "pending disposal" |
+
+## 5. Known data issues
+
+- The Mecer UST-TP01 dongle line in the prior workbooks is a formula copying the Posiflex line (Oct 11, Nov 12, Dec 12, Jan 11), not a physical count. It is excluded from the unit totals. Dongles have since been written off in full and are no longer tracked.
+- Model names differ between the series: PS-3316E vs PS-3316, and chipset names entered in the manufacturer field. Mecer is the brand; Mustek is the manufacturing company, not a separate OEM. Lenovo M810z and Lenovo 10Q0 are different models and are kept separate.
+- The prior-company January records don't fully agree with each other. A theft is on a voucher but not in the movement report, the NUC disposal and the new Posiflex dispatch aren't reflected in the January workbook as expected, and the returned card readers aren't booked in. These are flagged for review, not corrected.
+- The prior-company Service Desk Reports' stock tables (Oct–Dec 2025) don't match the workbooks, and the December report states "no movements" despite the 22 Dec disposal. The workbooks are treated as the count of record.
+- Field capture in progress: the register tracks hardware deployed at clubs, but not all terminals have been captured yet. The Oct 2025 terminal export lists 354 terminals at clubs (305 HNA-owned), against 115 deployed in the register so far. Capture progress will be tracked on the reconciliation page.
+- The 2025 and 2026 yearly blocks use different categories. The finance month-on-month and 2026 yearly blocks are currently empty.
+- PDF generated times are inconsistent (e.g. 17:08 vs 19:08, a UTC/SAST mix-up). Read all times as SAST once corrected.
+- Purchase and warranty dates are recorded for only 3 of 133 operational units (2.3%), so age and warranty statistics are indicative only.
+
+## 6. Controls from October 2026
+
+- Every monthly finance pack is generated automatically for the prior month, then stored in the system with a version, a timestamp and the recipient list. It is not just emailed.
+- Generation, downloads, sends and re-imports are recorded in an audit trail.
+- Old and new reports use one set of category and model names (mapping above).
+- All timestamps are shown in SAST (Africa/Johannesburg).
+- The system issues a disposal certificate for every disposal and emails it to finance and the owner. Earlier disposals (Dec 2025 – Jan 2026) are backed by the prior company's voucher PDFs.
+- Any report covering a period before Oct 2026 carries this note as its first page.
+
+Contact: Shafiek Christian · shafiek@handicaps.co.za`,
 };
