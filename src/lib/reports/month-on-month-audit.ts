@@ -1,5 +1,6 @@
 import {
   composeLegacyColumns,
+  countedLines,
   monthKeyLabel,
   summarizeLegacyLines,
   type LegacyColumnComposition,
@@ -108,10 +109,9 @@ function deltaBetween(
 
 function sourceLabel(draft: LegacyMonthEndDraft): string {
   if (draft.sourceKind === "source_file") return "Workbook";
-  const from = draft.carriedForwardFromMonthKey
-    ? monthKeyLabel(draft.carriedForwardFromMonthKey)
-    : "the previous workbook";
-  return `Copied from ${from}`;
+  if (draft.sourceKind === "handover") return "Hand-over, no count";
+  if (draft.sourceKind === "no_count") return "No count on record";
+  return "Held by Albatros, no count";
 }
 
 function movementNote(
@@ -119,8 +119,8 @@ function movementNote(
   delta: MonthOnMonthDelta | null
 ): string {
   if (!delta) return "Opening stock take.";
-  if (draft.sourceKind === "carried_forward") {
-    return "Copied from December 2025, so the quantities do not change.";
+  if (draft.sourceKind !== "source_file") {
+    return "Carried forward from the 31 Jan 2026 count, so the quantities do not change.";
   }
   const parts = QTY_FIELDS.filter(([field]) => delta[field] !== 0).map(
     ([field, label]) => `${label} ${formatSigned(delta[field])}`
@@ -137,7 +137,7 @@ function lineMovements(
     previous.lines.map((line) => [line.sortOrder, line])
   );
   const movements: LineMovement[] = [];
-  for (const line of current.lines) {
+  for (const line of countedLines(current.lines)) {
     const before = priorByOrder.get(line.sortOrder);
     for (const [field, column] of QTY_FIELDS) {
       const previousQty = before ? before[field] : 0;
@@ -230,12 +230,12 @@ function explanationFor(
 
   return [
     `This landscape compares the prior-company stock takes from ${span}. It does not include the live register. This system's serialised assets are a separate series, starting from the first asset recorded on 18 April 2026.`,
-    "October, November, and December 2025 come from the prior-company workbooks, sheet Actual. Those forms count units by make and model. They do not list serial numbers, so these months stay quantity records and are not rows on the hardware board.",
-    "January, February, and March 2026 repeat the December 2025 count. No workbook was supplied for those months. The copy is there so accounts has a file for each of them. April 2026 is not a copy of December. The prior-company series stops at March.",
+    "October, November, and December 2025 and 31 January 2026 come from the prior-company workbooks, sheet Actual. Those forms count units by make and model. They do not list serial numbers, so these months stay quantity records and are not rows on the hardware board.",
+    "February, March, and April 2026: stock held by Albatros, with no count or reporting provided. May 2026 is the hand-over, with no receiving count; Finance confirmed the stock against the 31 January 2026 count. June 2026 has no count on record. Each of these carries forward the 31 January 2026 count and is not a month-end count.",
     "Usable stock is New plus Repaired/Used. To assess, to dispose, and warranty repair stay in their own columns. A blank cell on the workbook is zero.",
     describeMovements(movements),
-    "Mecer UST-TP01 is listed and counted as zero. On the workbook its New, Repaired/Used, and To assess cells are formulas pointing at the Posiflex PS-3316E row, so those cells are not a second quantity.",
-    "December matches November. January through March show no movement because they are copies of December.",
+    "Mecer UST-TP01 is a memo line, excluded from totals. On the workbook its New, Repaired/Used, and To assess cells are formulas copying the Posiflex PS-3316E row. Dongles have since been written off in full and are not tracked.",
+    "December matches November in total. January keeps the same totals with a different line mix. February through June show no movement because they carry the January count forward.",
   ];
 }
 

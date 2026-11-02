@@ -8,6 +8,8 @@ import {
   type LegacyMonthEndLine,
 } from "@/lib/reports/legacy-month-end";
 import { formatDateTime } from "@/lib/dates/format";
+import { notesPrefaceFor } from "@/lib/reports/auditor-notes";
+import { toEventRow } from "@/lib/reports/period-records";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,9 +44,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const logoSource = await loadLogoForPdf();
+    const [year, monthNumber] = month.split("-").map(Number);
+    const [logoSource, prefaceHtml, events, documents] = await Promise.all([
+      loadLogoForPdf(),
+      notesPrefaceFor([month]),
+      prisma.priorCompanyEvent.findMany({
+        where: {
+          eventDate: {
+            gte: new Date(Date.UTC(year, monthNumber - 1, 1)),
+            lt: new Date(Date.UTC(year, monthNumber, 1)),
+          },
+        },
+        orderBy: [{ eventDate: "asc" }, { reference: "asc" }],
+      }),
+      prisma.periodDocument.findMany({
+        where: { monthKey: month },
+        orderBy: { uploadedAt: "asc" },
+        select: { title: true, fileName: true, sha256: true, flag: true },
+      }),
+    ]);
     const generatedAt = formatDateTime(new Date());
     const buffer = await renderLegacyMonthEndPdf({
+      prefaceHtml,
+      events: events.map(toEventRow),
+      documents,
       draft: draftFromStoredReport({
         ...report,
         lines: report.lines as LegacyMonthEndLine[],

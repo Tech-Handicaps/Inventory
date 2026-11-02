@@ -15,6 +15,8 @@ import {
 } from "@/lib/reports/finance-month-on-month";
 
 export type FinanceMonthOnMonthPdfInput = {
+  /** Notes for auditors and finance, printed as page 1. */
+  prefaceHtml?: string | null;
   report: FinanceMonthOnMonthReport;
   generatedAt: string;
   logoSource: Buffer | string | null;
@@ -199,6 +201,7 @@ export async function renderFinanceMonthOnMonthPdf(
 
   return htmlToPdfBuffer(
     pdfDocumentChrome({
+      prefaceHtml: input.prefaceHtml,
       title: "Finance month-on-month",
       bodyHtml,
       logoDataUrl,

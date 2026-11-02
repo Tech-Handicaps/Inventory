@@ -32,3 +32,31 @@ describe("reconcile report month", () => {
     expect(reconcileReportMonth("cron", newYear).monthKey).toBe("2026-12");
   });
 });
+
+import { officialPackAction } from "@/lib/reports/send-monthly-reconcile";
+
+describe("official pack action", () => {
+  it("generates, stores and sends a month once on the schedule", () => {
+    expect(officialPackAction({ mode: "cron", packStored: false, sentBefore: false })).toBe("generate_and_send");
+    expect(officialPackAction({ mode: "cron", packStored: true, sentBefore: true })).toBe("skip_already_sent");
+  });
+
+  it("retries the email from the stored files when the send failed", () => {
+    expect(officialPackAction({ mode: "cron", packStored: true, sentBefore: false })).toBe("send_stored");
+  });
+
+  it("treats months emailed before packs were stored as sent", () => {
+    expect(officialPackAction({ mode: "cron", packStored: false, sentBefore: true })).toBe("skip_already_sent");
+  });
+
+  it("lets an admin send now or resend without regenerating a stored month", () => {
+    expect(officialPackAction({ mode: "send_now", packStored: false, sentBefore: false })).toBe("generate_and_send");
+    expect(officialPackAction({ mode: "send_now", packStored: true, sentBefore: true })).toBe("refuse_already_stored");
+    expect(officialPackAction({ mode: "resend", packStored: true, sentBefore: true })).toBe("send_stored");
+    expect(officialPackAction({ mode: "resend", packStored: false, sentBefore: false })).toBe("refuse_not_stored");
+  });
+
+  it("closes October on 2 November, not September", () => {
+    expect(reconcileReportMonth("cron", new Date("2026-11-02T06:00:00.000Z")).monthKey).toBe("2026-10");
+  });
+});

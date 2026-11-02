@@ -29,91 +29,91 @@ model Club {
 }
 
 model DeviceTemplate {
-  id             String   @id @default(cuid())
-  label          String   // display name for dropdowns (e.g. "Dell Latitude 5540")
-  manufacturer   String
-  model          String
-  category       String
+  id            String   @id @default(cuid())
+  label         String // display name for dropdowns (e.g. "Dell Latitude 5540")
+  manufacturer  String
+  model         String
+  category      String
   /// Asset identification tags (finance + search). First tag mirrors `category` for legacy reports.
-  tags           String[] @default([])
-  notes          String?
+  tags          String[] @default([])
+  notes         String?
   /// Typical CPU for this SKU — pre-fills new assets when template is chosen
-  processorName  String?
+  processorName String?
   /// Typical RAM (e.g. "16 GB") — pre-fills new assets
-  systemRam      String?
+  systemRam     String?
   /// Typical GPU — pre-fills new assets
-  systemGpu      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  assets         Asset[]
+  systemGpu     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  assets        Asset[]
 
   @@unique([manufacturer, model])
 }
 
 // Extensible: add new rows to AssetStatus to load additional lifecycle states later.
 model AssetStatus {
-  id          String   @id @default(cuid())
-  code        String   @unique // e.g. "new", "repair", "refurbished", "written_off"
+  id          String  @id @default(cuid())
+  code        String  @unique // e.g. "new", "repair", "refurbished", "written_off"
   label       String
   description String?
-  sortOrder   Int      @default(0)
+  sortOrder   Int     @default(0)
   assets      Asset[]
 }
 
 model Asset {
-  id                String           @id @default(cuid())
-  assetName         String
-  category          String
+  id                      String                   @id @default(cuid())
+  assetName               String
+  category                String
   /// Identification tags — e.g. Hardware, POS Terminal, USB HID Magnetic Stripe Reader
-  tags              String[]         @default([])
-  serialNumber      String?          @unique
-  manufacturer      String?
-  model             String?
-  deviceTemplateId  String?
-  deviceTemplate    DeviceTemplate?  @relation(fields: [deviceTemplateId], references: [id], onDelete: SetNull)
-  clubId            String?
-  club              Club?            @relation(fields: [clubId], references: [id], onDelete: SetNull)
-  statusId          String
-  status            AssetStatus      @relation(fields: [statusId], references: [id])
-  reason            String?          // e.g. write-off reason
+  tags                    String[]                 @default([])
+  serialNumber            String?                  @unique
+  manufacturer            String?
+  model                   String?
+  deviceTemplateId        String?
+  deviceTemplate          DeviceTemplate?          @relation(fields: [deviceTemplateId], references: [id], onDelete: SetNull)
+  clubId                  String?
+  club                    Club?                    @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  statusId                String
+  status                  AssetStatus              @relation(fields: [statusId], references: [id])
+  reason                  String? // e.g. write-off reason
   /// manual | zoho_assist — where the row was created / primary sync source
-  dataSource        String           @default("manual")
+  dataSource              String                   @default("manual")
   /// Zoho Assist unattended device resource id (GET /api/v2/devices/{id})
-  zohoAssistDeviceId   String?       @unique
+  zohoAssistDeviceId      String?                  @unique
   /// Assist org header (x-com-zoho-assist-orgid) when known — aids API calls
-  zohoAssistOrgId      String?
+  zohoAssistOrgId         String?
   /// Assist department scope for this device (x-com-zoho-assist-department-id)
-  zohoAssistDepartmentId String?
+  zohoAssistDepartmentId  String?
   /// Site / deployment location (from Assist or entered manually)
-  deviceLocation    String?
-  processorName     String?
+  deviceLocation          String?
+  processorName           String?
   /// Human-readable RAM (e.g. "32 GB") — matches Assist where available
-  systemRam         String?
-  systemGpu         String?
-  lastSyncedFromAssistAt DateTime?
+  systemRam               String?
+  systemGpu               String?
+  lastSyncedFromAssistAt  DateTime?
   /// From Zoho Assist network details; refreshed on import and weekly sync.
-  publicIp             String?
+  publicIp                String?
   /// When `publicIp` was last read from Assist APIs.
-  publicIpAssistSyncedAt DateTime?
+  publicIpAssistSyncedAt  DateTime?
   /// ISO country code from GeoIP (e.g. ZA).
-  geoCountryCode       String?
+  geoCountryCode          String?
   /// Subdivision / region code from GeoIP (e.g. WC).
-  geoRegionCode        String?
+  geoRegionCode           String?
   /// Human-readable region/state from GeoIP API (e.g. Western Cape) when provided.
-  geoRegionName        String?
+  geoRegionName           String?
   /// City from GeoIP when available.
-  geoCity              String?
+  geoCity                 String?
   /// When GeoIP was last resolved for `publicIp`.
-  geoSyncedAt          DateTime?
+  geoSyncedAt             DateTime?
   /// **App / Postgres only** — never read or written by Zoho Assist import or device APIs. Set via Register hardware / Edit asset; improves age & procurement analytics.
-  purchaseDate      DateTime?
+  purchaseDate            DateTime?
   /// **App / Postgres only** — never read or written by Zoho Assist. Set manually for renewal planning.
-  warrantyEndDate   DateTime?
-  dateAdded         DateTime         @default(now())
-  dateUpdated       DateTime         @updatedAt
-  assessments     Assessment[]
-  repairs           Repair[]
-  xeroSyncs         XeroSync[]
+  warrantyEndDate         DateTime?
+  dateAdded               DateTime                 @default(now())
+  dateUpdated             DateTime                 @updatedAt
+  assessments             Assessment[]
+  repairs                 Repair[]
+  xeroSyncs               XeroSync[]
   financeAcknowledgements FinanceAcknowledgement[]
   dispatchVouchers        DispatchVoucher[]
   writeOffCertificates    WriteOffCertificate[]
@@ -121,17 +121,17 @@ model Asset {
 
 /// Issued when hardware is dispatched to the field (Assessment or Repairs → Deployed).
 model DispatchVoucher {
-  id              String   @id @default(cuid())
-  assetId         String
-  asset           Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id                     String                  @id @default(cuid())
+  assetId                String
+  asset                  Asset                   @relation(fields: [assetId], references: [id], onDelete: Cascade)
   /// e.g. HNA-DSP-2026-A1B2C3D4
-  referenceNumber String   @unique
+  referenceNumber        String                  @unique
   /// Lifecycle stage before dispatch: assessment | repair
-  fromStatusCode  String
-  clubName        String?
-  deviceLocation  String?
-  dispatchedAt    DateTime @default(now())
-  createdAt       DateTime @default(now())
+  fromStatusCode         String
+  clubName               String?
+  deviceLocation         String?
+  dispatchedAt           DateTime                @default(now())
+  createdAt              DateTime                @default(now())
   financeAcknowledgement FinanceAcknowledgement?
 
   @@index([assetId, dispatchedAt])
@@ -139,93 +139,93 @@ model DispatchVoucher {
 
 /// Issued when hardware is written off from Assessment/Maintenance or In Repairs (downloadable certificate).
 model WriteOffCertificate {
-  id                     String   @id @default(cuid())
-  assetId                String
-  asset                  Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id                              String                  @id @default(cuid())
+  assetId                         String
+  asset                           Asset                   @relation(fields: [assetId], references: [id], onDelete: Cascade)
   /// e.g. HNA-WOF-2026-A1B2C3D4
-  referenceNumber        String   @unique
+  referenceNumber                 String                  @unique
   /// Assessment intake that led to write-off (kept for lineage; not replaced).
-  assessmentReference    String?
-  assetName              String
-  clubName               String?
+  assessmentReference             String?
+  assetName                       String
+  clubName                        String?
   /// Asset category / type
-  category               String
-  manufacturer           String?
-  model                  String?
-  serialNumber           String?
+  category                        String
+  manufacturer                    String?
+  model                           String?
+  serialNumber                    String?
   /// Xero Fixed Asset number for the unit being written off (from finance).
-  xeroFixedAssetNumber   String?
-  reason                 String?
-  replacementRequested   Boolean  @default(false)
-  replacementNotes       String?
+  xeroFixedAssetNumber            String?
+  reason                          String?
+  replacementRequested            Boolean                 @default(false)
+  replacementNotes                String?
   /// Intended replacement unit name (when replacementRequested).
-  replacementAssetName   String?
+  replacementAssetName            String?
   /// Intended replacement asset type / category (when replacementRequested).
-  replacementAssetType   String?
+  replacementAssetType            String?
   /// Intended replacement make / model (when replacementRequested).
-  replacementMakeModel   String?
+  replacementMakeModel            String?
   /// Intended replacement serial number (when replacementRequested).
-  replacementSerialNumber String?
+  replacementSerialNumber         String?
   /// Xero Fixed Asset number for the replacement unit (from finance).
   replacementXeroFixedAssetNumber String?
-  fromStatusCode         String
-  writtenOffAt           DateTime @default(now())
-  createdAt              DateTime @default(now())
-  financeAcknowledgement FinanceAcknowledgement?
+  fromStatusCode                  String
+  writtenOffAt                    DateTime                @default(now())
+  createdAt                       DateTime                @default(now())
+  financeAcknowledgement          FinanceAcknowledgement?
 
   @@index([assetId, writtenOffAt])
 }
 
 /// Intake / triage between deployed field returns and formal repair authorization; also used for depot maintenance (reloads, etc.) without implying hardware repair.
 model Assessment {
-  id                   String       @id @default(cuid())
-  assetId              String
-  asset                Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id                      String                   @id @default(cuid())
+  assetId                 String
+  asset                   Asset                    @relation(fields: [assetId], references: [id], onDelete: Cascade)
   /// e.g. HNA-ASM-2026-A1B2C3D4 — stable until completed or cancelled
-  referenceNumber      String       @unique
+  referenceNumber         String                   @unique
   /// open | completed | cancelled
-  workflowStatus       String       @default("open")
-  intakeNotes          String?
-  zohoDeskTicketId     String?
-  zohoDeskTicketNumber String?
-  completedAt          DateTime?
-  cancelledAt          DateTime?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  repairs              Repair[]
+  workflowStatus          String                   @default("open")
+  intakeNotes             String?
+  zohoDeskTicketId        String?
+  zohoDeskTicketNumber    String?
+  completedAt             DateTime?
+  cancelledAt             DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  repairs                 Repair[]
   financeAcknowledgements FinanceAcknowledgement[]
 
   @@index([assetId, workflowStatus])
 }
 
 model Repair {
-  id             String   @id @default(cuid())
-  assetId        String
-  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id                     String                  @id @default(cuid())
+  assetId                String
+  asset                  Asset                   @relation(fields: [assetId], references: [id], onDelete: Cascade)
   /// When set: repair originated from completing an Assessment (one-to-one per assessment).
-  assessmentId   String?  @unique
-  assessment     Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  assessmentId           String?                 @unique
+  assessment             Assessment?             @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   /// Human-readable case id for PDFs, audit, and cross-reference to Zoho Desk (e.g. HNA-REP-2026-A1B2C3D4)
-  referenceNumber String  @unique
-  repairStatus   String   // pending, in_progress, completed, cancelled
-  technicianNotes String?
-  zohoDeskTicketId     String? // Desk API ticket id
+  referenceNumber        String                  @unique
+  repairStatus           String // pending, in_progress, completed, cancelled
+  technicianNotes        String?
+  zohoDeskTicketId       String? // Desk API ticket id
   zohoDeskTicketNumber   String? // Display ticket number from Desk (e.g. #12345)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
   financeAcknowledgement FinanceAcknowledgement?
 }
 
 model XeroSync {
-  id                 String   @id @default(cuid())
-  assetId            String
-  asset              Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  xeroTransactionId  String?
-  xeroType           String   // "fixed_asset" | "inventory"
-  syncStatus         String   // pending, synced, failed, conflict
-  lastSyncedAt       DateTime?
-  errorMessage       String?
-  createdAt          DateTime @default(now())
+  id                String    @id @default(cuid())
+  assetId           String
+  asset             Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  xeroTransactionId String?
+  xeroType          String // "fixed_asset" | "inventory"
+  syncStatus        String // pending, synced, failed, conflict
+  lastSyncedAt      DateTime?
+  errorMessage      String?
+  createdAt         DateTime  @default(now())
 }
 
 model AuditLog {
@@ -234,22 +234,22 @@ model AuditLog {
   userId     String?
   timestamp  DateTime @default(now())
   notes      String?
-  metadata   Json?    // flexible extra data
+  metadata   Json? // flexible extra data
 }
 
 /// Prior-company month-end quantity stock take. Not a live serialised asset.
 /// Source workbooks had no serial numbers, so these rows stay off the hardware board.
 model MonthEndStockReport {
-  id                         String   @id @default(cuid())
+  id                         String              @id @default(cuid())
   /// Calendar month, `YYYY-MM` (Africa/Johannesburg month-end).
-  monthKey                   String   @unique
+  monthKey                   String              @unique
   periodEnding               DateTime
-  /// source_file | carried_forward
+  /// source_file | carried_forward | handover | no_count
   sourceKind                 String
   sourceFileName             String?
   carriedForwardFromMonthKey String?
   notes                      String?
-  importedAt                 DateTime @default(now())
+  importedAt                 DateTime            @default(now())
   lines                      MonthEndStockLine[]
 }
 
@@ -274,29 +274,31 @@ model MonthEndStockLine {
   toDispose      Int                 @default(0)
   warrantyRepair Int                 @default(0)
   lineNotes      String?
+  /// Shown on the form but not counted (e.g. the Mecer UST-TP01 line copies the Posiflex row).
+  memo           Boolean             @default(false)
 
   @@index([reportId, sortOrder])
 }
 
 /// Official finance pack for one report month. The first successful scheduled send wins.
 model FinanceMonthPack {
-  id                   String   @id @default(cuid())
+  id                      String                      @id @default(cuid())
   /// Month printed on the PDF, `YYYY-MM`. Not the month the job happened to run.
-  monthKey             String   @unique
-  monthLabel           String
-  monthEndingLabel     String
-  sentAt               DateTime @default(now())
-  recipientCount       Int
-  newStock             Int
-  refurbished          Int
+  monthKey                String                      @unique
+  monthLabel              String
+  monthEndingLabel        String
+  sentAt                  DateTime                    @default(now())
+  recipientCount          Int
+  newStock                Int
+  refurbished             Int
   /// New stock + refurbished.
-  usable               Int
-  deployed             Int
-  assessment           Int
-  inRepair             Int
-  writtenOff           Int
+  usable                  Int
+  deployed                Int
+  assessment              Int
+  inRepair                Int
+  writtenOff              Int
   /// Every serialised asset on the register at send time.
-  register             Int
+  register                Int
   reconcileStoragePath    String
   breakdownStoragePath    String
   /// Landscape of stored finance months attached to this pack.
@@ -305,6 +307,13 @@ model FinanceMonthPack {
   yearlyStoragePath       String
   /// Deployed units by make, model, and serial at send time.
   fieldListingStoragePath String
+  /// Make/model counts as CSV, stored with the PDFs.
+  csvStoragePath          String?
+  /// SHA-256 of each stored file, keyed by storage path.
+  fileHashes              Json?
+  recipients              String[]                    @default([])
+  /// "system" for the scheduled run, otherwise the Supabase user id.
+  generatedBy             String?
   lines                   FinanceMonthPackLine[]
   types                   FinanceMonthPackType[]
   fieldUnits              FinanceMonthPackFieldUnit[]
@@ -367,9 +376,9 @@ model FinanceMonthPackLine {
 // (legacy: management | accounts | operations — normalized when resolved).
 // super_admin is granted only via SUPER_ADMIN_EMAILS env, not persisted as a special row value.
 model UserRole {
-  id       String   @id @default(cuid())
-  userId   String   @unique // Supabase auth user id
-  role     String
+  id        String   @id @default(cuid())
+  userId    String   @unique // Supabase auth user id
+  role      String
   createdAt DateTime @default(now())
 }
 
@@ -391,89 +400,89 @@ model UserProfile {
 
 // Zoho Assist OAuth (client credentials + refresh token stored in-app; restrict DB access in production)
 model ZohoAssistSettings {
-  id           String   @id @default("singleton")
-  clientId     String?
-  clientSecret String?
-  refreshToken String?
-  dataCenter   String   @default("us") // us | eu | in | au | ca | jp | sa
+  id                  String   @id @default("singleton")
+  clientId            String?
+  clientSecret        String?
+  refreshToken        String?
+  dataCenter          String   @default("us") // us | eu | in | au | ca | jp | sa
   /// Default x-com-zoho-assist-orgid for Assist device APIs (optional)
-  defaultOrgId String?
+  defaultOrgId        String?
   /// Default x-com-zoho-assist-department-id for listing / device details
   defaultDepartmentId String?
-  updatedAt    DateTime @updatedAt
+  updatedAt           DateTime @updatedAt
 }
 
 // Zoho Desk OAuth — separate from Assist; used to create/link support tickets for repairs.
 model ZohoDeskSettings {
-  id               String   @id @default("singleton")
-  orgId            String? // Zoho Desk organization id (required for API calls)
-  departmentId     String? // Default department for tickets created from inventory
-  clientId         String?
-  clientSecret     String?
-  refreshToken     String?
-  dataCenter       String   @default("us")
-  updatedAt        DateTime @updatedAt
+  id           String   @id @default("singleton")
+  orgId        String? // Zoho Desk organization id (required for API calls)
+  departmentId String? // Default department for tickets created from inventory
+  clientId     String?
+  clientSecret String?
+  refreshToken String?
+  dataCenter   String   @default("us")
+  updatedAt    DateTime @updatedAt
 }
 
 /// Business toggles for finance notifications (secrets like RESEND_API_KEY stay in env).
 model EmailNotificationSettings {
-  id                   String   @id @default("singleton")
+  id                             String   @id @default("singleton")
   /// resend_rest | smtp — SMTP uses env SMTP_* ; Resend REST uses RESEND_API_KEY.
-  emailTransport       String   @default("resend_rest")
+  emailTransport                 String   @default("resend_rest")
   /// Master switch — when false, emails are skipped (acknowledgement rows still created).
-  sendEnabled          Boolean  @default(false)
-  notifyOnRepair       Boolean  @default(true)
+  sendEnabled                    Boolean  @default(false)
+  notifyOnRepair                 Boolean  @default(true)
   /// Email finance when hardware enters Assessment (Deployed → Assessment).
-  notifyOnAssessment   Boolean  @default(true)
-  notifyOnWrittenOff   Boolean  @default(true)
+  notifyOnAssessment             Boolean  @default(true)
+  notifyOnWrittenOff             Boolean  @default(true)
   /// Email finance with dispatch voucher when hardware moves to Deployed from Assessment or Repairs.
-  notifyOnDispatch     Boolean  @default(true)
+  notifyOnDispatch               Boolean  @default(true)
   /// Email finance when hardware is booked into Refurbished from Assessment/Maintenance.
-  notifyOnRefurbished  Boolean  @default(true)
+  notifyOnRefurbished            Boolean  @default(true)
   /// Comma/semicolon/newline-separated recipients. Supports `Name <email@domain>`.
-  financeEmails        String   @default("")
+  financeEmails                  String   @default("")
   /// Fallback display name when a recipient has no name — used in `Hi {name},`.
-  financeGreetingName  String?
+  financeGreetingName            String?
   /// Display name for the From header (domain must be verified in Resend).
-  fromName             String   @default("Handicaps Network Africa Inventory")
-  replyTo              String?
+  fromName                       String   @default("Handicaps Network Africa Inventory")
+  replyTo                        String?
   /// Email Monthly Stock Reconcile PDF to finance on the configured day each month.
-  scheduleReconcileEnabled     Boolean  @default(false)
+  scheduleReconcileEnabled       Boolean  @default(false)
   /// Day of month (1–28) in Africa/Johannesburg — default 1st.
-  scheduleReconcileDayOfMonth  Int      @default(1)
+  scheduleReconcileDayOfMonth    Int      @default(1)
   /// Last successful send month key `YYYY-MM` (idempotency for cron retries).
   /// Month printed on the official finance PDF (YYYY-MM). A manual test is not stored here.
   scheduleReconcileLastSentMonth String?
-  updatedAt            DateTime @updatedAt
+  updatedAt                      DateTime @updatedAt
 }
 
 /// Finance must acknowledge operational events (in-app checkbox; email is supplementary).
 model FinanceAcknowledgement {
-  id                     String    @id @default(cuid())
-  assetId                String
-  asset                  Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id                    String               @id @default(cuid())
+  assetId               String
+  asset                 Asset                @relation(fields: [assetId], references: [id], onDelete: Cascade)
   /// in_repair | in_assessment | written_off | dispatched | refurbished
-  eventType              String
+  eventType             String
   /// pending | acknowledged
-  status                 String      @default("pending")
+  status                String               @default("pending")
   /// Human-readable ref: repair voucher (HNA-REP-…), assessment ref (HNA-ASM-…), or write-off context.
-  referenceText          String?
-  repairId               String?     @unique
-  repair                 Repair?     @relation(fields: [repairId], references: [id], onDelete: SetNull)
-  assessmentId           String?     @unique
-  assessment             Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
-  dispatchVoucherId      String?     @unique
-  dispatchVoucher        DispatchVoucher? @relation(fields: [dispatchVoucherId], references: [id], onDelete: SetNull)
-  writeOffCertificateId  String?     @unique
-  writeOffCertificate    WriteOffCertificate? @relation(fields: [writeOffCertificateId], references: [id], onDelete: SetNull)
-  createdAt              DateTime    @default(now())
-  acknowledgedAt         DateTime?
-  acknowledgedByUserId   String?
-  acknowledgedNote       String?
-  emailSentAt            DateTime?
+  referenceText         String?
+  repairId              String?              @unique
+  repair                Repair?              @relation(fields: [repairId], references: [id], onDelete: SetNull)
+  assessmentId          String?              @unique
+  assessment            Assessment?          @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  dispatchVoucherId     String?              @unique
+  dispatchVoucher       DispatchVoucher?     @relation(fields: [dispatchVoucherId], references: [id], onDelete: SetNull)
+  writeOffCertificateId String?              @unique
+  writeOffCertificate   WriteOffCertificate? @relation(fields: [writeOffCertificateId], references: [id], onDelete: SetNull)
+  createdAt             DateTime             @default(now())
+  acknowledgedAt        DateTime?
+  acknowledgedByUserId  String?
+  acknowledgedNote      String?
+  emailSentAt           DateTime?
   /// Why email was not sent (e.g. not_configured) — still auditable.
-  emailSkippedReason     String?
-  emailError             String?
+  emailSkippedReason    String?
+  emailError            String?
 }
 
 /// Per-user UI preferences (e.g. All assets column picker). Key is a short namespaced id.
@@ -484,4 +493,161 @@ model UserPreference {
   updatedAt DateTime @updatedAt
 
   @@id([userId, key])
+}
+
+/// Editable text for auditors and finance (key e.g. "auditor-notes"). Each save bumps the version.
+model ReportNote {
+  key       String              @id
+  title     String
+  markdown  String
+  version   Int                 @default(1)
+  updatedAt DateTime            @updatedAt
+  updatedBy String?
+  versions  ReportNoteVersion[]
+}
+
+model ReportNoteVersion {
+  id       String     @id @default(cuid())
+  noteKey  String
+  note     ReportNote @relation(fields: [noteKey], references: [key], onDelete: Cascade)
+  version  Int
+  title    String
+  markdown String
+  savedAt  DateTime   @default(now())
+  savedBy  String?
+
+  @@unique([noteKey, version])
+}
+
+/// File attached to a report period. Stored once and never replaced; a new upload is a new row.
+model PeriodDocument {
+  id           String    @id @default(cuid())
+  /// `YYYY-MM`
+  monthKey     String
+  /// source_workbook | service_desk_report | master_sheet | voucher | handover | finance_confirmation | reimported_pack | auditor_note | field_export | other
+  kind         String
+  title        String
+  fileName     String
+  storagePath  String    @unique
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  /// Warning shown with the file, e.g. "Supporting document only – stock table not reliable".
+  flag         String?
+  notes        String?
+  /// Date printed on the document, when it differs from the period.
+  documentDate DateTime?
+  uploadedBy   String?
+  uploadedAt   DateTime  @default(now())
+
+  @@index([monthKey, kind])
+}
+
+/// Dated movement from the prior company's vouchers and movement reports. Not a register asset.
+model PriorCompanyEvent {
+  id                 String    @id @default(cuid())
+  eventDate          DateTime
+  /// Date the voucher or certificate was issued, when later than the event.
+  documentDate       DateTime?
+  /// disposed | distributed | stolen | returned_faulty
+  eventType          String
+  description        String
+  assetLabel         String
+  serials            String[]
+  fromLocation       String
+  toLocation         String
+  reference          String    @unique
+  crmReference       String?
+  waybill            String?
+  condition          String?
+  evidenceFileName   String
+  evidenceDocumentId String?
+  /// Register asset with a matching serial, when there is one.
+  assetId            String?
+  notes              String?
+  importedAt         DateTime  @default(now())
+
+  @@index([eventDate])
+}
+
+/// Disagreement in the source records. Shown to admins; never corrected automatically.
+model DataInconsistency {
+  id         String    @id @default(cuid())
+  key        String    @unique
+  monthKey   String?
+  title      String
+  detail     String
+  /// open | resolved
+  status     String    @default("open")
+  resolution String?
+  resolvedBy String?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+/// Spelling or typo in a source document mapped to the name the reports use.
+model ModelAlias {
+  id        String   @id @default(cuid())
+  /// model | manufacturer
+  kind      String
+  /// Compared case-insensitively.
+  alias     String
+  canonical String
+  notes     String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kind, alias])
+}
+
+/// One line of the bridge from the prior-company count to the register.
+model ReconciliationLine {
+  id                 String   @id @default(cuid())
+  sortOrder          Int
+  /// opening | excluded | added | written_off | unexplained | closing
+  section            String
+  label              String
+  quantity           Int
+  /// confirmed | to_be_confirmed
+  status             String   @default("to_be_confirmed")
+  notes              String?
+  evidenceDocumentId String?
+  updatedBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+/// Stock received from the prior company (May 2026 hand-over).
+model HandoverRecord {
+  id         String    @id @default(cuid())
+  monthKey   String    @unique
+  receivedOn DateTime?
+  fromParty  String
+  receivedBy String?
+  reference  String?
+  basis      String
+  notes      String?
+  updatedBy  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+/// Every scheduled or manual finance pack run, including skips and failures.
+model FinancePackSendLog {
+  id         String   @id @default(cuid())
+  monthKey   String
+  /// cron | send_now | resend | manual_test
+  mode       String
+  /// sent | skipped | failed
+  status     String
+  reason     String?
+  sent       Int      @default(0)
+  failed     Int      @default(0)
+  recipients String[] @default([])
+  error      String?
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  @@index([monthKey, createdAt])
 }

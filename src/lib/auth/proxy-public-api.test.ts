@@ -4,6 +4,7 @@ import { isPublicApiPath } from "@/lib/auth/public-api-paths";
 describe("isPublicApiPath", () => {
   it("allows health, cron, and login", () => {
     expect(isPublicApiPath("/api/health")).toBe(true);
+    expect(isPublicApiPath("/api/warm")).toBe(true);
     expect(isPublicApiPath("/api/cron/sync-assist-public-ip")).toBe(true);
     expect(isPublicApiPath("/api/auth/login")).toBe(true);
   });

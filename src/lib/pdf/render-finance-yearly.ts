@@ -16,6 +16,8 @@ import {
 } from "@/lib/reports/finance-yearly";
 
 export type FinanceYearlyPdfInput = {
+  /** Notes for auditors and finance, printed as page 1. */
+  prefaceHtml?: string | null;
   report: FinanceYearlyReport;
   generatedAt: string;
   logoSource: Buffer | string | null;
@@ -334,6 +336,7 @@ export async function renderFinanceYearlyPdf(
   `;
   return htmlToPdfBuffer(
     pdfDocumentChrome({
+      prefaceHtml: input.prefaceHtml,
       title: "Finance yearly",
       bodyHtml,
       logoDataUrl,

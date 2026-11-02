@@ -1,5 +1,6 @@
 import {
   workbookGroupRows,
+  type LegacySourceKind,
   type LegacyMonthEndLine,
   type LegacyMonthTotals,
   type WorkbookGroupRow,
@@ -65,7 +66,7 @@ export type FinanceYearlyReport = {
 export type DecemberWorkbookInput = {
   monthKey: string;
   sourceFileName: string | null;
-  sourceKind: "source_file" | "carried_forward";
+  sourceKind: LegacySourceKind;
   totals: LegacyMonthTotals;
   lines: LegacyMonthEndLine[];
 };

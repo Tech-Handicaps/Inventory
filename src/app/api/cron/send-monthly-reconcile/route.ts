@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { sendMonthlyReconcileReport } from "@/lib/reports/send-monthly-reconcile";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -14,10 +14,10 @@ function verifyCronSecret(request: NextRequest): boolean {
 }
 
 /**
- * Daily job: on the configured day (default 1st) in Africa/Johannesburg,
- * email the Monthly Stock Reconcile PDF to finance recipients.
+ * Daily job: once a month has closed in Africa/Johannesburg, store that month's official
+ * pack and email it to finance once. Runs every day so a missed or failed run catches up.
  * Vercel Cron: GET with Authorization: Bearer CRON_SECRET.
- * Manual: POST while signed in as admin (force send / test).
+ * Manual: POST while signed in as admin sends a test of the current month (not stored).
  */
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {

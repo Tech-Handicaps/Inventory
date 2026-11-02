@@ -8,6 +8,7 @@ import {
   loadStoredFinancePositions,
 } from "@/lib/reports/load-finance-month-positions";
 import { formatDateTime } from "@/lib/dates/format";
+import { notesPrefaceFor } from "@/lib/reports/auditor-notes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,9 @@ export async function GET(request: NextRequest) {
     const report = buildFinanceYearly({ december2025, financePositions });
     const logoSource = await loadLogoForPdf();
     const generatedAt = formatDateTime(new Date());
+    const prefaceHtml = await notesPrefaceFor(["2025-12"]);
     const buffer = await renderFinanceYearlyPdf({
+      prefaceHtml,
       report,
       generatedAt,
       logoSource,

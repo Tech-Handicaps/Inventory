@@ -16,8 +16,33 @@ import {
   type LegacyMonthEndDraft,
   type LegacyMonthEndLine,
 } from "@/lib/reports/legacy-month-end";
+import { periodInfo } from "@/lib/reports/period-catalog";
+
+export type LegacyPdfEvent = {
+  eventDate: string;
+  documentDate: string | null;
+  description: string;
+  assetLabel: string;
+  serials: string[];
+  fromLocation: string;
+  toLocation: string;
+  reference: string;
+  evidenceFileName: string;
+  notes: string | null;
+};
+
+export type LegacyPdfDocument = {
+  title: string;
+  fileName: string;
+  sha256: string;
+  flag: string | null;
+};
 
 export type LegacyMonthEndPdfInput = {
+  events?: LegacyPdfEvent[];
+  documents?: LegacyPdfDocument[];
+  /** Notes for auditors and finance, printed as page 1. */
+  prefaceHtml?: string | null;
   draft: LegacyMonthEndDraft;
   generatedAt: string;
   logoSource: Buffer | string | null;
@@ -90,18 +115,22 @@ export async function renderLegacyMonthEndPdf(
     itemRows.push(lineRow(line));
   }
 
+  const period = periodInfo(draft.monthKey);
   const sourceLine =
     draft.sourceKind === "source_file"
       ? `Source file: ${draft.sourceFileName ?? "prior-company workbook"}`
-      : `Carried forward from ${monthKeyLabel(draft.carriedForwardFromMonthKey ?? "")} — no separate workbook was supplied`;
+      : `Quantities carried forward from the ${monthKeyLabel(draft.carriedForwardFromMonthKey ?? "")} count. No count was taken this month.`;
+  const memoLines = draft.lines.filter((line) => line.memo);
 
   const bodyHtml = `
     <h1>Prior company month-end stock</h1>
-    <p class="ref">For month ending ${escHtml(label)}</p>
-    <p class="subtitle">Quantity stock take for accounts and audit. Generated ${escHtml(input.generatedAt)}</p>
+    <p class="ref">${escHtml(label)} – ${escHtml(period.title)}</p>
+    <p class="subtitle">Quantity record for accounts and audit. Generated ${escHtml(input.generatedAt)}</p>
+    ${period.detail ? `<p class="note">${escHtml(period.detail)}</p>` : ""}
     <p class="note">${escHtml(sourceLine)}</p>
     <p class="note">${escHtml(draft.notes)}</p>
-    <p class="note">Column mapping: New stock stays New stock. Repaired/Used maps to Refurbished. To be assessed/repaired maps to Assessment. To dispose is the written-off quantity on the form (no write-off certificate was issued). Warranty repair is kept on its own and is not folded into In Repairs. Usable = New + Repaired/Used.</p>
+    <p class="note">Categories: New → New. Repaired/Used → Refurbished. To assess → Assessment/Maintenance. To dispose → Written off only with a disposal certificate, otherwise Pending disposal. Warranty repair is kept on its own. Usable = New + Repaired/Used.</p>
+    ${documentsHtml(input.documents ?? [])}
 
     <h2>By finance asset type</h2>
     <table class="list legacy">
@@ -155,6 +184,8 @@ export async function renderLegacyMonthEndPdf(
         ${itemRows.join("")}
       </tbody>
     </table>
+    ${memoLines.length ? `<p class="note">Memo lines (grey, marked "memo") are shown as on the form and are not in any total.</p>` : ""}
+    ${eventsHtml(input.events ?? [])}
     <p class="footer">Handicaps Network Africa Inventory · Prior company month-end stock · ${escHtml(label)}</p>
     <style>
       .legacy th.num, .legacy td.num { text-align: right; white-space: nowrap; }
@@ -162,14 +193,17 @@ export async function renderLegacyMonthEndPdf(
       .legacy tr.group td { padding-top: 8px; }
       .note { font-size: 9px; color: #333; margin: 0 0 8px 0; }
       .legacy tr.quiet td { color: #888; font-weight: normal; }
+      .legacy tr.memo td { color: #888; font-style: italic; }
       h1 { font-size: 16px; }
     </style>
   `;
 
   return htmlToPdfBuffer(
     pdfDocumentChrome({
+      prefaceHtml: input.prefaceHtml,
       title: `Prior company month-end stock — ${label}`,
       bodyHtml,
+      watermarkText: period.watermark,
       logoDataUrl,
       landscape: true,
     }),
@@ -220,9 +254,9 @@ export function legacyCompositionHtml(columns: LegacyColumnComposition[]): strin
 function lineRow(line: LegacyMonthEndLine): string {
   const name = [line.manufacturer, line.model].filter(Boolean).join(" ");
   const usable = line.newStock + line.repairedUsed;
-  const quiet = legacyLineUnits(line) === 0 ? " quiet" : "";
-  return `<tr class="${quiet.trim()}">
-    <td>${escHtml(name)}</td>
+  const rowClass = line.memo ? "memo" : legacyLineUnits(line) === 0 ? "quiet" : "";
+  return `<tr class="${rowClass}">
+    <td>${escHtml(name)}${line.memo ? " (memo)" : ""}</td>
     <td>${escHtml(line.category)}</td>
     ${cell(line.newStock)}
     ${cell(line.repairedUsed)}
@@ -232,4 +266,46 @@ function lineRow(line: LegacyMonthEndLine): string {
     ${cell(line.warrantyRepair)}
     <td>${escHtml(line.lineNotes ?? "")}</td>
   </tr>`;
+}
+
+function documentsHtml(documents: LegacyPdfDocument[]): string {
+  if (documents.length === 0) return "";
+  const rows = documents
+    .map(
+      (doc) => `<tr>
+        <td>${escHtml(doc.title)}${doc.flag ? `<br /><em>${escHtml(doc.flag)}</em>` : ""}</td>
+        <td>${escHtml(doc.fileName)}</td>
+        <td class="hash">${escHtml(doc.sha256)}</td>
+      </tr>`
+    )
+    .join("");
+  return `<h2>Attached source files</h2>
+    <table class="list legacy">
+      <thead><tr><th>Document</th><th>File</th><th>SHA-256</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <style>.legacy td.hash { font-family: monospace; font-size: 6px; word-break: break-all; }</style>`;
+}
+
+function eventsHtml(events: LegacyPdfEvent[]): string {
+  if (events.length === 0) return "";
+  const rows = events
+    .map(
+      (event) => `<tr>
+        <td>${escHtml(event.eventDate)}${event.documentDate ? `<br />Document ${escHtml(event.documentDate)}` : ""}</td>
+        <td>${escHtml(event.description)}${event.notes ? `<br /><em>${escHtml(event.notes)}</em>` : ""}</td>
+        <td>${escHtml(event.assetLabel)}</td>
+        <td>${escHtml(event.serials.join(" / "))}</td>
+        <td>${escHtml(event.fromLocation)} → ${escHtml(event.toLocation)}</td>
+        <td>${escHtml(event.reference)}</td>
+        <td>${escHtml(event.evidenceFileName)}</td>
+      </tr>`
+    )
+    .join("");
+  return `<h2>Movements in this period</h2>
+    <p class="note">From the prior company's vouchers and movement report. Event date first; the document date is shown when the voucher was issued later.</p>
+    <table class="list legacy">
+      <thead><tr><th>Date</th><th>Event</th><th>Asset</th><th>Serial</th><th>From → To</th><th>Ref</th><th>Evidence</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }

@@ -46,9 +46,10 @@ export function FinanceMonthOnMonthSection() {
     <section id="finance-month-on-month" className="scroll-mt-6 space-y-4">
       <header className="border-b border-line pb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold text-ink">
-            Finance month-on-month
-          </h2>
+          <div>
+            <h3 className="font-heading text-base font-bold text-ink">Finance month-on-month</h3>
+            <p className="mt-1 max-w-2xl text-sm text-muted">Stored official finance months compared column by column.</p>
+          </div>
           <div className="flex gap-2">
             <a
               href={PDF_HREF}

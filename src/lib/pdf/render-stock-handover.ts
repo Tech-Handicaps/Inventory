@@ -7,6 +7,8 @@ import {
 import { type StockHandover } from "@/lib/reports/stock-handover";
 
 export type StockHandoverPdfInput = {
+  /** Notes for auditors and finance, printed as page 1. */
+  prefaceHtml?: string | null;
   handover: StockHandover;
   generatedAt: string;
   logoSource: Buffer | string | null;
@@ -88,6 +90,7 @@ export async function renderStockHandoverPdf(
 
   return htmlToPdfBuffer(
     pdfDocumentChrome({
+      prefaceHtml: input.prefaceHtml,
       title: handover.title,
       bodyHtml,
       logoDataUrl,

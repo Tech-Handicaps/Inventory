@@ -365,3 +365,31 @@ td,
     transition: none;
   }
 }
+
+/* ── Rendered report notes (Markdown) ── */
+.notes-body h1,
+.notes-body h2,
+.notes-body h3 {
+  font-family: var(--font-heading, inherit);
+  font-weight: 700;
+  margin: 1rem 0 0.4rem;
+}
+.notes-body h1 { font-size: 1.05rem; }
+.notes-body h2 { font-size: 0.95rem; }
+.notes-body h3 { font-size: 0.875rem; }
+.notes-body p { margin: 0.5rem 0; }
+.notes-body ul,
+.notes-body ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+.notes-body ul { list-style: disc; }
+.notes-body ol { list-style: decimal; }
+.notes-body table { border-collapse: collapse; margin: 0.75rem 0; font-size: 0.8125rem; }
+.notes-body th,
+.notes-body td { border: 1px solid #dfe4e8; padding: 0.35rem 0.6rem; text-align: left; vertical-align: top; }
+.notes-body code { background: #f1f4f6; border-radius: 4px; padding: 0 0.25rem; }
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

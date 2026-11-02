@@ -105,9 +105,10 @@ export function FinanceYearlySection() {
     <section id="finance-yearly" className="scroll-mt-6 space-y-4">
       <header className="border-b border-line pb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-heading text-lg font-bold text-ink">
-            Finance yearly
-          </h2>
+          <div>
+            <h3 className="font-heading text-base font-bold text-ink">Finance yearly</h3>
+            <p className="mt-1 max-w-2xl text-sm text-muted">The year-end sheet: 2025 from the December workbook, 2026 from this system, kept as separate blocks.</p>
+          </div>
           <div className="flex gap-2">
             <a
               href={PDF_HREF}

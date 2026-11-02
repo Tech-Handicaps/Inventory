@@ -7,6 +7,8 @@ import {
 import type { AuditorIndex } from "@/lib/reports/auditor-index";
 
 export type AuditorIndexPdfInput = {
+  /** Notes for auditors and finance, printed as page 1. */
+  prefaceHtml?: string | null;
   index: AuditorIndex;
   generatedAt: string;
   logoSource: Buffer | string | null;
@@ -32,8 +34,12 @@ export async function renderAuditorIndexPdf(
     .join("");
   const bodyHtml = `
     <h1>${escHtml(input.index.title)}</h1>
-    <p class="subtitle">First page of the accountant file. Generated ${escHtml(input.generatedAt)}</p>
+    <p class="subtitle">Generated ${escHtml(input.generatedAt)}</p>
+    <h2>About older data</h2>
     ${paragraphs}
+    <h2>Prior-company Service Desk Reports (supporting documents only)</h2>
+    ${input.index.serviceDeskDiscrepancies.map((line) => `<p class="note">${escHtml(line)}</p>`).join("")}
+    <h2>Where to find each document</h2>
     <table class="list">
       <thead>
         <tr>
@@ -52,6 +58,7 @@ export async function renderAuditorIndexPdf(
   `;
   return htmlToPdfBuffer(
     pdfDocumentChrome({
+      prefaceHtml: input.prefaceHtml,
       title: input.index.title,
       bodyHtml,
       logoDataUrl,

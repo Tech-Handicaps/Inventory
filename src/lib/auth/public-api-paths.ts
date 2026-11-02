@@ -5,6 +5,7 @@
 export function isPublicApiPath(pathname: string): boolean {
   return (
     pathname === "/api/health" ||
+    pathname === "/api/warm" ||
     pathname === "/api/auth/login" ||
     pathname.startsWith("/api/cron/")
   );

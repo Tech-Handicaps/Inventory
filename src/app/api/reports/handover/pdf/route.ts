@@ -4,6 +4,7 @@ import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderStockHandoverPdf } from "@/lib/pdf/render-stock-handover";
 import { buildStockHandover } from "@/lib/reports/stock-handover";
 import { formatDateTime } from "@/lib/dates/format";
+import { notesPrefaceFor } from "@/lib/reports/auditor-notes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +20,9 @@ export async function GET(request: NextRequest) {
   try {
     const logoSource = await loadLogoForPdf();
     const generatedAt = formatDateTime(new Date());
+    const prefaceHtml = await notesPrefaceFor(["2026-05"]);
     const buffer = await renderStockHandoverPdf({
+      prefaceHtml,
       handover: buildStockHandover(),
       generatedAt,
       logoSource,

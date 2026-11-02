@@ -1,0 +1,18 @@
+name: Keep warm
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Warm dashboard and reports
+        run: |
+          curl -fsS --max-time 60 -o /dev/null -w "warm %{http_code} %{time_total}s\n" \
+            "https://inventory-omega-steel.vercel.app/api/warm"
+          curl -fsS --max-time 30 -o /dev/null -w "login %{http_code} %{time_total}s\n" \
+            "https://inventory-omega-steel.vercel.app/login"

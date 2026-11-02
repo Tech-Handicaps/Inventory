@@ -168,6 +168,8 @@ export function pdfDocumentChrome(params: {
   logoDataUrl?: string | null;
   watermarkText?: string | null;
   landscape?: boolean;
+  /** Printed on its own page(s) before the report, e.g. the Notes for auditors and finance. */
+  prefaceHtml?: string | null;
 }): string {
   const watermark = params.watermarkText?.trim()
     ? `<div class="watermark" aria-hidden="true">${escHtml(params.watermarkText.trim())}</div>`
@@ -322,10 +324,25 @@ export function pdfDocumentChrome(params: {
       font-size: 8px;
       color: #555;
     }
+    .preface { page-break-after: always; break-after: page; }
+    /* After the forced break there is no body padding to cancel, so a negative top margin would pull the bar onto the preface page. */
+    .preface + .sheet > .bar { margin-top: 0; }
+    .notes-body { font-size: 10px; line-height: 1.45; }
+    .notes-body h3 { margin: 12px 0 4px 0; font-size: 11px; color: #3c854a; text-transform: uppercase; letter-spacing: 0.04em; }
+    .notes-body h4 { margin: 10px 0 4px 0; font-size: 10px; }
+    .notes-body p, .notes-body ul, .notes-body ol { margin: 0 0 6px 0; }
+    .notes-body ul, .notes-body ol { padding-left: 16px; }
+    .notes-body table { border-collapse: collapse; margin: 4px 0 8px 0; }
+    .notes-body th, .notes-body td { border: 0.5px solid #ccc; padding: 3px 6px; text-align: left; font-size: 9px; }
   </style>
 </head>
 <body>
   ${watermark}
+  ${
+    params.prefaceHtml
+      ? `<div class="sheet preface"><div class="bar"></div><div class="brand">${logo}</div>${params.prefaceHtml}</div>`
+      : ""
+  }
   <div class="sheet">
     <div class="bar"></div>
     <div class="brand">${logo}</div>

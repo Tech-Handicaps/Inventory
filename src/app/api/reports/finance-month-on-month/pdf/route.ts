@@ -5,6 +5,7 @@ import { renderFinanceMonthOnMonthPdf } from "@/lib/pdf/render-finance-month-on-
 import { buildFinanceMonthOnMonth } from "@/lib/reports/finance-month-on-month";
 import { loadStoredFinancePositions } from "@/lib/reports/load-finance-month-positions";
 import { formatDateTime } from "@/lib/dates/format";
+import { notesPrefaceFor } from "@/lib/reports/auditor-notes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,9 @@ export async function GET(request: NextRequest) {
     const report = buildFinanceMonthOnMonth(positions);
     const logoSource = await loadLogoForPdf();
     const generatedAt = formatDateTime(new Date());
+    const prefaceHtml = await notesPrefaceFor(positions.map((row) => row.monthKey));
     const buffer = await renderFinanceMonthOnMonthPdf({
+      prefaceHtml,
       report,
       generatedAt,
       logoSource,

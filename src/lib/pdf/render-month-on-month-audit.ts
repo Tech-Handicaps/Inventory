@@ -13,6 +13,8 @@ import {
 } from "@/lib/reports/month-on-month-audit";
 
 export type MonthOnMonthPdfInput = {
+  /** Notes for auditors and finance, printed as page 1. */
+  prefaceHtml?: string | null;
   audit: MonthOnMonthAudit;
   generatedAt: string;
   logoSource: Buffer | string | null;
@@ -142,6 +144,7 @@ export async function renderMonthOnMonthAuditPdf(
 
   return htmlToPdfBuffer(
     pdfDocumentChrome({
+      prefaceHtml: input.prefaceHtml,
       title: "Prior-company month-on-month",
       bodyHtml,
       logoDataUrl,

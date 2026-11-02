@@ -3,6 +3,7 @@ import {
   LEGACY_STOCK_SKUS,
   type LegacySku,
 } from "@/lib/reports/legacy-month-end-catalog";
+import { LAST_PRIOR_COUNT, periodInfo } from "@/lib/reports/period-catalog";
 
 export type LegacyQty = {
   newStock?: number;
@@ -47,6 +48,17 @@ const NOVEMBER_2025: Record<string, LegacyQty> = {
   "posiflex-ps-3316e": { newStock: 11, toAssess: 1 },
 };
 
+/**
+ * 31 Jan 2026 workbook. Totals equal December (132; 53/26/53) but the mix differs:
+ * Dell 3050 To assess 1→3, Dell 7440 To assess 2→1, Posiflex PS-3316 To assess 1→0.
+ */
+const JANUARY_2026: Record<string, LegacyQty> = {
+  ...NOVEMBER_2025,
+  "dell-optiplex-3050": { toAssess: 3 },
+  "dell-optiplex-7440": { toAssess: 1 },
+  "posiflex-ps-3316e": { newStock: 11 },
+};
+
 const SOURCE_MONTHS: {
   monthKey: string;
   fileName: string;
@@ -67,12 +79,32 @@ const SOURCE_MONTHS: {
     fileName: "Month End Stock Take 20251231.xlsx",
     qty: NOVEMBER_2025,
   },
+  {
+    monthKey: "2026-01",
+    fileName: "Month End Stock Take 20260131.xlsx",
+    qty: JANUARY_2026,
+  },
 ];
 
-/** Months with no workbook. Counts repeat the December 2025 take. */
-export const CARRIED_FORWARD_MONTHS = ["2026-01", "2026-02", "2026-03"] as const;
+/** Months with no count. Quantities repeat the 31 Jan 2026 count. */
+export const CARRIED_FORWARD_MONTHS = [
+  "2026-02",
+  "2026-03",
+  "2026-04",
+  "2026-05",
+  "2026-06",
+] as const;
 
-const CARRIED_FROM = "2025-12";
+const CARRIED_FROM = LAST_PRIOR_COUNT;
+
+export type LegacySourceKind = "source_file" | "carried_forward" | "handover" | "no_count";
+
+function carriedSourceKind(monthKey: string): LegacySourceKind {
+  const kind = periodInfo(monthKey).kind;
+  if (kind === "handover") return "handover";
+  if (kind === "no_count") return "no_count";
+  return "carried_forward";
+}
 
 export type LegacyMonthEndLine = {
   sortOrder: number;
@@ -89,12 +121,14 @@ export type LegacyMonthEndLine = {
   toDispose: number;
   warrantyRepair: number;
   lineNotes: string | null;
+  /** Shown on the form, never added to a total. */
+  memo?: boolean;
 };
 
 export type LegacyMonthEndDraft = {
   monthKey: string;
   periodEnding: Date;
-  sourceKind: "source_file" | "carried_forward";
+  sourceKind: LegacySourceKind;
   sourceFileName: string | null;
   carriedForwardFromMonthKey: string | null;
   notes: string;
@@ -119,7 +153,13 @@ function n(value: number | undefined): number {
   return value ?? 0;
 }
 
-function lineFromSku(sku: LegacySku, index: number, qty: LegacyQty | undefined): LegacyMonthEndLine {
+function lineFromSku(
+  sku: LegacySku,
+  index: number,
+  qty: Record<string, LegacyQty>
+): LegacyMonthEndLine {
+  const own = qty[sku.key];
+  const copied = sku.memoOf ? qty[sku.memoOf] : undefined;
   return {
     sortOrder: index,
     groupLabel: sku.groupLabel,
@@ -129,30 +169,36 @@ function lineFromSku(sku: LegacySku, index: number, qty: LegacyQty | undefined):
     tags: sku.tags,
     financeType: classifyReportAssetType(sku.category, sku.tags),
     typeNotes: sku.typeNotes,
-    newStock: n(qty?.newStock),
-    repairedUsed: n(qty?.repairedUsed),
-    toAssess: n(qty?.toAssess),
-    toDispose: n(qty?.toDispose),
-    warrantyRepair: n(qty?.warrantyRepair),
+    newStock: n(copied?.newStock ?? own?.newStock),
+    repairedUsed: n(copied?.repairedUsed ?? own?.repairedUsed),
+    toAssess: n(copied?.toAssess ?? own?.toAssess),
+    toDispose: n(sku.memoOf ? 0 : own?.toDispose),
+    warrantyRepair: n(sku.memoOf ? 0 : own?.warrantyRepair),
     lineNotes: sku.lineNotes ?? null,
+    memo: Boolean(sku.memoOf),
   };
 }
 
 function linesFor(qty: Record<string, LegacyQty>): LegacyMonthEndLine[] {
-  return LEGACY_STOCK_SKUS.map((sku, index) =>
-    lineFromSku(sku, index, qty[sku.key])
-  );
+  return LEGACY_STOCK_SKUS.map((sku, index) => lineFromSku(sku, index, qty));
+}
+
+/** Lines that count towards totals (memo lines left out). */
+export function countedLines<T extends { memo?: boolean }>(lines: T[]): T[] {
+  return lines.filter((line) => !line.memo);
 }
 
 const DONGLE_NOTE =
-  "Mecer UST-TP01 is kept on the form and counted as zero. Its New, Repaired/Used, and To assess cells are formulas pointing at the Posiflex PS-3316E row, so publishing them would count the Posiflex quantity twice.";
+  "The Mecer UST-TP01 WiFi dongle line is a memo line, excluded from totals: its cells are formulas copying the Posiflex PS-3316E row. Dongles have since been written off in full and are not tracked.";
 
 const SOURCE_NOTE =
-  "Imported from the prior-company workbook, sheet Actual. The second sheet was an old in-house template with no month-end quantities and was not imported. The workbook has no serial numbers, so this is a quantity record only and is not on the live hardware board. " +
+  "Imported from the prior-company workbook, sheet Actual. The legacy 2018 \"Sheet2\" tab was not imported. The workbook has no serial numbers, so this is a quantity record only and is not on the live hardware board. " +
   DONGLE_NOTE;
 
-const CARRIED_NOTE =
-  "No stock-take workbook was supplied for this month. Quantities are copied from the December 2025 prior-company stock take so accounts has a file for January, February, and March 2026. April 2026 is not part of this copy. This system recorded its first asset on 18 April 2026, so the prior-company series stops at March. This is not the live register.";
+function carriedNote(monthKey: string): string {
+  const period = periodInfo(monthKey);
+  return `${period.title}. ${period.detail ?? ""} Quantities repeat the 31 Jan 2026 prior-company count. This is not the live register. ${DONGLE_NOTE}`.replace(/\s+/g, " ").trim();
+}
 
 export function buildLegacyMonthEndDrafts(): LegacyMonthEndDraft[] {
   const sourced = SOURCE_MONTHS.map((month) => ({
@@ -165,19 +211,19 @@ export function buildLegacyMonthEndDrafts(): LegacyMonthEndDraft[] {
     lines: linesFor(month.qty),
   }));
 
-  const december = SOURCE_MONTHS.find((month) => month.monthKey === CARRIED_FROM);
-  if (!december) {
-    throw new Error("December 2025 source month is missing");
+  const base = SOURCE_MONTHS.find((month) => month.monthKey === CARRIED_FROM);
+  if (!base) {
+    throw new Error("The 31 Jan 2026 source month is missing");
   }
 
   const carried = CARRIED_FORWARD_MONTHS.map((monthKey) => ({
     monthKey,
     periodEnding: monthKeyPeriodEnding(monthKey),
-    sourceKind: "carried_forward" as const,
+    sourceKind: carriedSourceKind(monthKey),
     sourceFileName: null,
     carriedForwardFromMonthKey: CARRIED_FROM,
-    notes: CARRIED_NOTE,
-    lines: linesFor(december.qty),
+    notes: carriedNote(monthKey),
+    lines: linesFor(base.qty),
   }));
 
   return [...sourced, ...carried];
@@ -221,8 +267,12 @@ export function draftFromStoredReport(report: {
   notes: string | null;
   lines: LegacyMonthEndLine[];
 }): LegacyMonthEndDraft {
-  const sourceKind =
-    report.sourceKind === "carried_forward" ? "carried_forward" : "source_file";
+  const sourceKind: LegacySourceKind =
+    report.sourceKind === "carried_forward" ||
+    report.sourceKind === "handover" ||
+    report.sourceKind === "no_count"
+      ? report.sourceKind
+      : "source_file";
   return {
     monthKey: report.monthKey,
     periodEnding: report.periodEnding,
@@ -264,7 +314,7 @@ export function composeLegacyColumn(
   field: LegacyCompositionField
 ): LegacyColumnComposition {
   const label = COMPOSITION_FIELDS.find((entry) => entry[0] === field)?.[1] ?? field;
-  const contributors = lines
+  const contributors = countedLines(lines)
     .filter((line) => line[field] > 0)
     .map((line) => ({
       groupLabel: line.groupLabel,
@@ -370,7 +420,7 @@ export function workbookGroupRows(lines: LegacyMonthEndLine[]): WorkbookGroupRow
     .filter((label) => !known.has(label))
     .sort((a, b) => a.localeCompare(b));
   return [...WORKBOOK_GROUPS, ...extras].map((groupLabel) => {
-    const totals = lines
+    const totals = countedLines(lines)
       .filter((line) => line.groupLabel === groupLabel)
       .reduce((acc, line) => {
         const row = quantityFromLine(line);
@@ -390,7 +440,7 @@ export function workbookGroupRows(lines: LegacyMonthEndLine[]): WorkbookGroupRow
 export function summarizeLegacyLines(
   lines: LegacyMonthEndLine[]
 ): LegacyMonthTotals {
-  const totals = lines.reduce(
+  const totals = countedLines(lines).reduce(
     (acc, line) => {
       acc.newStock += line.newStock;
       acc.repairedUsed += line.repairedUsed;

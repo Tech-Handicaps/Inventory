@@ -51,16 +51,10 @@ export function LegacyMonthEndSection() {
   return (
     <section id="prior-months" className="scroll-mt-6 space-y-4">
       <header className="border-b border-line pb-4">
-        <h2 className="font-heading text-lg font-bold text-ink">
-          Prior company month-end stock
-        </h2>
+        <h3 className="font-heading text-base font-bold text-ink">Prior-company stock by category</h3>
         <p className="mt-1 max-w-3xl text-sm text-muted">
-          Quantity stock takes from the previous process, October 2025 through
-          March 2026. October, November, and December come from the workbooks.
-          January, February, and March repeat the December count. April is not
-          a copy of December: this system recorded its first asset on 18 April
-          2026. These rows are not serialised assets and do not sit on the
-          hardware board.
+          Quantities only, no serials: October 2025 to January 2026 from the Albatros workbooks, February to June 2026
+          carried forward from the 31 January 2026 count.
         </p>
       </header>
 

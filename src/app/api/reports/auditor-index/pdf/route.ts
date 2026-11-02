@@ -4,6 +4,7 @@ import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderAuditorIndexPdf } from "@/lib/pdf/render-auditor-index";
 import { buildAuditorIndex } from "@/lib/reports/auditor-index";
 import { formatDateTime } from "@/lib/dates/format";
+import { notesPrefaceFor } from "@/lib/reports/auditor-notes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +21,9 @@ export async function GET(request: NextRequest) {
   try {
     const logoSource = await loadLogoForPdf();
     const generatedAt = formatDateTime(new Date());
+    const prefaceHtml = await notesPrefaceFor(["2025-10"]);
     const buffer = await renderAuditorIndexPdf({
+      prefaceHtml,
       index: buildAuditorIndex(),
       generatedAt,
       logoSource,

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { cachedInventoryStat } from "@/lib/cache/inventory-stats";
 import { displayAssetModel } from "@/lib/inventory/asset-hardware-display";
+import { applyAlias, buildAliasMap } from "@/lib/inventory/model-aliases";
 import {
   UNKNOWN_BRAND,
   manufacturerBrand,
@@ -19,7 +20,7 @@ import {
 export type { DashboardOverview };
 
 async function computeDashboardOverview(): Promise<DashboardOverview> {
-  const [statuses, rows] = await Promise.all([
+  const [statuses, rows, aliasRows] = await Promise.all([
     prisma.assetStatus.findMany({
       orderBy: { sortOrder: "asc" },
       select: { code: true, label: true },
@@ -41,13 +42,15 @@ async function computeDashboardOverview(): Promise<DashboardOverview> {
         deviceTemplate: { select: { manufacturer: true, model: true } },
       },
     }),
+    prisma.modelAlias.findMany({ select: { kind: true, alias: true, canonical: true } }),
   ]);
+  const aliases = buildAliasMap(aliasRows);
 
   const assets: OverviewAsset[] = rows.map((a) => {
-    const rawModel = displayAssetModel(a);
+    const rawModel = applyAlias(aliases, "model", displayAssetModel(a));
     const brand = manufacturerBrand(
-      a.manufacturer,
-      a.deviceTemplate?.manufacturer,
+      applyAlias(aliases, "manufacturer", a.manufacturer),
+      applyAlias(aliases, "manufacturer", a.deviceTemplate?.manufacturer),
       rawModel,
     );
     return {
@@ -71,6 +74,6 @@ async function computeDashboardOverview(): Promise<DashboardOverview> {
 
 /** Every Overview and Fleet figure from one read of the register, so they reconcile with All assets. */
 export const loadDashboardOverview = cachedInventoryStat(
-  "dashboard-overview-v3",
+  "dashboard-overview-v4",
   computeDashboardOverview,
 );

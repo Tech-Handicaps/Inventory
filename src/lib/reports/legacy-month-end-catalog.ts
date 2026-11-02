@@ -15,6 +15,8 @@ export type LegacySku = {
   typeNotes: string;
   /** Note printed on the stock-take form (same on every supplied month). */
   lineNotes?: string;
+  /** Shown for reference, never counted. Its cells copy another line. */
+  memoOf?: string;
 };
 
 export const LEGACY_STOCK_SKUS: LegacySku[] = [
@@ -334,6 +336,7 @@ export const LEGACY_STOCK_SKUS: LegacySku[] = [
     tags: ["Accessory", "WiFi Dongle"],
     typeNotes: "Mecer UST-TP01 USB 802.11ac Wi-Fi nano dongle.",
     lineNotes:
-      "Not counted. New, Repaired/Used, and To assess on the workbook are formulas pointing at the Posiflex PS-3316E row, so those cells repeat the Posiflex quantity. Stored as zero.",
+      "Memo line, excluded from totals. Derived from the Posiflex line, not physically counted. Dongles have since been written off in full and are not tracked.",
+    memoOf: "posiflex-ps-3316e",
   },
 ];

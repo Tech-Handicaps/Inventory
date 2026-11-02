@@ -4,36 +4,35 @@ import { buildAuditorIndex } from "@/lib/reports/auditor-index";
 const index = buildAuditorIndex();
 const text = [
   ...index.paragraphs,
+  ...index.serviceDeskDiscrepancies,
   ...index.entries.flatMap((entry) => [entry.title, entry.covers]),
 ].join(" ");
 
 describe("auditor index", () => {
-  it("leads with the dates, the gap, and the rule that the series are not added", () => {
-    expect(index.paragraphs[0]).toContain("Read this page first");
-    expect(text).toContain("The totals are not added together");
+  it("states the periods, the hand-over and that the series are not added", () => {
+    expect(text).toContain("31 January 2026");
+    expect(text).toContain("Albatros held the stock and provided no counts or reporting");
+    expect(text).toContain("no receiving count");
+    expect(text).toContain("June 2026 has no count on record");
     expect(text).toContain("18 April 2026");
     expect(text).toContain("13 August 2026");
-    expect(text).toContain("labelled copies of that December take");
-    expect(text).toContain("April 2026 is not a copy");
-    expect(text).toContain("July, August, and September 2026 were emailed");
-    expect(text).toContain("were not kept");
-    expect(text).toContain("28 October 2026 prints September and skips");
-    expect(text).toContain("prints October 2026");
+    expect(text).toContain("Their totals are not added together");
+    expect(text).toContain("re-imported");
+    expect(text).toContain("previous calendar month (SAST) on the 1st");
   });
 
-  it("names each document and leaves the other reports behind the index", () => {
+  it("explains why Service Desk Reports are supporting documents only", () => {
+    expect(index.serviceDeskDiscrepancies.join(" ")).toContain("No movements reported in December 2025");
+    expect(index.serviceDeskDiscrepancies.join(" ")).toContain("DIS4601364122");
+    expect(index.serviceDeskDiscrepancies.join(" ")).toContain("count of record");
+  });
+
+  it("points at the new Reports tabs", () => {
     expect(index.entries.map((entry) => entry.href)).toEqual([
-      "#prior-months",
-      "#month-on-month",
-      "#handover",
-      "#finance-packs",
-      "#finance-month-on-month",
-      "#finance-yearly",
+      "?tab=history",
+      "?tab=reconciliation",
+      "?tab=monthly",
+      "?tab=ytd",
     ]);
-    expect(text).toContain("They do not list serial numbers");
-    expect(text).toContain("The live register is not on this landscape");
-    expect(text).toContain("not a stored month");
-    expect(text).toContain("are not added together");
-    expect(text).toContain("The blocks are not subtracted");
   });
 });

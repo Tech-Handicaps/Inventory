@@ -9,6 +9,7 @@ import {
 } from "@/lib/reports/legacy-month-end";
 import { buildMonthOnMonthAudit } from "@/lib/reports/month-on-month-audit";
 import { formatDateTime } from "@/lib/dates/format";
+import { notesPrefaceFor } from "@/lib/reports/auditor-notes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +37,9 @@ export async function GET(request: NextRequest) {
     );
     const logoSource = await loadLogoForPdf();
     const generatedAt = formatDateTime(new Date());
+    const prefaceHtml = await notesPrefaceFor(["2025-10"]);
     const buffer = await renderMonthOnMonthAuditPdf({
+      prefaceHtml,
       audit,
       generatedAt,
       logoSource,

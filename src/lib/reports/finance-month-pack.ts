@@ -62,8 +62,9 @@ export type FinancePackSnapshot = {
 
 export function financePackStoragePath(
   monthKey: string,
-  kind: "reconcile" | "breakdown" | "month-on-month" | "yearly" | "field"
+  kind: "reconcile" | "breakdown" | "month-on-month" | "yearly" | "field" | "csv"
 ): string {
+  if (kind === "csv") return `${monthKey}/hna-finance-pack.csv`;
   const file =
     kind === "reconcile"
       ? "hna-monthly-stock-reconcile.pdf"
@@ -165,4 +166,49 @@ export function financePackSnapshot(
     })),
     fieldUnits: financeFieldListing(assets),
   };
+}
+
+function csvCell(value: string | number): string {
+  const text = String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** One CSV per stored pack: totals by asset type, make/model counts, deployed serials. */
+export function financePackCsv(monthEndingLabel: string, snapshot: FinancePackSnapshot): string {
+  const rows: (string | number)[][] = [
+    ["HNA finance pack", monthEndingLabel],
+    [],
+    ["Section", "Asset type", "New stock", "Refurbished", "Usable", "Deployed", "Assessment", "In repair", "Written off", "Register"],
+    ...snapshot.typeTotals.map((row) => [
+      "Totals by asset type",
+      row.label,
+      row.newStock,
+      row.refurbished,
+      row.usable,
+      row.deployed,
+      row.assessment,
+      row.inRepair,
+      row.writtenOff,
+      row.register,
+    ]),
+    [
+      "Totals",
+      "All",
+      snapshot.totals.newStock,
+      snapshot.totals.refurbished,
+      snapshot.totals.usable,
+      snapshot.totals.deployed,
+      snapshot.totals.assessment,
+      snapshot.totals.inRepair,
+      snapshot.totals.writtenOff,
+      snapshot.totals.register,
+    ],
+    [],
+    ["Section", "Status", "Make / model", "Count"],
+    ...snapshot.lines.map((line) => ["Make and model", line.statusCode, line.makeModel, line.count]),
+    [],
+    ["Section", "Asset type", "Make", "Model", "Serial"],
+    ...snapshot.fieldUnits.map((unit) => ["Deployed unit", unit.label, unit.manufacturer, unit.model, unit.serialNumber]),
+  ];
+  return rows.map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }
