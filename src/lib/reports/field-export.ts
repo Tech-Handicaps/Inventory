@@ -164,11 +164,58 @@ export type FieldCaptureBreakdown = {
   }[];
   /** HNA-owned export rows with no register unit at that club, for technicians to capture. */
   notCaptured: { terminalId: string; clubId: string; club: string; model: string }[];
+  /** HNA-owned export rows matched to a Deployed unit at the same club. */
+  matched: number;
   /** Deployed register units whose club is not in the export (new sites since, or no club set). */
   outsideExport: { assetName: string; serialNumber: string | null; model: string; club: string | null }[];
+  /**
+   * Deployed units at an export club with no HNA-owned row left to match: the club's export rows are all
+   * club-owned or unowned, or the club has more units than HNA-owned rows.
+   */
+  unmatchedAtClubs: {
+    assetName: string;
+    model: string;
+    club: string;
+    reason: "no_hna_rows" | "beyond_export_count";
+  }[];
   clubOwnedByModel: { model: string; count: number }[];
   blankOwnership: { terminalId: string; clubId: string; club: string; model: string }[];
 };
+
+/** Shown on the model rows themselves (spec 5.5). */
+export const MODEL_ROW_NOTES: Record<string, string> = {
+  "Lenovo M810z": "Different model from Lenovo 10Q0 – never merged or aliased.",
+  "Lenovo 10Q0": "Different model from Lenovo M810z – never merged or aliased.",
+};
+
+export type CaptureArithmetic = {
+  hnaOwned: number;
+  matched: number;
+  notCaptured: number;
+  deployed: number;
+  outsideExport: number;
+  noHnaRows: number;
+  beyondExportCount: number;
+  /** Deployed units not matched to an HNA-owned export row (deployed − matched). */
+  notMatched: number;
+};
+
+/**
+ * 305 HNA-owned = matched + not yet captured; Deployed = matched + units that match no HNA-owned row.
+ * So Deployed + not yet captured = HNA-owned + the units that match no HNA-owned row.
+ */
+export function captureArithmetic(deployed: number, hnaOwned: number, b: FieldCaptureBreakdown): CaptureArithmetic {
+  return {
+    hnaOwned,
+    matched: b.matched,
+    notCaptured: b.notCaptured.length,
+    deployed,
+    outsideExport: b.outsideExport.length,
+    noHnaRows: b.unmatchedAtClubs.filter((u) => u.reason === "no_hna_rows").length,
+    beyondExportCount: b.unmatchedAtClubs.filter((u) => u.reason === "beyond_export_count").length,
+    notMatched: deployed - b.matched,
+  };
+}
 
 function countBy<T>(items: T[], key: (item: T) => string): Map<string, number> {
   const out = new Map<string, number>();
@@ -243,22 +290,28 @@ export function buildFieldCaptureBreakdown(terminals: FieldTerminal[], deployed:
   }
 
   const notCaptured: FieldCaptureBreakdown["notCaptured"] = [];
+  const unmatchedAtClubs: FieldCaptureBreakdown["unmatchedAtClubs"] = [];
   const byClub: FieldCaptureBreakdown["byClub"] = [];
   for (const group of clubs.values()) {
     if (group.hna.length === 0 && group.units.length === 0) continue;
     const open = group.hna.map((t) => ({ t, model: modelFamily(t.type), taken: false }));
-    let spare = 0;
+    const spare: DeployedUnit[] = [];
     for (const unit of group.units) {
       const family = unitFamily(unit);
       const hit = open.find((o) => !o.taken && o.model === family);
       if (hit) hit.taken = true;
-      else spare += 1;
+      else spare.push(unit);
     }
-    for (const o of open) {
-      if (spare === 0) break;
-      if (o.taken) continue;
-      o.taken = true;
-      spare -= 1;
+    for (const unit of spare) {
+      const any = open.find((o) => !o.taken);
+      if (any) any.taken = true;
+      else
+        unmatchedAtClubs.push({
+          assetName: unit.assetName,
+          model: unitFamily(unit),
+          club: group.club,
+          reason: group.hna.length === 0 ? "no_hna_rows" : "beyond_export_count",
+        });
     }
     const left = open.filter((o) => !o.taken);
     for (const o of left) notCaptured.push({ terminalId: o.t.terminalId, clubId: o.t.clubId, club: o.t.club, model: o.model });
@@ -274,11 +327,15 @@ export function buildFieldCaptureBreakdown(terminals: FieldTerminal[], deployed:
   byClub.sort((a, b) => a.club.localeCompare(b.club));
   notCaptured.sort((a, b) => a.club.localeCompare(b.club) || a.terminalId.localeCompare(b.terminalId));
 
+  unmatchedAtClubs.sort((a, b) => a.club.localeCompare(b.club));
+
   return {
     byModel,
     byClub,
     notCaptured,
+    matched: hna.length - notCaptured.length,
     outsideExport,
+    unmatchedAtClubs,
     clubOwnedByModel: [...countBy(terminals.filter((t) => t.ownership === "Club"), (t) => modelFamily(t.type))]
       .map(([model, count]) => ({ model, count }))
       .sort((a, b) => b.count - a.count),

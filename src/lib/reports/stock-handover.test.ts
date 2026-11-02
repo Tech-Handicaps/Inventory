@@ -14,26 +14,25 @@ const text = [
 ].join(" ");
 
 describe("stock handover", () => {
-  it("states the series end, the copies, and the system dates", () => {
-    expect(text).toContain("ends on 31 December 2025");
-    expect(text).toContain("January, February, and March 2026 repeat that December take");
-    expect(text).toContain("They are copies");
-    expect(text).toContain("April 2026 is not a copy of December");
+  it("states the series end, the carried-forward months, and the system dates", () => {
+    expect(text).toContain("ends with the real count of 31 January 2026");
+    expect(text).toContain("February, March, and April 2026 have no count of their own");
+    expect(text).not.toMatch(/copy of the 31 December/i);
     expect(text).toContain("first asset on 18 April 2026");
     expect(text).toContain("still being loaded through 13 August 2026");
     expect(text).toContain("Their totals are not added together");
   });
 
-  it("lists each copy month and keeps the two series apart", () => {
-    const copies = handover.events.filter((event) =>
-      event.statement.startsWith("Copy of the 31 December 2025 take")
+  it("lists each carried-forward month and keeps the two series apart", () => {
+    const carried = handover.events.filter((event) =>
+      event.statement.startsWith("No count. Carried forward from the 31 January 2026 count")
     );
-    expect(copies.map((event) => event.dateLabel)).toEqual([
-      "31 January 2026",
+    expect(carried.map((event) => event.dateLabel)).toEqual([
       "28 February 2026",
       "31 March 2026",
+      "30 April 2026",
     ]);
-    expect(copies.every((event) => event.series === "Prior company")).toBe(true);
+    expect(carried.every((event) => event.series === "Prior company")).toBe(true);
 
     const system = handover.events.filter((event) => event.series === "This system");
     expect(system.map((event) => event.dateLabel)).toEqual([

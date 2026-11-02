@@ -36,7 +36,7 @@ export function buildStockHandover(): StockHandover {
     title: "Stock report handover",
     paragraphs: [
       "This page is the join between the prior-company stock takes and this system's register. Both series are named here. Their totals are not added together.",
-      "The prior-company series of stock takes ends on 31 December 2025. January, February, and March 2026 repeat that December take. They are copies, kept so accounts has a file for each of those months. April 2026 is not a copy of December.",
+      "The prior-company series of stock takes ends with the real count of 31 January 2026, the last Albatros workbook. February, March, and April 2026 have no count of their own; they are carried forward from the 31 January 2026 count. At the May 2026 hand-over no count was taken, and Finance confirmed the stock against that same count.",
       "This system recorded its first asset on 18 April 2026. The field fleet was still being loaded through 13 August 2026. Months in that window are capture in progress, not a closed month-end position, until a finance pack is kept.",
     ],
     events: [
@@ -56,31 +56,39 @@ export function buildStockHandover(): StockHandover {
         dateLabel: "31 December 2025",
         series: "Prior company",
         statement:
-          "Last prior-company stock take. The series of real takes ends on this date.",
+          "Workbook stock take. Quantity counts by make and model, with no serial numbers.",
       },
       {
         dateLabel: "31 January 2026",
         series: "Prior company",
         statement:
-          "Copy of the 31 December 2025 take. No new workbook was supplied for this month.",
+          "Last prior-company stock take: a real count in the Albatros workbook. Quantity counts with no serial numbers.",
       },
       {
         dateLabel: "28 February 2026",
         series: "Prior company",
-        statement:
-          "Copy of the 31 December 2025 take. No new workbook was supplied for this month.",
+        statement: "No count. Carried forward from the 31 January 2026 count.",
       },
       {
         dateLabel: "31 March 2026",
         series: "Prior company",
-        statement:
-          "Copy of the 31 December 2025 take. The labelled copies stop here.",
+        statement: "No count. Carried forward from the 31 January 2026 count.",
       },
       {
         dateLabel: "18 April 2026",
         series: "This system",
+        statement: "First asset recorded in this system.",
+      },
+      {
+        dateLabel: "30 April 2026",
+        series: "Prior company",
+        statement: "No count. Carried forward from the 31 January 2026 count.",
+      },
+      {
+        dateLabel: "May 2026",
+        series: "Prior company",
         statement:
-          "First asset recorded in this system. April is not a copy of the December stock take.",
+          "Hand-over of the stock to HNA. No count taken; Finance confirmed the stock against the 31 January 2026 count.",
       },
       {
         dateLabel: "13 August 2026",
@@ -120,11 +128,6 @@ export function buildStockHandover(): StockHandover {
             name: "Mecer X22S and X22S-T+",
             skuKeys: ["mecer-x22s", "mecer-x22s-t-plus"],
             note: "The register records these as Mustek or MECER X22S and X22S-T. Some Zoho Assist rows store the chipset string Mustek6376 MST6376 as the manufacturer.",
-          },
-          {
-            name: "Lenovo M810z",
-            skuKeys: ["lenovo-m810z"],
-            note: "The register stores Lenovo machine type 10Q0. Lenovo's parts list identifies type 10Q0 as the ThinkCentre M810z.",
           },
           {
             name: "Intel NUC7CJYH",
@@ -191,18 +194,28 @@ export function buildStockHandover(): StockHandover {
             ],
             note: "On the workbook, and not present as a serial in this system.",
           },
+          {
+            name: "Lenovo M810z",
+            skuKeys: ["lenovo-m810z"],
+            note: "On the workbook. The register's Lenovo units are machine type 10Q0, a different model; Lenovo M810z and 10Q0 are never merged or aliased.",
+          },
         ],
       },
       {
         id: "register_only",
         title: "Register only",
         statement:
-          "Zoho Assist field units start in this system. Where the make matches a name above, that serial is the register side of that name, not a second stock take. Two Assist rows are not on the workbook at all.",
+          "Zoho Assist field units start in this system. Where the make matches a name above, that serial is the register side of that name, not a second stock take. These Assist rows are not on the workbook at all.",
         lines: [
+          {
+            name: "Lenovo 10Q0",
+            skuKeys: [],
+            note: "Lenovo machine type 10Q0. A different model from the Lenovo M810z on the workbook; never merged or aliased with it.",
+          },
           {
             name: "HNA-BETHLEHM-01",
             skuKeys: [],
-            note: "Zoho Assist recorded the manufacturer as MICRO-STAR INTERNATIONAL CO., LTD and the model as MS-A95311. There is no workbook line for it.",
+            note: "MSI AP190. The model was first captured as MS-A95311, the motherboard name, and has been corrected. There is no workbook line for it.",
           },
           {
             name: "HNA-KRPRKGC-01",

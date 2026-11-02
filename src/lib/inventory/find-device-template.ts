@@ -1,5 +1,6 @@
 import type { DeviceTemplate } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { applyAlias, type AliasMap } from "@/lib/inventory/model-aliases";
 
 function trimOrNull(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
@@ -49,4 +50,22 @@ export async function findMatchingDeviceTemplate(
   }
 
   return null;
+}
+
+/**
+ * {@link findMatchingDeviceTemplate}, then again with the admin alias table applied (e.g. Assist reports the
+ * motherboard name "MS-A95311" for an MSI AP190). `viaAlias` tells the caller to store the template's names.
+ */
+export async function findDeviceTemplateWithAliases(
+  manufacturer: string | null | undefined,
+  model: string | null | undefined,
+  aliases: AliasMap
+): Promise<{ template: DeviceTemplate | null; viaAlias: boolean }> {
+  const direct = await findMatchingDeviceTemplate(manufacturer, model);
+  if (direct) return { template: direct, viaAlias: false };
+  const mfg = applyAlias(aliases, "manufacturer", manufacturer);
+  const mdl = applyAlias(aliases, "model", model);
+  if (mfg === trimOrNull(manufacturer) && mdl === trimOrNull(model)) return { template: null, viaAlias: false };
+  const aliased = await findMatchingDeviceTemplate(mfg, mdl);
+  return { template: aliased, viaAlias: Boolean(aliased) };
 }

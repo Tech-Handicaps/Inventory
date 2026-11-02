@@ -298,7 +298,7 @@ function OverviewTab({ overview }: { overview: DashboardOverview }) {
         </section>
       </div>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <DataQualityCard items={overview.dataQuality} />
+        <DataQualityCard items={overview.dataQuality} followUps={overview.followUps} />
         <div className="grid content-start gap-3">
           <CoverageFigure
             label="Average age"

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { INVENTORY_STATS_TAG } from "@/lib/cache/inventory-stats";
 import { applyAlias, loadAliasMap } from "@/lib/inventory/model-aliases";
 import { classifyReportAssetType } from "@/lib/reports/asset-types";
+import { buildCaptureTrend, statusEventsFromAudit, type CaptureTrend } from "@/lib/reports/capture-trend";
 import { buildFieldCaptureBreakdown } from "@/lib/reports/field-export";
 import { loadLatestFieldExport } from "@/lib/reports/load-field-export";
 import {
@@ -18,14 +19,17 @@ export const RECONCILIATION_TAG = "report-reconciliation";
 
 export type ReconciliationView = ReconciliationReport & {
   fieldCapture: FieldCapture;
+  captureTrend: CaptureTrend;
   generatedAt: string;
 };
 
 async function compute(): Promise<ReconciliationView> {
-  const [lines, assets, fieldExport, aliases] = await Promise.all([
+  const [lines, assets, fieldExport, aliases, auditRows] = await Promise.all([
     prisma.reconciliationLine.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.asset.findMany({
       select: {
+        id: true,
+        dateAdded: true,
         assetName: true,
         serialNumber: true,
         manufacturer: true,
@@ -39,6 +43,10 @@ async function compute(): Promise<ReconciliationView> {
     }),
     loadLatestFieldExport(),
     loadAliasMap(),
+    prisma.auditLog.findMany({
+      where: { actionType: { in: [...STATUS_ACTIONS] } },
+      select: { actionType: true, timestamp: true, metadata: true },
+    }),
   ]);
   const register = registerComposition(
     assets.map((asset) => ({
@@ -83,10 +91,37 @@ async function compute(): Promise<ReconciliationView> {
       fieldExport.documentId
     );
   }
-  return { ...report, fieldCapture: capture, generatedAt: new Date().toISOString() };
+  const captureTrend = buildCaptureTrend(
+    assets.map((a) => ({
+      id: a.id,
+      statusCode: a.status.code,
+      dateAdded: a.dateAdded,
+      hardware: !["usb_hid_msr", "other"].includes(classifyReportAssetType(a.category, a.tags)),
+    })),
+    statusEventsFromAudit(auditRows),
+    { fromMonthKey: TREND_FROM_MONTH, now: new Date(), hnaOwned: capture.baseline.hnaOwned }
+  );
+  return { ...report, fieldCapture: capture, captureTrend, generatedAt: new Date().toISOString() };
 }
 
-const cached = unstable_cache(compute, ["report-reconciliation-v3"], {
+/** The register's first asset was recorded on 18 April 2026. */
+const TREND_FROM_MONTH = "2026-04";
+
+/** Audit actions that create an asset or record a status change. */
+const STATUS_ACTIONS = [
+  "asset.created",
+  "asset.imported_from_zoho_assist",
+  "asset.updated",
+  "asset.write_off",
+  "asset.refurbished",
+  "asset.redeployed_from_zoho_assist",
+  "assessment.created",
+  "assessment.completed",
+  "assessment.cancelled",
+  "dispatch.created",
+] as const;
+
+const cached = unstable_cache(compute, ["report-reconciliation-v5"], {
   tags: [RECONCILIATION_TAG, INVENTORY_STATS_TAG],
   revalidate: 300,
 });

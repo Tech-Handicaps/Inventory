@@ -1,4 +1,5 @@
 import type { ReportAssetTypeId } from "@/lib/reports/asset-types";
+import type { DataQualityFollowUp } from "@/lib/reports/data-quality-follow-ups";
 
 /** Below this share of units with the underlying data, a stat is muted and says "based on N units". */
 export const COVERAGE_THRESHOLD = 0.5;
@@ -71,6 +72,8 @@ export type FleetInsights = {
 };
 
 export type DashboardOverview = {
+  /** Named records waiting on a decision (added by the loader). */
+  followUps?: DataQualityFollowUp[];
   total: number;
   stages: { code: string; label: string; count: number }[];
   kpis: {

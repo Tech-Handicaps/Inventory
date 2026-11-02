@@ -11,6 +11,7 @@ import {
   classifyReportAssetType,
   type ReportAssetTypeId,
 } from "@/lib/reports/asset-types";
+import { DATA_QUALITY_FOLLOW_UPS } from "@/lib/reports/data-quality-follow-ups";
 import {
   summariseOverview,
   type OverviewAsset,
@@ -20,7 +21,7 @@ import {
 export type { DashboardOverview };
 
 async function computeDashboardOverview(): Promise<DashboardOverview> {
-  const [statuses, rows, aliasRows] = await Promise.all([
+  const [statuses, rows, aliasRows, followUpRows] = await Promise.all([
     prisma.assetStatus.findMany({
       orderBy: { sortOrder: "asc" },
       select: { code: true, label: true },
@@ -43,7 +44,13 @@ async function computeDashboardOverview(): Promise<DashboardOverview> {
       },
     }),
     prisma.modelAlias.findMany({ select: { kind: true, alias: true, canonical: true } }),
+    prisma.asset.findMany({
+      where: { assetName: { in: DATA_QUALITY_FOLLOW_UPS.map((f) => f.assetName) } },
+      select: { assetName: true },
+    }),
   ]);
+  const present = new Set(followUpRows.map((r) => r.assetName));
+  const followUps = DATA_QUALITY_FOLLOW_UPS.filter((f) => present.has(f.assetName));
   const aliases = buildAliasMap(aliasRows);
 
   const assets: OverviewAsset[] = rows.map((a) => {
@@ -69,11 +76,11 @@ async function computeDashboardOverview(): Promise<DashboardOverview> {
     };
   });
 
-  return summariseOverview(assets, statuses, new Date(), UNKNOWN_BRAND);
+  return { ...summariseOverview(assets, statuses, new Date(), UNKNOWN_BRAND), followUps };
 }
 
 /** Every Overview and Fleet figure from one read of the register, so they reconcile with All assets. */
 export const loadDashboardOverview = cachedInventoryStat(
-  "dashboard-overview-v4",
+  "dashboard-overview-v5",
   computeDashboardOverview,
 );

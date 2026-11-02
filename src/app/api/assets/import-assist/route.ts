@@ -13,7 +13,8 @@ import {
   refreshZohoAccessToken,
 } from "@/lib/zoho/client";
 import { resolveAssistResourceId } from "@/lib/zoho/resolve-assist-resource";
-import { findMatchingDeviceTemplate } from "@/lib/inventory/find-device-template";
+import { findDeviceTemplateWithAliases, findMatchingDeviceTemplate } from "@/lib/inventory/find-device-template";
+import { loadAliasMap } from "@/lib/inventory/model-aliases";
 import { buildDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
 import {
   isDepotStockStatus,
@@ -114,10 +115,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let template = await findMatchingDeviceTemplate(
-      mapped.manufacturer,
-      mapped.model
-    );
+    const reported = { manufacturer: mapped.manufacturer ?? null, model: mapped.model ?? null };
+    const match = await findDeviceTemplateWithAliases(mapped.manufacturer, mapped.model, await loadAliasMap());
+    let template = match.template;
+    if (match.template && match.viaAlias) {
+      mapped = { ...mapped, manufacturer: match.template.manufacturer, model: match.template.model };
+    }
+    const aliasNote = match.viaAlias
+      ? { reportedByAssist: reported, mappedTo: { manufacturer: mapped.manufacturer, model: mapped.model } }
+      : {};
 
     if (!template && createTemplate) {
       const category = (templateCategory ?? "Hardware").trim() || "Hardware";
@@ -260,6 +266,7 @@ export async function POST(request: NextRequest) {
               zohoAssistDeviceId: assistId,
               serialNumber: serialForCreate,
               redeployedFromStatus: serialConflict.status.code,
+              ...aliasNote,
             },
           });
 
@@ -378,11 +385,14 @@ export async function POST(request: NextRequest) {
     await createAuditLog({
       userId: user.id,
       actionType: "asset.imported_from_zoho_assist",
-      notes: asset.assetName,
+      notes: match.viaAlias
+        ? `${asset.assetName} (Assist reported ${[reported.manufacturer, reported.model].filter(Boolean).join(" ")}; stored as ${[mapped.manufacturer, mapped.model].filter(Boolean).join(" ")} through the model alias table)`
+        : asset.assetName,
       metadata: {
         assetId: asset.id,
         zohoAssistDeviceId: assistId,
         deviceTemplateId: asset.deviceTemplateId,
+        ...aliasNote,
       },
     });
 

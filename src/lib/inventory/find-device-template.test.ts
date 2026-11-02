@@ -14,7 +14,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { findMatchingDeviceTemplate } from "./find-device-template";
+import { buildAliasMap } from "./model-aliases";
+import { findDeviceTemplateWithAliases, findMatchingDeviceTemplate } from "./find-device-template";
 
 const posiflexTemplate = {
   id: "tpl-posiflex",
@@ -91,5 +92,40 @@ describe("findMatchingDeviceTemplate", () => {
     const result = await findMatchingDeviceTemplate(null, "PS-3316");
 
     expect(result).toBeNull();
+  });
+});
+
+describe("findDeviceTemplateWithAliases", () => {
+  const msi = { ...posiflexTemplate, id: "tpl-msi", label: "MSI AP190", manufacturer: "MSI", model: "AP190" };
+  const aliases = buildAliasMap([
+    { kind: "model", alias: "MS-A95311", canonical: "AP190" },
+    { kind: "manufacturer", alias: "MICRO-STAR INTERNATIONAL CO., LTD", canonical: "MSI" },
+  ]);
+
+  beforeEach(() => {
+    findFirst.mockReset();
+    findMany.mockReset();
+  });
+
+  it("maps the motherboard name Assist reports to the MSI AP190 template", async () => {
+    findFirst.mockImplementation(async ({ where }) => (where.model.equals === "AP190" ? msi : null));
+    findMany.mockImplementation(async ({ where }) => (where.model.equals === "AP190" ? [msi] : []));
+
+    const result = await findDeviceTemplateWithAliases("MICRO-STAR INTERNATIONAL CO., LTD", "MS-A95311", aliases);
+
+    expect(result).toEqual({ template: msi, viaAlias: true });
+  });
+
+  it("prefers a direct match and does not retry when no alias applies", async () => {
+    findFirst.mockResolvedValue(posiflexTemplate);
+    expect(await findDeviceTemplateWithAliases("Posiflex", "PS-3316", aliases)).toEqual({
+      template: posiflexTemplate,
+      viaAlias: false,
+    });
+
+    findFirst.mockResolvedValue(null);
+    findMany.mockResolvedValue([]);
+    expect(await findDeviceTemplateWithAliases("Acme", "Z1", aliases)).toEqual({ template: null, viaAlias: false });
+    expect(findFirst).toHaveBeenCalledTimes(2);
   });
 });

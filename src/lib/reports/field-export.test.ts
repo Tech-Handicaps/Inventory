@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFieldCaptureBreakdown,
+  captureArithmetic,
   clubKey,
   modelFamily,
   parseFieldExport,
@@ -70,11 +71,32 @@ describe("buildFieldCaptureBreakdown", () => {
     ]);
     expect(b.notCaptured.map((r) => r.terminalId)).toEqual(["4", "1"]);
     expect(b.outsideExport.map((u) => u.club)).toEqual(["UMTATA COUNTRY CLUB"]);
+    expect(b.matched).toBe(2);
     expect(b.byClub.find((c) => c.clubId === "69")).toMatchObject({ inExport: 1, captured: 1, notYetCaptured: 0 });
     expect(b.byModel.find((m) => m.model === "Lenovo 10Q0")).toMatchObject({ inExport: 0, captured: 1, beyondExport: 1 });
     expect(b.byModel.find((m) => m.model === "Mecer X22S")).toMatchObject({ inExport: 1, captured: 0, notYetCaptured: 1 });
     expect(b.clubOwnedByModel).toEqual([{ model: "Club machine", count: 1 }]);
     expect(b.blankOwnership).toHaveLength(1);
+  });
+
+  it("explains every Deployed unit that matches no HNA-owned row, so the totals add up", () => {
+    const deployed = [
+      unit("KRIEL GOLF CLUB", "PosiFlex", "PS-3316"),
+      unit("KRIEL GOLF CLUB", "MECER", "X22S-T"),
+      unit("KRIEL GOLF CLUB", "Dell Inc.", "OptiPlex 3050 AIO"),
+      unit("BOTHAVILLE", "Dell Inc.", "OptiPlex 3050 AIO"),
+      unit("UMTATA COUNTRY CLUB", "LENOVO", "10Q0S0CU00"),
+    ];
+    const b = buildFieldCaptureBreakdown(terminals, deployed);
+    expect(b.unmatchedAtClubs.map((u) => [u.club, u.reason])).toEqual([
+      ["BOTHAVILLE", "no_hna_rows"],
+      ["KRIEL GOLF CLUB", "beyond_export_count"],
+    ]);
+    const a = captureArithmetic(deployed.length, 4, b);
+    expect(a).toMatchObject({ matched: 2, notCaptured: 2, outsideExport: 1, noHnaRows: 1, beyondExportCount: 1, notMatched: 3 });
+    expect(a.matched + a.notCaptured).toBe(a.hnaOwned);
+    expect(a.matched + a.outsideExport + a.noHnaRows + a.beyondExportCount).toBe(a.deployed);
+    expect(a.deployed + a.notCaptured).toBe(a.hnaOwned + a.notMatched);
   });
 
   it("counts a different model at the right club as captured there", () => {

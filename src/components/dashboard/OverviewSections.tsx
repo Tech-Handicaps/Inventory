@@ -236,7 +236,13 @@ function sentence(have: number, of: number, label: string, key: string) {
   return `${prefix}${have} of ${of}${units} ${label}`;
 }
 
-export function DataQualityCard({ items }: { items: DashboardOverview["dataQuality"] }) {
+export function DataQualityCard({
+  items,
+  followUps = [],
+}: {
+  items: DashboardOverview["dataQuality"];
+  followUps?: DashboardOverview["followUps"];
+}) {
   return (
     <section className="section-card min-w-0 p-6" aria-labelledby="data-quality-heading">
       <h2 id="data-quality-heading" className="font-heading text-lg font-bold text-ink">
@@ -259,6 +265,19 @@ export function DataQualityCard({ items }: { items: DashboardOverview["dataQuali
           );
         })}
       </ul>
+      {followUps.length ? (
+        <div className="mt-5 border-t border-line pt-4">
+          <h3 className="text-sm font-semibold text-ink">To follow up</h3>
+          <ul className="mt-2 space-y-2">
+            {followUps.map((f) => (
+              <li key={f.assetName} className="text-sm">
+                <span className="font-mono text-xs font-medium text-ink">{f.assetName}</span>
+                <span className="block text-xs text-muted">{f.note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <button
         type="button"
         disabled

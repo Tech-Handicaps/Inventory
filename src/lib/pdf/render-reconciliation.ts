@@ -5,6 +5,8 @@ import {
   pdfDocumentChrome,
 } from "@/lib/pdf/chromium-pdf";
 import { formatDate } from "@/lib/dates/format";
+import { captureArithmetic, MODEL_ROW_NOTES } from "@/lib/reports/field-export";
+import { monthLabelOf } from "@/lib/reports/period-catalog";
 import { RECON_SECTIONS, type ReconSection } from "@/lib/reports/reconciliation";
 import type { ReconciliationView } from "@/lib/reports/load-reconciliation";
 
@@ -27,9 +29,35 @@ function fieldCaptureBreakdownHtml(report: ReconciliationView): string {
   if (!bd) return `<p class="note">The stored export could not be read, so the breakdown by model and club is not included.</p>`;
   const modelGap = bd.byModel.reduce((s, m) => s + m.notYetCaptured, 0);
   const beyond = bd.byModel.reduce((s, m) => s + m.beyondExport, 0);
+  const a = captureArithmetic(report.register.hardware.deployed, capture.baseline.hnaOwned, bd);
+  const arithmetic = `
+    <h3>How the numbers add up</h3>
+    <table class="list recon">
+      <tbody>
+        <tr><td><strong>HNA-owned terminals in the export</strong></td><td class="num"><strong>${a.hnaOwned}</strong></td></tr>
+        <tr><td>Matched to a Deployed unit at the same club</td><td class="num">${a.matched}</td></tr>
+        <tr><td>Not yet captured</td><td class="num">${a.notCaptured}</td></tr>
+        <tr><td><strong>Deployed in the register</strong></td><td class="num"><strong>${a.deployed}</strong></td></tr>
+        <tr><td>Matched to an HNA-owned export terminal</td><td class="num">${a.matched}</td></tr>
+        <tr><td>At sites not in the export</td><td class="num">${a.outsideExport}</td></tr>
+        <tr><td>At clubs whose export rows are all club-owned or unowned</td><td class="num">${a.noHnaRows}</td></tr>
+        <tr><td>Extra units at a club beyond its HNA-owned export rows</td><td class="num">${a.beyondExportCount}</td></tr>
+      </tbody>
+    </table>
+    <p class="note">${a.deployed} captured + ${a.notCaptured} not yet captured = ${a.deployed + a.notCaptured}, which is ${a.hnaOwned} + ${a.notMatched}: the ${a.notMatched} Deployed unit(s) that do not match an HNA-owned export terminal. Matched strictly, ${a.matched} of ${a.hnaOwned} (${Math.round((a.matched / a.hnaOwned) * 1000) / 10}%) are captured; the headline uses all ${a.deployed} Deployed units.</p>`;
+  const unmatched = [
+    ...bd.outsideExport.map((u) => `${escHtml(u.assetName)} – ${escHtml(u.model)} – ${escHtml(u.club ?? "no club recorded")} (site not in the export)`),
+    ...bd.unmatchedAtClubs.map(
+      (u) =>
+        `${escHtml(u.assetName)} – ${escHtml(u.model)} – ${escHtml(u.club)} (${u.reason === "no_hna_rows" ? "export lists only club-owned or unowned terminals here" : "more units than HNA-owned export rows"})`
+    ),
+  ];
+  const trend = report.captureTrend.points
+    .map((p) => `<tr><td>${escHtml(monthLabelOf(p.monthKey))}${p.toDate ? ` <span class="muted">(to date)</span>` : ""}</td><td class="num">${p.deployed}</td><td class="num">${p.pct}%</td></tr>`)
+    .join("");
   const models = bd.byModel
     .map(
-      (m) => `<tr><td>${escHtml(m.model)}${m.inExport === 0 ? ` <span class="muted">(not named in the export)</span>` : ""}</td><td class="num">${m.inExport}</td><td class="num">${m.captured}</td><td class="num">${m.notYetCaptured || "–"}</td></tr>`
+      (m) => `<tr><td>${escHtml(m.model)}${m.inExport === 0 ? ` <span class="muted">(not named in the export)</span>` : ""}${MODEL_ROW_NOTES[m.model] ? `<br /><span class="muted">${escHtml(MODEL_ROW_NOTES[m.model])}</span>` : ""}</td><td class="num">${m.inExport}</td><td class="num">${m.captured}</td><td class="num">${m.notYetCaptured || "–"}</td></tr>`
     )
     .join("");
   const clubs = bd.byClub
@@ -37,18 +65,23 @@ function fieldCaptureBreakdownHtml(report: ReconciliationView): string {
       (c) => `<tr><td>${escHtml(c.clubId)}</td><td>${escHtml(c.club)}</td><td class="muted">${escHtml(c.exportModels || "None (club-owned only)")}</td><td class="num">${c.inExport}</td><td class="num">${c.captured}</td><td class="num">${c.notYetCaptured || "–"}</td></tr>`
     )
     .join("");
-  const outside = bd.outsideExport.length
-    ? `<p class="note">Deployed at sites not in this export (${bd.outsideExport.length}): ${bd.outsideExport
-        .map((u) => `${escHtml(u.assetName)} – ${escHtml(u.model)} – ${escHtml(u.club ?? "no club recorded")}`)
-        .join("; ")}.</p>`
+  const outside = unmatched.length
+    ? `<p class="note">Deployed units that match no HNA-owned export terminal (${unmatched.length}): ${unmatched.join("; ")}.</p>`
     : "";
   return `
+    ${arithmetic}
+    <h3>Captured by month</h3>
+    <table class="list recon">
+      <thead><tr><th>Month end</th><th class="num">Deployed</th><th class="num">% of HNA-owned</th></tr></thead>
+      <tbody>${trend}</tbody>
+    </table>
+    <p class="note">Hardware in Deployed at each month end (SAST), replayed for each asset from the audit log, which starts with the first asset on 18 April 2026, and checked against today's register. Deleted records are not counted.${report.captureTrend.unreconciled ? ` For ${report.captureTrend.unreconciled} asset(s) the replay does not end at today's status, so earlier months may be off by up to that number.` : ""}</p>
     <h3>By model</h3>
     <table class="list recon">
       <thead><tr><th>Model</th><th class="num">HNA-owned in export</th><th class="num">Captured (Deployed)</th><th class="num">Not yet captured</th></tr></thead>
       <tbody>${models}<tr class="total"><td><strong>Total</strong></td><td class="num">${capture.baseline.hnaOwned}</td><td class="num">${report.register.hardware.deployed}</td><td class="num">${modelGap}</td></tr></tbody>
     </table>
-    <p class="note">Lenovo M810z and Lenovo 10Q0 are kept as separate models: the export names M810z, the register's Lenovo units are 10Q0. An NUC is counted once whichever screen it came with.${modelGap !== capture.notYetCaptured ? ` Per model the gaps add up to ${modelGap} rather than ${capture.notYetCaptured}, because ${beyond} deployed unit(s) are models the export does not name, or more units of a model than the export lists.` : ""}</p>
+    <p class="note">Lenovo M810z (named in the export) and Lenovo 10Q0 (in the register) are different models and are never merged or aliased. An NUC is counted once whichever screen it came with.${modelGap !== capture.notYetCaptured ? ` Per model the gaps add up to ${modelGap} rather than ${capture.notYetCaptured}, because ${beyond} deployed unit(s) are models the export does not name, or more units of a model than the export lists.` : ""}</p>
     <h3>By club</h3>
     <p class="note">The register does not hold terminal IDs, so units are matched to the export by club (same model first). Clubs with only club-owned terminals are listed when the register has a unit there. Terminals not yet captured: ${bd.notCaptured.length} rows in the export, listed for technicians in the app.</p>
     <table class="list recon clubs">
