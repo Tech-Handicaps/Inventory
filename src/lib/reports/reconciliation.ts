@@ -1,4 +1,5 @@
 import { classifyReportAssetType } from "@/lib/reports/asset-types";
+import type { FieldCaptureBreakdown, FieldTerminal } from "@/lib/reports/field-export";
 
 export type ReconLine = {
   id: string;
@@ -109,31 +110,67 @@ export function buildReconciliation(lines: ReconLine[], register: RegisterCompos
   };
 }
 
-/** Field terminal export used as the capture baseline (spec 5.10). */
-export const FIELD_EXPORT_BASELINE = {
+export type FieldExportBaseline = {
+  fileName: string;
+  exportDate: string;
+  terminalsAtClubs: number;
+  hnaOwned: number;
+  clubOwned: number;
+  blankOwnership: number;
+  clubIds: number;
+};
+
+/**
+ * Totals of the field terminal export (spec 5.10), used when the stored file cannot be read.
+ * The file has 2 blank-ownership rows and 341 club IDs (the spec's 3 and 342 do not add up to 354).
+ */
+export const FIELD_EXPORT_BASELINE: FieldExportBaseline = {
   fileName: "Terminal make levels 1 October 2025.xlsx",
   exportDate: "2025-10-14",
   terminalsAtClubs: 354,
   hnaOwned: 305,
   clubOwned: 47,
-  blankOwnership: 3,
-  clubIds: 342,
+  blankOwnership: 2,
+  clubIds: 341,
 };
 
+export function baselineFromTerminals(
+  terminals: FieldTerminal[],
+  meta: { fileName: string; exportDate: string }
+): FieldExportBaseline {
+  return {
+    ...meta,
+    terminalsAtClubs: terminals.length,
+    hnaOwned: terminals.filter((t) => t.ownership === "HNA").length,
+    clubOwned: terminals.filter((t) => t.ownership === "Club").length,
+    blankOwnership: terminals.filter((t) => t.ownership === "").length,
+    clubIds: new Set(terminals.map((t) => t.clubId || t.club)).size,
+  };
+}
+
 export type FieldCapture = {
-  baseline: typeof FIELD_EXPORT_BASELINE;
+  baseline: FieldExportBaseline;
+  /** The stored export the breakdown was read from; null when only the fallback totals are available. */
+  sourceDocumentId: string | null;
   captured: number;
   notYetCaptured: number;
   capturedPct: number;
+  breakdown: FieldCaptureBreakdown | null;
 };
 
-export function fieldCapture(deployedHardware: number): FieldCapture {
-  const base = FIELD_EXPORT_BASELINE;
+export function fieldCapture(
+  deployedHardware: number,
+  base: FieldExportBaseline = FIELD_EXPORT_BASELINE,
+  breakdown: FieldCaptureBreakdown | null = null,
+  sourceDocumentId: string | null = null
+): FieldCapture {
   const captured = Math.min(deployedHardware, base.hnaOwned);
   return {
     baseline: base,
+    sourceDocumentId,
     captured,
     notYetCaptured: Math.max(base.hnaOwned - deployedHardware, 0),
-    capturedPct: Math.round((captured / base.hnaOwned) * 1000) / 10,
+    capturedPct: base.hnaOwned ? Math.round((captured / base.hnaOwned) * 1000) / 10 : 0,
+    breakdown,
   };
 }

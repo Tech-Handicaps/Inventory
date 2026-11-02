@@ -175,6 +175,11 @@ function PeriodDetail({ period, canEdit, onChanged }: { period: PeriodRow; canEd
                   {doc.documentDate ? ` · dated ${formatDate(doc.documentDate)}` : ""} · uploaded {formatDateTime(doc.uploadedAt)}
                 </span>
                 {doc.flag ? <span className="ml-2 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs text-amber-800">{doc.flag}</span> : null}
+                {doc.kind === "auditor_note" ? (
+                  <span className="ml-2 rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-xs text-violet-900">
+                    Not a stock count
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -414,6 +419,8 @@ export function PeriodsSection() {
             {data.periods.map((period) => {
               const badge = KIND_BADGE[period.kind];
               const expanded = openMonth === period.monthKey;
+              const auditorNotes = period.documents.filter((doc) => doc.kind === "auditor_note");
+              const otherFiles = period.documents.length - auditorNotes.length;
               const pdf = `/api/reports/legacy-month-end/pdf?month=${period.monthKey}`;
               return (
                 <Fragment key={period.monthKey}>
@@ -432,6 +439,15 @@ export function PeriodsSection() {
                     <td className="px-4 py-3">
                       <span className={`inline-block rounded border px-1.5 py-0.5 text-xs ${badge.className}`}>{badge.label}</span>
                       <div className="mt-1 max-w-md text-ink">{period.title}</div>
+                      {auditorNotes.map((doc) => (
+                        <div key={doc.id} className="mt-2 max-w-md rounded border border-violet-200 bg-violet-50 px-2 py-1.5 text-xs text-violet-900">
+                          <span className="font-semibold">Auditor note – not a stock count.</span>{" "}
+                          <a href={`/api/reports/period-documents/${doc.id}`} target="_blank" rel="noopener noreferrer" className="underline">
+                            {doc.title}
+                          </a>{" "}
+                          is filed here for reference and adds no units to {period.monthLabel}.
+                        </div>
+                      ))}
                       {period.openFlags > 0 ? <div className="mt-1 text-xs text-amber-800">{period.openFlags} open inconsistency flag(s)</div> : null}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
@@ -456,7 +472,9 @@ export function PeriodsSection() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted">
-                      {period.documents.length} file(s){period.events.length ? ` · ${period.events.length} movement(s)` : ""}
+                      {otherFiles || !auditorNotes.length ? `${otherFiles} file(s)` : ""}
+                      {auditorNotes.length ? `${otherFiles ? " · " : ""}${auditorNotes.length} auditor note` : ""}
+                      {period.events.length ? ` · ${period.events.length} movement(s)` : ""}
                     </td>
                   </tr>
                   {expanded ? (

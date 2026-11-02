@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useAppRole } from "@/components/RoleProvider";
 import { SectionSkeleton } from "@/components/Skeleton";
 import { isReportsAdmin } from "@/lib/auth/reports-admin";
-import { formatDate } from "@/lib/dates/format";
 import type { ReconciliationView } from "@/lib/reports/load-reconciliation";
 import { RECON_SECTIONS, type ReconSection } from "@/lib/reports/reconciliation";
+import { FieldCaptureCard } from "./field-capture-card";
 import { PdfButtons, TabIntro } from "./report-tile";
 
 const PDF = "/api/reports/reconciliation/pdf";
@@ -203,27 +203,6 @@ function Bridge({ view, canEdit, onChanged }: { view: ReconciliationView; canEdi
       <p className="text-xs text-muted">
         Written off: {reg.writtenOffWithCertificate} with a disposal certificate; {reg.pendingDisposal} pending disposal
         (no certificate yet). The difference is never forced to zero.
-      </p>
-    </section>
-  );
-}
-
-function FieldCaptureCard({ view }: { view: ReconciliationView }) {
-  const fc = view.fieldCapture;
-  const b = fc.baseline;
-  return (
-    <section className="section-card space-y-3 p-5">
-      <h3 className="font-heading text-base font-bold text-ink">Field capture</h3>
-      <p className="text-sm text-muted">
-        Baseline: {b.fileName}, exported {formatDate(b.exportDate)} — {b.terminalsAtClubs} terminals at clubs ({b.hnaOwned}{" "}
-        HNA-owned, {b.clubOwned} club-owned, {b.blankOwnership} blank).
-      </p>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-100" aria-hidden>
-        <div className="h-full bg-brand" style={{ width: `${Math.min(100, fc.capturedPct)}%` }} />
-      </div>
-      <p className="text-sm text-ink">
-        <strong>{fc.captured}</strong> of {b.hnaOwned} HNA-owned terminals captured ({fc.capturedPct}%);{" "}
-        {fc.notYetCaptured} not yet captured.
       </p>
     </section>
   );

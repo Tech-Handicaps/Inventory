@@ -1,7 +1,12 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { INVENTORY_STATS_TAG } from "@/lib/cache/inventory-stats";
+import { applyAlias, loadAliasMap } from "@/lib/inventory/model-aliases";
+import { classifyReportAssetType } from "@/lib/reports/asset-types";
+import { buildFieldCaptureBreakdown } from "@/lib/reports/field-export";
+import { loadLatestFieldExport } from "@/lib/reports/load-field-export";
 import {
+  baselineFromTerminals,
   buildReconciliation,
   fieldCapture,
   registerComposition,
@@ -17,16 +22,23 @@ export type ReconciliationView = ReconciliationReport & {
 };
 
 async function compute(): Promise<ReconciliationView> {
-  const [lines, assets] = await Promise.all([
+  const [lines, assets, fieldExport, aliases] = await Promise.all([
     prisma.reconciliationLine.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.asset.findMany({
       select: {
+        assetName: true,
+        serialNumber: true,
+        manufacturer: true,
+        model: true,
         category: true,
         tags: true,
+        club: { select: { name: true } },
         status: { select: { code: true } },
         _count: { select: { writeOffCertificates: true } },
       },
     }),
+    loadLatestFieldExport(),
+    loadAliasMap(),
   ]);
   const register = registerComposition(
     assets.map((asset) => ({
@@ -50,10 +62,31 @@ async function compute(): Promise<ReconciliationView> {
     })),
     register
   );
-  return { ...report, fieldCapture: fieldCapture(register.hardware.deployed), generatedAt: new Date().toISOString() };
+
+  let capture = fieldCapture(register.hardware.deployed);
+  if (fieldExport) {
+    const deployed = assets
+      .filter((a) => a.status.code === "deployed")
+      .filter((a) => !["usb_hid_msr", "other"].includes(classifyReportAssetType(a.category, a.tags)))
+      .map((a) => ({
+        assetName: a.assetName,
+        serialNumber: a.serialNumber,
+        manufacturer: applyAlias(aliases, "manufacturer", a.manufacturer),
+        model: applyAlias(aliases, "model", a.model),
+        raw: { manufacturer: a.manufacturer, model: a.model },
+        club: a.club?.name ?? null,
+      }));
+    capture = fieldCapture(
+      register.hardware.deployed,
+      baselineFromTerminals(fieldExport.terminals, { fileName: fieldExport.fileName, exportDate: fieldExport.exportDate }),
+      buildFieldCaptureBreakdown(fieldExport.terminals, deployed),
+      fieldExport.documentId
+    );
+  }
+  return { ...report, fieldCapture: capture, generatedAt: new Date().toISOString() };
 }
 
-const cached = unstable_cache(compute, ["report-reconciliation-v1"], {
+const cached = unstable_cache(compute, ["report-reconciliation-v3"], {
   tags: [RECONCILIATION_TAG, INVENTORY_STATS_TAG],
   revalidate: 300,
 });

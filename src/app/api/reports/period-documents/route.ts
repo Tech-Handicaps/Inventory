@@ -11,6 +11,7 @@ import {
   safeFileName,
   sha256Hex,
 } from "@/lib/reports/period-documents";
+import { invalidateReconciliation } from "@/lib/reports/load-reconciliation";
 import { invalidateReportPeriods, toDocumentRow } from "@/lib/reports/period-records";
 
 export const runtime = "nodejs";
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
       metadata: { documentId: doc.id, monthKey, kind, fileName, sha256, sizeBytes: bytes.length, linkedEvent },
     });
     invalidateReportPeriods();
+    if (kind === "field_export") invalidateReconciliation();
     return NextResponse.json({ document: toDocumentRow(doc), linkedEvent }, { status: 201 });
   } catch (error) {
     console.error("POST /api/reports/period-documents", error);
