@@ -16,9 +16,12 @@ function asset(over: Partial<OverviewAsset>): OverviewAsset {
     brand: "Dell",
     model: "OptiPlex 3050",
     type: "hardware",
+    category: "Hardware",
+    dataSource: "zoho_assist",
     hasSerial: true,
     location: "My Department",
     hasClub: true,
+    dateAdded: new Date("2026-05-01T00:00:00Z"),
     purchaseDate: null,
     warrantyEndDate: null,
     ...over,
@@ -66,5 +69,18 @@ describe("summariseOverview", () => {
     expect(location).toMatchObject({ have: 1, of: 6 });
     const club = o.dataQuality.find((d) => d.key === "club");
     expect(club).toMatchObject({ have: 2, of: 3 });
+  });
+
+  it("uses plain stage labels that match the KPI cards", () => {
+    expect(o.stages.find((s) => s.code === "repair")?.label).toBe("In repair");
+    expect(o.stages.find((s) => s.code === "new_stock")?.label).toBe("New stock");
+  });
+
+  it("builds the Fleet model list from the same grouping, split in use / written off", () => {
+    expect(o.fleet.models.length).toBe(o.distinctModels);
+    expect(o.fleet.models[0]).toEqual({ brand: "Dell", model: "OptiPlex 3050", inUse: 2, writtenOff: 1, total: 3 });
+    expect(o.fleet.noModel).toEqual({ inUse: 1, writtenOff: 0 });
+    expect(o.fleet).toMatchObject({ inUse: 5, writtenOff: 1, brandsInUse: 3 });
+    expect(o.fleet.warranty).toEqual({ active: 1, expiring90: 1, expired: 0 });
   });
 });

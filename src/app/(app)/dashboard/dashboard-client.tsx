@@ -1,15 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SkeletonBlock } from "@/components/Skeleton";
-import { CategoryBarChart } from "@/components/charts/CategoryBarChart";
 import { useHandicaper } from "@/components/HandicaperProvider";
-import { DataSourceDonutChart } from "@/components/charts/DataSourceDonutChart";
-import { RegistrationYearChart } from "@/components/charts/RegistrationYearChart";
-import { RefurbishedLineChart } from "@/components/charts/RefurbishedLineChart";
-import { RepairsBarChart } from "@/components/charts/RepairsBarChart";
-import { WriteoffsDonutChart } from "@/components/charts/WriteoffsDonutChart";
 import {
   CoverageFigure,
   DataQualityCard,
@@ -23,85 +18,38 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { formatDateTime } from "@/lib/dates/format";
 import { AVAILABLE_STATUS_PARAM } from "@/lib/inventory/asset-table";
 import type { DashboardOverview } from "@/lib/reports/dashboard-overview-summary";
+import type { DashboardActivity, DashboardSync } from "@/lib/reports/dashboard-tab-data";
 import { DASHBOARD_TABS, type DashboardTab } from "@/lib/reports/dashboard-tabs";
 
-type RepairsData = {
-  pipeline: { status: string; count: number }[];
-  repairs: { asset: { assetName: string } }[];
-};
-type RefurbishedData = { assets: { assetName: string; dateUpdated: string }[] };
-type WriteoffsData = {
-  assets: { id: string; assetName: string; reason: string | null }[];
-  byReason: { reason: string; count: number }[];
-  total: number;
-};
-type DashboardSummary = {
-  totalAssets: number;
-  byCategory: { category: string; count: number }[];
-  byDataSource: { dataSource: string; count: number }[];
-  recentAssets: {
-    id: string;
-    assetName: string;
-    category: string;
-    dateUpdated: string;
-    dataSource: string;
-    status: { label: string; code: string };
-  }[];
-};
-type XeroHealth = {
-  configured: boolean;
-  summary: Record<string, { fixed_asset: number; inventory: number }>;
-  recent?: {
-    id: string;
-    syncStatus: string;
-    xeroType: string;
-    createdAt: string;
-    asset: { assetName: string };
-  }[];
-};
-
-type AssetGeoReport = {
-  totalOperational: number;
-  withPublicIp: number;
-  withGeo: number;
-  publicIpCoveragePct: number;
-  geoCoveragePct: number;
-  byCountry: { countryCode: string; count: number; percent: number }[];
-  byRegion: { label: string; count: number; percent: number }[];
-  note: string;
-};
-
-type FleetProcurement = {
-  totalOperational: number;
-  totalWrittenOff: number;
-  totalRegistered: number;
-  distinctManufacturers: number;
-  distinctModels: number;
-  topManufacturerShare: number;
-  topThreeModelsShare: number;
-  registeredLast24MonthsPct: number;
-  withPurchaseDate: number;
-  withWarrantyEnd: number;
-  purchaseDateCoveragePct: number;
-  warrantyEndCoveragePct: number;
-  averageFleetAgeYears: number | null;
-  warrantyExpiring90Days: number;
-  warrantyExpired: number;
-  warrantyActiveKnown: number;
-  byPurchaseYear: { year: number; count: number; percent: number }[];
-  usePurchaseYearForAge: boolean;
-  byManufacturer: { name: string; count: number; percent: number }[];
-  byModel: {
-    label: string;
-    count: number;
-    percent: number;
-    manufacturer: string | null;
-  }[];
-  byRegistrationYear: { year: number; count: number; percent: number }[];
-  insights: string[];
-};
+/** Charts load with their tab, so the Overview never waits for the charting library. */
+const chartLoading = () => <SkeletonBlock className="h-full w-full" />;
+const CategoryBarChart = dynamic(() => import("@/components/charts/CategoryBarChart").then((m) => m.CategoryBarChart), {
+  ssr: false,
+  loading: chartLoading,
+});
+const DataSourceDonutChart = dynamic(
+  () => import("@/components/charts/DataSourceDonutChart").then((m) => m.DataSourceDonutChart),
+  { ssr: false, loading: chartLoading }
+);
+const RegistrationYearChart = dynamic(
+  () => import("@/components/charts/RegistrationYearChart").then((m) => m.RegistrationYearChart),
+  { ssr: false, loading: chartLoading }
+);
+const RefurbishedLineChart = dynamic(
+  () => import("@/components/charts/RefurbishedLineChart").then((m) => m.RefurbishedLineChart),
+  { ssr: false, loading: chartLoading }
+);
+const RepairsBarChart = dynamic(() => import("@/components/charts/RepairsBarChart").then((m) => m.RepairsBarChart), {
+  ssr: false,
+  loading: chartLoading,
+});
+const WriteoffsDonutChart = dynamic(
+  () => import("@/components/charts/WriteoffsDonutChart").then((m) => m.WriteoffsDonutChart),
+  { ssr: false, loading: chartLoading }
+);
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
+const pct = (part: number, whole: number) => (whole > 0 ? round1((part / whole) * 100) : 0);
 
 /** Plain figure card for the secondary tabs. */
 function Stat({
@@ -129,91 +77,45 @@ function Stat({
   );
 }
 
-/** Last bundle for this tab session, shown instantly while a fresh one loads. */
-const DASHBOARD_CACHE_KEY = "hna:dashboard-bundle";
+type TabData = { activity: DashboardActivity; sync: DashboardSync };
+type LoadState<T> = { data: T | null; error: string | null };
 
-export type DashboardBundle = Partial<
-  Record<
-    "stock" | "repairs" | "refurbished" | "writeoffs" | "summary" | "xeroHealth" | "fleet" | "assetGeo",
-    { data: unknown; error: string | null }
-  >
->;
-
-function readBundle(bundle: DashboardBundle) {
-  const section = <T,>(key: keyof DashboardBundle) => (bundle[key]?.data ?? null) as T | null;
-  const results = Object.values(bundle);
-  const failures = results.filter((row) => row?.error);
-  const error =
-    results.length > 0 && failures.length === results.length
-      ? (failures[0]?.error ?? "Failed to load these figures")
-      : failures.length > 0
-        ? `Some sections failed to load (${failures.length} of ${results.length}). Showing what loaded.`
-        : null;
-  return {
-    repairs: section<RepairsData>("repairs"),
-    refurbished: section<RefurbishedData>("refurbished"),
-    writeoffs: section<WriteoffsData>("writeoffs"),
-    summary: section<DashboardSummary>("summary"),
-    xeroHealth: section<XeroHealth>("xeroHealth"),
-    fleet: section<FleetProcurement>("fleet"),
-    assetGeo: section<AssetGeoReport>("assetGeo"),
-    error,
-  };
-}
-
-type BundleState = ReturnType<typeof readBundle>;
-
-/** Loads the secondary-tab figures on demand, showing the session's last copy first. */
-function useDashboardBundle() {
-  const [data, setData] = useState<BundleState | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [requested, setRequested] = useState(false);
+/** Fetches one tab's figures the first time that tab is wanted; each tab loads on its own. */
+function useTabData() {
+  const [state, setState] = useState<{ [K in keyof TabData]?: LoadState<TabData[K]> }>({});
+  const [wanted, setWanted] = useState<Set<keyof TabData>>(() => new Set());
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!requested) return;
-    let cancelled = false;
-    const frame = requestAnimationFrame(() => {
-      try {
-        const cached = sessionStorage.getItem(DASHBOARD_CACHE_KEY);
-        if (cached && !cancelled) setData((prev) => prev ?? readBundle(JSON.parse(cached) as DashboardBundle));
-      } catch {
-        /* ignore unreadable cache */
-      }
-    });
-    void (async () => {
-      try {
-        const r = await fetch("/api/reports/dashboard-bundle");
-        const j = (await r.json().catch(() => null)) as DashboardBundle | { error?: string } | null;
-        if (cancelled) return;
-        if (!r.ok || !j) {
-          setError(j && "error" in j && typeof j.error === "string" ? j.error : "Failed to load these figures");
-          return;
-        }
-        const next = readBundle(j as DashboardBundle);
-        setData(next);
-        setError(next.error);
-        try {
-          sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(j));
-        } catch {
-          /* storage full or disabled */
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load these figures");
-      }
-    })();
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frame);
-    };
-  }, [requested, attempt]);
+    const controllers: AbortController[] = [];
+    for (const tab of wanted) {
+      if (state[tab]?.data) continue;
+      const controller = new AbortController();
+      controllers.push(controller);
+      void fetch(`/api/reports/dashboard-tab?tab=${tab}`, { signal: controller.signal })
+        .then(async (r) => {
+          const j = await r.json().catch(() => null);
+          if (!r.ok || !j) throw new Error(j?.error ?? "Failed to load these figures");
+          setState((s) => ({ ...s, [tab]: { data: j, error: null } }));
+        })
+        .catch((e: unknown) => {
+          if (controller.signal.aborted) return;
+          setState((s) => ({ ...s, [tab]: { data: null, error: e instanceof Error ? e.message : "Failed to load" } }));
+        });
+    }
+    return () => controllers.forEach((c) => c.abort());
+    // `state` is read only to skip tabs that already loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, attempt]);
 
-  const request = useCallback(() => setRequested(true), []);
-  const retry = useCallback(() => {
-    setError(null);
+  const want = useCallback((tab: keyof TabData) => {
+    setWanted((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)));
+  }, []);
+  const retry = useCallback((tab: keyof TabData) => {
+    setState((s) => ({ ...s, [tab]: undefined }));
     setAttempt((n) => n + 1);
   }, []);
-  return { data, error, request, retry };
+  return { state, want, retry };
 }
 
 export function DashboardView({
@@ -224,13 +126,13 @@ export function DashboardView({
   initialTab: DashboardTab;
 }) {
   const [tab, setTab] = useState<DashboardTab>(initialTab);
-  const bundle = useDashboardBundle();
+  const tabs = useTabData();
   const { openMetric } = useHandicaper();
-  const { request } = bundle;
+  const { want } = tabs;
 
   useEffect(() => {
-    if (tab !== "overview") request();
-  }, [tab, request]);
+    if (tab === "activity" || tab === "sync") want(tab);
+  }, [tab, want]);
 
   const selectTab = (next: DashboardTab) => {
     setTab(next);
@@ -307,7 +209,7 @@ export function DashboardView({
             tabIndex={tab === t.id ? 0 : -1}
             onClick={() => selectTab(t.id)}
             onKeyDown={(e) => onTabKey(e, i)}
-            onPointerEnter={t.id === "overview" ? undefined : request}
+            onPointerEnter={t.id === "activity" || t.id === "sync" ? () => want(t.id as "activity" | "sync") : undefined}
             className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
               tab === t.id ? "border-hna-green-strong text-ink" : "border-transparent text-muted hover:text-ink"
             }`}
@@ -318,39 +220,43 @@ export function DashboardView({
       </div>
 
       <div id={`dash-panel-${tab}`} role="tabpanel" aria-labelledby={`dash-tab-${tab}`} className="space-y-6">
-        {tab === "overview" ? (
-          <OverviewTab overview={overview} />
-        ) : !bundle.data ? (
-          bundle.error ? (
-            <LoadError message={bundle.error} onRetry={bundle.retry} />
-          ) : (
-            <TabSkeleton />
-          )
-        ) : (
-          <>
-            {bundle.error ? <LoadError message={bundle.error} onRetry={bundle.retry} /> : null}
-            {tab === "fleet" ? <FleetTab overview={overview} data={bundle.data} /> : null}
-            {tab === "activity" ? <ActivityTab data={bundle.data} /> : null}
-            {tab === "sync" ? <SyncTab data={bundle.data} /> : null}
-          </>
-        )}
+        {tab === "overview" ? <OverviewTab overview={overview} /> : null}
+        {tab === "fleet" ? <FleetTab overview={overview} /> : null}
+        {tab === "activity" ? (
+          <Loaded state={tabs.state.activity} onRetry={() => tabs.retry("activity")}>
+            {(data) => <ActivityTab data={data} />}
+          </Loaded>
+        ) : null}
+        {tab === "sync" ? (
+          <Loaded state={tabs.state.sync} onRetry={() => tabs.retry("sync")}>
+            {(data) => <SyncTab data={data} />}
+          </Loaded>
+        ) : null}
       </div>
     </main>
   );
 }
 
-function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status">
-      {message}{" "}
-      <button type="button" className="font-semibold underline" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
-}
-
-function TabSkeleton() {
+function Loaded<T>({
+  state,
+  onRetry,
+  children,
+}: {
+  state: LoadState<T> | undefined;
+  onRetry: () => void;
+  children: (data: T) => React.ReactNode;
+}) {
+  if (state?.data) return <>{children(state.data)}</>;
+  if (state?.error) {
+    return (
+      <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status">
+        {state.error}{" "}
+        <button type="button" className="font-semibold underline" onClick={onRetry}>
+          Retry
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="grid gap-6 lg:grid-cols-2" role="status" aria-label="Loading">
       <SkeletonBlock className="h-64 w-full" />
@@ -360,7 +266,14 @@ function TabSkeleton() {
   );
 }
 
+/** "133 units in use (3 written off left out)" — says why the base is not the total. */
+function inUseBase(overview: DashboardOverview) {
+  const off = overview.fleet.writtenOff;
+  return off ? `${overview.fleet.inUse} units in use (the ${off} written off are left out)` : `${overview.fleet.inUse} units`;
+}
+
 function OverviewTab({ overview }: { overview: DashboardOverview }) {
+  const base = inUseBase(overview);
   return (
     <>
       <StageBar stages={overview.stages} total={overview.total} />
@@ -378,7 +291,7 @@ function OverviewTab({ overview }: { overview: DashboardOverview }) {
           <h2 id="models-heading" className="font-heading text-lg font-bold text-ink">
             Most common models
           </h2>
-          <p className="mt-1 text-sm text-muted">All stages, by number of units.</p>
+          <p className="mt-1 text-sm text-muted">All {overview.total} units, by number of units.</p>
           <div className="mt-4">
             <TopModels skus={overview.topSkus} distinctModels={overview.distinctModels} />
           </div>
@@ -391,13 +304,15 @@ function OverviewTab({ overview }: { overview: DashboardOverview }) {
             label="Average age"
             stat={overview.averageAgeYears}
             format={(v) => `${round1(v)} yrs`}
-            help="Years since the purchase date, for units still in use. Only units with a purchase date count."
+            unitsLabel="units in use"
+            help={`Years since the purchase date, across the ${base}. Only units with a purchase date count.`}
           />
           <CoverageFigure
             label="Warranty ending in 90 days"
             stat={overview.warrantyExpiring90Days}
             format={(v) => String(v)}
-            help="Units still in use whose warranty end date falls in the next 90 days. Only units with a warranty date count."
+            unitsLabel="units in use"
+            help={`Units whose warranty ends in the next 90 days, across the ${base}. Only units with a warranty date count.`}
           />
         </div>
       </div>
@@ -405,158 +320,173 @@ function OverviewTab({ overview }: { overview: DashboardOverview }) {
   );
 }
 
-function FleetTab({ overview, data }: { overview: DashboardOverview; data: BundleState }) {
-  const { fleet, summary } = data;
-  const lowPurchase = !fleet || fleet.totalOperational === 0 || fleet.withPurchaseDate / fleet.totalOperational < 0.5;
-  const lowWarranty = !fleet || fleet.totalOperational === 0 || fleet.withWarrantyEnd / fleet.totalOperational < 0.5;
+function FleetTab({ overview }: { overview: DashboardOverview }) {
+  const f = overview.fleet;
+  const lowPurchase = f.purchaseDates.of === 0 || f.purchaseDates.have / f.purchaseDates.of < 0.5;
+  const lowWarranty = f.warrantyDates.of === 0 || f.warrantyDates.have / f.warrantyDates.of < 0.5;
 
   return (
     <>
       <section className="section-card p-6">
         <h2 className="font-heading text-lg font-bold text-ink">Fleet insights</h2>
-        <p className="mt-1 text-sm text-muted">Units still in use; written-off units are left out.</p>
-        {fleet && fleet.totalOperational > 0 ? (
-          <>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <Stat label="Units in use" value={fleet.totalOperational} hint="Excludes written off" />
-              <Stat label="Brands" value={fleet.distinctManufacturers} />
-              <Stat label="Models" value={fleet.distinctModels} />
-              <Stat
-                label="Top brand share"
-                value={`${round1(fleet.topManufacturerShare)}%`}
-                hint={fleet.byManufacturer[0]?.name}
-                help="Share of units in use made by the most common brand."
-              />
-              <Stat
-                label="Top 3 models share"
-                value={`${round1(fleet.topThreeModelsShare)}%`}
-                help="Share of units in use that are one of the three most common models."
-              />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat label="Purchase date recorded" value={`${round1(fleet.purchaseDateCoveragePct)}%`} hint={`${fleet.withPurchaseDate} of ${fleet.totalOperational} units`} />
-              <Stat label="Warranty date recorded" value={`${round1(fleet.warrantyEndCoveragePct)}%`} hint={`${fleet.withWarrantyEnd} of ${fleet.totalOperational} units`} />
-              <CoverageFigure label="Average age" stat={overview.averageAgeYears} format={(v) => `${round1(v)} yrs`} />
-              <CoverageFigure label="Warranty ending in 90 days" stat={overview.warrantyExpiring90Days} format={(v) => String(v)} />
-            </div>
-            <p className="mt-3 text-xs text-muted">
-              Added to this register in the last 24 months: <strong>{round1(fleet.registeredLast24MonthsPct)}%</strong> of units in use.
-            </p>
-          </>
-        ) : (
-          <p className="mt-6 text-sm text-muted">{fleet ? "No units in use to analyse." : "Could not load fleet figures."}</p>
-        )}
+        <p className="mt-1 text-sm text-muted">
+          Based on the {inUseBase(overview)}. Brands and models are grouped the same way as on Overview.
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <Stat label="Units in use" value={f.inUse} hint={`${overview.total} total − ${f.writtenOff} written off`} />
+          <Stat label="Brands" value={f.brandsInUse} hint="Among units in use" />
+          <Stat label="Models" value={overview.distinctModels} hint="Same list as Overview" />
+          <Stat
+            label="Top brand share"
+            value={`${f.topBrand?.share ?? 0}%`}
+            hint={f.topBrand?.name}
+            help="Share of units in use made by the most common brand."
+          />
+          <Stat
+            label="Top 3 models share"
+            value={`${f.topThreeModelsShare}%`}
+            help="Share of units in use that are one of the three most common models."
+          />
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat
+            label="Purchase date recorded"
+            value={`${pct(f.purchaseDates.have, f.purchaseDates.of)}%`}
+            hint={`${f.purchaseDates.have} of ${f.purchaseDates.of} units in use`}
+          />
+          <Stat
+            label="Warranty date recorded"
+            value={`${pct(f.warrantyDates.have, f.warrantyDates.of)}%`}
+            hint={`${f.warrantyDates.have} of ${f.warrantyDates.of} units in use`}
+          />
+          <CoverageFigure label="Average age" stat={overview.averageAgeYears} format={(v) => `${round1(v)} yrs`} unitsLabel="units in use" />
+          <CoverageFigure
+            label="Warranty ending in 90 days"
+            stat={overview.warrantyExpiring90Days}
+            format={(v) => String(v)}
+            unitsLabel="units in use"
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted">
+          Added to this register in the last 24 months: <strong>{f.addedLast24MonthsPct}%</strong> of units in use.
+        </p>
       </section>
 
-      {fleet && fleet.totalOperational > 0 ? (
-        <>
-          <div className="grid gap-6 xl:grid-cols-2">
-            <section className="section-card p-6">
-              <h3 className="font-heading text-sm font-bold text-ink">Added to the register by year</h3>
-              <p className="mt-1 text-xs text-muted">When units were added to this system — shows bulk rollouts.</p>
-              <div className="mt-4 h-64">
-                {fleet.byRegistrationYear.length ? (
-                  <RegistrationYearChart data={fleet.byRegistrationYear.map((y) => ({ year: y.year, count: y.count }))} />
-                ) : null}
-              </div>
-            </section>
-            <section className={`section-card p-6 ${lowPurchase ? "opacity-80" : ""}`}>
-              <h3 className="font-heading text-sm font-bold text-ink">Bought by year</h3>
-              <p className={`mt-1 text-xs ${lowPurchase ? "font-medium text-amber-800" : "text-muted"}`}>
-                {lowPurchase
-                  ? `Based on ${fleet.withPurchaseDate} of ${fleet.totalOperational} units — most have no purchase date yet.`
-                  : "Units with a purchase date."}
-              </p>
-              <div className="mt-4 h-64">
-                {fleet.byPurchaseYear.length ? (
-                  <RegistrationYearChart datasetLabel="Units by purchase date" data={fleet.byPurchaseYear.map((y) => ({ year: y.year, count: y.count }))} />
-                ) : (
-                  <p className="flex h-full items-center justify-center rounded-lg border border-dashed border-line px-4 text-center text-sm text-muted">
-                    No purchase dates recorded yet.
-                  </p>
-                )}
-              </div>
-            </section>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="section-card min-w-0 p-6">
+          <h3 className="font-heading text-sm font-bold text-ink">Added to the register by year</h3>
+          <p className="mt-1 text-xs text-muted">When units in use were added to this system — shows bulk rollouts.</p>
+          <div className="mt-4 h-64">
+            {f.byRegistrationYear.length ? <RegistrationYearChart data={f.byRegistrationYear} /> : null}
           </div>
-
-          <div className="grid gap-6 xl:grid-cols-2">
-            <section className={`section-card p-6 ${lowWarranty ? "opacity-80" : ""}`}>
-              <h3 className="font-heading text-sm font-bold text-ink">Warranty</h3>
-              <p className={`mt-1 text-xs ${lowWarranty ? "font-medium text-amber-800" : "text-muted"}`}>
-                {lowWarranty
-                  ? `Based on ${fleet.withWarrantyEnd} of ${fleet.totalOperational} units — most have no warranty date yet.`
-                  : "From the warranty end date on each unit in use."}
+        </section>
+        <section className={`section-card min-w-0 p-6 ${lowPurchase ? "opacity-80" : ""}`}>
+          <h3 className="font-heading text-sm font-bold text-ink">Bought by year</h3>
+          <p className={`mt-1 text-xs ${lowPurchase ? "font-medium text-amber-800" : "text-muted"}`}>
+            {lowPurchase
+              ? `Based on ${f.purchaseDates.have} of ${f.purchaseDates.of} units in use — most have no purchase date yet.`
+              : "Units in use with a purchase date."}
+          </p>
+          <div className="mt-4 h-64">
+            {f.byPurchaseYear.length ? (
+              <RegistrationYearChart datasetLabel="Units by purchase date" data={f.byPurchaseYear} />
+            ) : (
+              <p className="flex h-full items-center justify-center rounded-lg border border-dashed border-line px-4 text-center text-sm text-muted">
+                No purchase dates recorded yet.
               </p>
-              <dl className={`mt-4 space-y-2 text-sm ${lowWarranty ? "text-muted" : "text-ink"}`}>
-                <div className="flex justify-between gap-4">
-                  <dt>Under warranty</dt>
-                  <dd className="font-mono font-semibold tabular-nums">{fleet.warrantyActiveKnown}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Ending within 90 days</dt>
-                  <dd className="font-mono font-semibold tabular-nums">{fleet.warrantyExpiring90Days}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Out of warranty</dt>
-                  <dd className="font-mono font-semibold tabular-nums">{fleet.warrantyExpired}</dd>
-                </div>
-              </dl>
-            </section>
-            <section className="section-card p-6">
-              <h3 className="font-heading text-sm font-bold text-ink">Notes</h3>
-              <p className="mt-1 text-xs text-muted">Generated from the figures above — check them against what you know.</p>
-              <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ink">
-                {fleet.insights.map((line, i) => (
-                  <li key={i}>{line}</li>
-                ))}
-              </ul>
-            </section>
+            )}
           </div>
+        </section>
+      </div>
 
-          <section className="section-card overflow-hidden">
-            <h3 className="px-6 pt-6 font-heading text-sm font-bold text-ink">Models in use</h3>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[520px] text-sm">
-                <thead>
-                  <tr className="border-y border-line bg-black/[0.02] text-left">
-                    <th className="px-6 py-2 font-medium">Model</th>
-                    <th className="px-3 py-2 font-medium tabular-nums">Units</th>
-                    <th className="px-3 py-2 font-medium tabular-nums">Share</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fleet.byModel.slice(0, 15).map((m, idx) => (
-                    <tr key={`${idx}-${m.label.slice(0, 24)}`} className="border-b border-line last:border-b-0">
-                      <td className="max-w-md px-6 py-2">{m.label}</td>
-                      <td className="px-3 py-2 tabular-nums">{m.count}</td>
-                      <td className="px-3 py-2 tabular-nums text-ink">{m.percent}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      ) : null}
+      <section className={`section-card p-6 ${lowWarranty ? "opacity-80" : ""}`}>
+        <h3 className="font-heading text-sm font-bold text-ink">Warranty</h3>
+        <p className={`mt-1 text-xs ${lowWarranty ? "font-medium text-amber-800" : "text-muted"}`}>
+          {lowWarranty
+            ? `Based on ${f.warrantyDates.have} of ${f.warrantyDates.of} units in use — most have no warranty date yet.`
+            : "From the warranty end date on each unit in use."}
+        </p>
+        <dl className={`mt-4 grid gap-2 text-sm sm:grid-cols-3 ${lowWarranty ? "text-muted" : "text-ink"}`}>
+          <div className="flex justify-between gap-4 rounded-md border border-line px-3 py-2">
+            <dt>Under warranty</dt>
+            <dd className="font-mono font-semibold tabular-nums">{f.warranty.active}</dd>
+          </div>
+          <div className="flex justify-between gap-4 rounded-md border border-line px-3 py-2">
+            <dt>Ending within 90 days</dt>
+            <dd className="font-mono font-semibold tabular-nums">{f.warranty.expiring90}</dd>
+          </div>
+          <div className="flex justify-between gap-4 rounded-md border border-line px-3 py-2">
+            <dt>Out of warranty</dt>
+            <dd className="font-mono font-semibold tabular-nums">{f.warranty.expired}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="section-card overflow-hidden">
+        <div className="px-6 pt-6">
+          <h3 className="font-heading text-sm font-bold text-ink">Models</h3>
+          <p className="mt-1 text-xs text-muted">
+            The same {overview.distinctModels} models as Overview. “In use” leaves out written-off units; “Total” includes them.
+          </p>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-y border-line bg-black/[0.02] text-left">
+                <th className="px-6 py-2 font-medium">Model</th>
+                <th className="px-3 py-2 text-right font-medium">In use</th>
+                <th className="px-3 py-2 text-right font-medium">Share of in use</th>
+                <th className="px-3 py-2 text-right font-medium">Written off</th>
+                <th className="px-6 py-2 text-right font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {f.models.map((m) => (
+                <tr key={`${m.brand}-${m.model}`} className="border-b border-line last:border-b-0">
+                  <td className="max-w-md px-6 py-2">
+                    <Link prefetch={false} href={`/assets?q=${encodeURIComponent(m.model)}`} className="hover:underline">
+                      {m.model.toLowerCase().startsWith(m.brand.toLowerCase()) ? null : <span className="text-muted">{m.brand} </span>}
+                      {m.model}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">{m.inUse}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted">{pct(m.inUse, f.inUse)}%</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted">{m.writtenOff || "—"}</td>
+                  <td className="px-6 py-2 text-right font-semibold tabular-nums">{m.total}</td>
+                </tr>
+              ))}
+              {f.noModel.inUse + f.noModel.writtenOff > 0 ? (
+                <tr className="border-t border-line text-muted">
+                  <td className="px-6 py-2 italic">No model recorded</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{f.noModel.inUse}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{pct(f.noModel.inUse, f.inUse)}%</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{f.noModel.writtenOff || "—"}</td>
+                  <td className="px-6 py-2 text-right tabular-nums">{f.noModel.inUse + f.noModel.writtenOff}</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="section-card p-6">
+        <section className="section-card min-w-0 p-6">
           <h2 className="font-heading text-lg font-bold text-ink">By category</h2>
-          <p className="mt-1 text-sm text-muted">Units per category, all stages.</p>
+          <p className="mt-1 text-sm text-muted">All {overview.total} units.</p>
           <div className="mt-4 h-72">
-            {summary?.byCategory?.length ? (
-              <CategoryBarChart data={summary.byCategory} />
+            {overview.categories.length ? (
+              <CategoryBarChart data={overview.categories} />
             ) : (
               <p className="flex h-full items-center justify-center text-muted">No categories recorded.</p>
             )}
           </div>
         </section>
-        <section className="section-card p-6">
+        <section className="section-card min-w-0 p-6">
           <h2 className="font-heading text-lg font-bold text-ink">How units were added</h2>
-          <p className="mt-1 text-sm text-muted">Added by hand vs imported from Zoho Assist.</p>
+          <p className="mt-1 text-sm text-muted">All {overview.total} units: added by hand vs imported from Zoho Assist.</p>
           <div className="mx-auto mt-4 h-72 max-w-sm">
-            {summary?.byDataSource?.length ? (
-              <DataSourceDonutChart data={summary.byDataSource} />
+            {overview.dataSources.length ? (
+              <DataSourceDonutChart data={overview.dataSources} />
             ) : (
               <p className="flex h-full items-center justify-center text-muted">No data.</p>
             )}
@@ -567,28 +497,28 @@ function FleetTab({ overview, data }: { overview: DashboardOverview; data: Bundl
   );
 }
 
-function ActivityTab({ data }: { data: BundleState }) {
-  const { repairs, refurbished, summary, writeoffs } = data;
+function ActivityTab({ data }: { data: DashboardActivity }) {
+  const { repairs, refurbished, recent, writeoffs } = data;
   return (
     <>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section className="section-card p-6">
+        <section className="section-card min-w-0 p-6">
           <h2 className="font-heading text-lg font-bold text-ink">Repairs</h2>
           <p className="mt-1 text-sm text-muted">Repair tickets by state, from pending to completed.</p>
           <div className="mt-4 h-72">
-            {repairs?.pipeline?.length ? (
-              <RepairsBarChart data={repairs.pipeline} />
+            {repairs.length ? (
+              <RepairsBarChart data={repairs} />
             ) : (
               <p className="flex h-full items-center justify-center text-muted">No repair tickets yet.</p>
             )}
           </div>
         </section>
-        <section className="section-card p-6">
+        <section className="section-card min-w-0 p-6">
           <h2 className="font-heading text-lg font-bold text-ink">Refurbished over time</h2>
           <p className="mt-1 text-sm text-muted">Running total of refurbished units, by last update.</p>
           <div className="mt-4 h-72">
-            {refurbished?.assets?.length ? (
-              <RefurbishedLineChart data={refurbished.assets} />
+            {refurbished.length ? (
+              <RefurbishedLineChart data={refurbished} />
             ) : (
               <p className="flex h-full items-center justify-center text-muted">No refurbished units.</p>
             )}
@@ -598,7 +528,7 @@ function ActivityTab({ data }: { data: BundleState }) {
 
       <section className="section-card p-6">
         <h2 className="font-heading text-lg font-bold text-ink">Recently updated</h2>
-        {summary?.recentAssets?.length ? (
+        {recent.length ? (
           <div className="mt-4 overflow-x-auto rounded-lg border border-line">
             <table className="w-full text-sm">
               <thead>
@@ -610,10 +540,10 @@ function ActivityTab({ data }: { data: BundleState }) {
                 </tr>
               </thead>
               <tbody>
-                {summary.recentAssets.map((a) => (
+                {recent.map((a) => (
                   <tr key={a.id} className="border-b border-line last:border-b-0">
                     <td className="px-3 py-2 font-medium">
-                      <Link href={`/assets?asset=${encodeURIComponent(a.id)}`} className="hover:underline">
+                      <Link prefetch={false} href={`/assets?asset=${encodeURIComponent(a.id)}`} className="hover:underline">
                         {a.assetName}
                       </Link>
                     </td>
@@ -634,15 +564,15 @@ function ActivityTab({ data }: { data: BundleState }) {
         <h2 className="font-heading text-lg font-bold text-ink">Write-offs</h2>
         <p className="mt-1 text-sm text-muted">Reasons, and the latest written-off units.</p>
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <div className="mx-auto max-w-xs lg:mx-0">
-            {writeoffs?.byReason?.length ? (
+          <div className="mx-auto w-full max-w-xs lg:mx-0">
+            {writeoffs.byReason.length ? (
               <WriteoffsDonutChart data={writeoffs.byReason} />
             ) : (
               <p className="py-8 text-center text-muted">No write-offs by reason.</p>
             )}
           </div>
           <div>
-            {writeoffs?.assets?.length ? (
+            {writeoffs.assets.length ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -667,31 +597,22 @@ function ActivityTab({ data }: { data: BundleState }) {
             )}
           </div>
         </div>
-        {writeoffs ? (
-          <p className="mt-4 text-sm text-muted">
-            Total write-offs: <strong>{writeoffs.total}</strong>
-          </p>
-        ) : null}
+        <p className="mt-4 text-sm text-muted">
+          Total write-offs: <strong>{writeoffs.total}</strong>
+        </p>
       </section>
     </>
   );
 }
 
-function SyncTab({ data }: { data: BundleState }) {
-  const { assetGeo, xeroHealth } = data;
-  const geoRegionBarData = useMemo(
-    () =>
-      (assetGeo?.byRegion ?? []).slice(0, 16).map((row) => ({
-        category: row.label.length > 56 ? `${row.label.slice(0, 54)}…` : row.label,
-        count: row.count,
-      })),
-    [assetGeo]
-  );
-  const geoCountryBarData = useMemo(
-    () => (assetGeo?.byCountry ?? []).slice(0, 12).map((row) => ({ category: row.countryCode, count: row.count })),
-    [assetGeo]
-  );
-  const lowGeo = assetGeo ? assetGeo.geoCoveragePct < 50 : false;
+function SyncTab({ data }: { data: DashboardSync }) {
+  const { geo, xero } = data;
+  const regions = geo.byRegion.slice(0, 16).map((row) => ({
+    category: row.label.length > 56 ? `${row.label.slice(0, 54)}…` : row.label,
+    count: row.count,
+  }));
+  const countries = geo.byCountry.slice(0, 12).map((row) => ({ category: row.countryCode, count: row.count }));
+  const lowGeo = geo.geoCoveragePct < 50;
 
   return (
     <>
@@ -701,21 +622,20 @@ function SyncTab({ data }: { data: BundleState }) {
           Approximate location worked out from each unit&apos;s internet address, refreshed on Zoho Assist import and by the weekly sync.
           VPNs and mobile networks can make this inaccurate.
         </p>
-        {assetGeo && assetGeo.totalOperational > 0 ? (
+        {geo.totalOperational > 0 ? (
           <>
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat label="With an internet address" value={`${round1(assetGeo.publicIpCoveragePct)}%`} hint={`${assetGeo.withPublicIp} of ${assetGeo.totalOperational} units in use`} />
-              <Stat label="With a location" value={`${round1(assetGeo.geoCoveragePct)}%`} hint={`${assetGeo.withGeo} of ${assetGeo.totalOperational} units in use`} />
-              <Stat label="Countries" value={assetGeo.byCountry.length} muted={lowGeo} hint={lowGeo ? `Based on ${assetGeo.withGeo} units` : undefined} />
-              <Stat label="Regions" value={assetGeo.byRegion.length} muted={lowGeo} hint={lowGeo ? `Based on ${assetGeo.withGeo} units` : "Province or state"} />
+              <Stat label="With an internet address" value={`${geo.publicIpCoveragePct}%`} hint={`${geo.withPublicIp} of ${geo.totalOperational} units in use`} />
+              <Stat label="With a location" value={`${geo.geoCoveragePct}%`} hint={`${geo.withGeo} of ${geo.totalOperational} units in use`} />
+              <Stat label="Countries" value={geo.byCountry.length} muted={lowGeo} hint={lowGeo ? `Based on ${geo.withGeo} units` : undefined} />
+              <Stat label="Regions" value={geo.byRegion.length} muted={lowGeo} hint={lowGeo ? `Based on ${geo.withGeo} units` : "Province or state"} />
             </div>
-            <p className="mt-3 text-xs text-muted">{assetGeo.note}</p>
             <div className="mt-8 grid gap-8 xl:grid-cols-2">
-              <div>
+              <div className="min-w-0">
                 <h3 className="font-heading text-sm font-bold text-ink">By region or province</h3>
                 <div className="mt-4 h-72">
-                  {geoRegionBarData.length ? (
-                    <CategoryBarChart data={geoRegionBarData} />
+                  {regions.length ? (
+                    <CategoryBarChart data={regions} />
                   ) : (
                     <p className="flex h-full items-center justify-center rounded-lg border border-dashed border-line px-4 text-center text-sm text-muted">
                       No regional data yet — sync from Zoho Assist to fill this in.
@@ -723,11 +643,11 @@ function SyncTab({ data }: { data: BundleState }) {
                   )}
                 </div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <h3 className="font-heading text-sm font-bold text-ink">By country</h3>
                 <div className="mt-4 h-72">
-                  {geoCountryBarData.length ? (
-                    <CategoryBarChart data={geoCountryBarData} />
+                  {countries.length ? (
+                    <CategoryBarChart data={countries} />
                   ) : (
                     <p className="flex h-full items-center justify-center rounded-lg border border-dashed border-line px-4 text-center text-sm text-muted">
                       No country data yet.
@@ -738,7 +658,7 @@ function SyncTab({ data }: { data: BundleState }) {
             </div>
           </>
         ) : (
-          <p className="mt-6 text-sm text-muted">{assetGeo ? "No units in use." : "Could not load location figures."}</p>
+          <p className="mt-6 text-sm text-muted">No units in use.</p>
         )}
       </section>
 
@@ -746,12 +666,12 @@ function SyncTab({ data }: { data: BundleState }) {
         <h2 className="font-heading text-lg font-bold text-ink">Xero sync</h2>
         <p className="mt-1 text-sm text-muted">Connection status and sync queue by state and type.</p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <div className={`h-3 w-3 rounded-full ${xeroHealth?.configured ? "bg-brand" : "bg-amber-500"}`} />
+          <div className={`h-3 w-3 rounded-full ${xero.configured ? "bg-brand" : "bg-amber-500"}`} />
           <span className="text-sm text-ink">
-            {xeroHealth?.configured ? "Xero is connected" : "Xero is not set up — set XERO_CLIENT_ID and XERO_CLIENT_SECRET"}
+            {xero.configured ? "Xero is connected" : "Xero is not set up — set XERO_CLIENT_ID and XERO_CLIENT_SECRET"}
           </span>
         </div>
-        {xeroHealth?.summary && Object.keys(xeroHealth.summary).length > 0 ? (
+        {Object.keys(xero.summary).length > 0 ? (
           <div className="mt-6 overflow-x-auto rounded-lg border border-line">
             <table className="w-full min-w-[320px] text-sm">
               <thead>
@@ -762,7 +682,7 @@ function SyncTab({ data }: { data: BundleState }) {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(xeroHealth.summary).map(([status, row]) => (
+                {Object.entries(xero.summary).map(([status, row]) => (
                   <tr key={status} className="border-b border-line">
                     <td className="px-4 py-2 capitalize">{status}</td>
                     <td className="px-4 py-2 tabular-nums text-ink">{row.fixed_asset}</td>
@@ -775,11 +695,11 @@ function SyncTab({ data }: { data: BundleState }) {
         ) : (
           <p className="mt-6 text-sm text-muted">Nothing has been synced to Xero yet.</p>
         )}
-        {xeroHealth?.recent && xeroHealth.recent.length > 0 ? (
+        {xero.recent.length > 0 ? (
           <div className="mt-6">
             <h3 className="font-heading text-xs font-bold text-muted">Recent sync attempts</h3>
             <ul className="mt-3 space-y-2 text-sm">
-              {xeroHealth.recent.slice(0, 8).map((r) => (
+              {xero.recent.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line pb-2">
                   <span className="font-medium text-ink">{r.asset.assetName}</span>
                   <span className="text-muted">

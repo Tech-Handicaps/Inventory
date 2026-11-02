@@ -27,6 +27,7 @@ export function KpiTile({
   return (
     <div className="kpi-card group relative p-4 transition hover:ring-2 hover:ring-brand/30">
       <Link
+        prefetch={false}
         href={href}
         className="block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         aria-label={`${label}: ${value}. Open in All assets`}
@@ -69,6 +70,7 @@ export function StageBar({ stages, total }: { stages: DashboardOverview["stages"
         {stages.map((s) => (
           <li key={s.code}>
             <Link
+              prefetch={false}
               href={`/assets?status=${encodeURIComponent(s.code)}`}
               className="inline-flex items-center gap-2 rounded text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
@@ -202,6 +204,7 @@ export function TopModels({ skus, distinctModels }: { skus: DashboardOverview["t
         {skus.map((s) => (
           <li key={`${s.brand}-${s.model}`}>
             <Link
+              prefetch={false}
               href={`/assets?q=${encodeURIComponent(s.model)}`}
               className="group block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
@@ -274,11 +277,13 @@ export function CoverageFigure({
   stat,
   format,
   help,
+  unitsLabel = "units",
 }: {
   label: string;
   stat: CoverageStat;
   format: (value: number) => string;
   help?: string;
+  unitsLabel?: string;
 }) {
   const value = stat.value == null ? "—" : format(stat.value);
   return (
@@ -291,7 +296,7 @@ export function CoverageFigure({
         {value}
       </p>
       <p className="mt-1 text-xs text-muted">
-        {stat.lowCoverage ? `Based on ${stat.basedOn} of ${stat.of} units` : `${stat.basedOn} of ${stat.of} units`}
+        {stat.lowCoverage ? `Based on ${stat.basedOn} of ${stat.of} ${unitsLabel}` : `${stat.basedOn} of ${stat.of} ${unitsLabel}`}
       </p>
     </div>
   );

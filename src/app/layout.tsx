@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
-import { RoleProvider } from "@/components/RoleProvider";
+import { SessionRoleProvider } from "@/components/SessionRoleProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ToastProvider } from "@/components/ToastProvider";
 import { getSessionRole } from "@/lib/auth/get-session-role";
@@ -18,12 +18,17 @@ export const metadata: Metadata = {
     "Hardware lifecycle tracking for Handicaps Network Africa — stock, repairs, and refurbishment.",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getSessionRole();
+  const session = getSessionRole()
+    .then((s) => (s ? { role: s.role, email: s.email, displayName: s.displayName } : null))
+    .catch((e) => {
+      console.error("root layout: session lookup failed", e);
+      return null;
+    });
 
   return (
     <html
@@ -32,13 +37,9 @@ export default async function RootLayout({
     >
       <body className={`${fontBody.className} min-h-full flex flex-col`}>
         <ToastProvider>
-          <RoleProvider
-            initialRole={session?.role ?? null}
-            initialEmail={session?.email ?? null}
-            initialDisplayName={session?.displayName ?? null}
-          >
+          <SessionRoleProvider session={session}>
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-          </RoleProvider>
+          </SessionRoleProvider>
           <SiteFooter />
         </ToastProvider>
       </body>

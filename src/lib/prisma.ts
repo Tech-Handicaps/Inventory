@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { INVENTORY_STATS_MODELS, invalidateInventoryStats } from "@/lib/cache/inventory-stats";
 import {
   normalizeDatabaseUrlForPrisma,
   warnIfLikelyMisconfiguredDatabaseUrl,
@@ -11,8 +12,20 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+const WRITE_OPERATIONS = new Set([
+  "create",
+  "createMany",
+  "createManyAndReturn",
+  "update",
+  "updateMany",
+  "updateManyAndReturn",
+  "upsert",
+  "delete",
+  "deleteMany",
+]);
+
 function createPrismaClient(): PrismaClient {
-  return new PrismaClient({
+  const base = new PrismaClient({
     ...(databaseUrl
       ? { datasources: { db: { url: databaseUrl } } }
       : {}),
@@ -21,6 +34,21 @@ function createPrismaClient(): PrismaClient {
         ? ["query", "error", "warn"]
         : ["error"],
   });
+  const extended = base.$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ model, operation, args, query }) {
+          const result = await query(args);
+          if (WRITE_OPERATIONS.has(operation) && INVENTORY_STATS_MODELS.has(model)) {
+            invalidateInventoryStats();
+          }
+          return result;
+        },
+      },
+    },
+  });
+  // The extension only adds behaviour; keep the plain client type for callers.
+  return extended as unknown as PrismaClient;
 }
 
 function runtimeFieldNames(

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { UNKNOWN_BRAND, manufacturerBrand } from "@/lib/inventory/manufacturer-brand";
+import { UNKNOWN_BRAND, manufacturerBrand, modelForBrand } from "@/lib/inventory/manufacturer-brand";
 
 describe("manufacturerBrand", () => {
   it("collapses spellings of the same OEM", () => {
@@ -26,5 +26,22 @@ describe("manufacturerBrand", () => {
 
   it("title-cases brands it does not know", () => {
     expect(manufacturerBrand("acme widgets")).toBe("Acme Widgets");
+  });
+});
+
+describe("brand from model code", () => {
+  it("names the brand from a model only one brand uses when the manufacturer is missing", () => {
+    expect(manufacturerBrand("N/A", null, "PS-3316")).toBe("Posiflex");
+    expect(manufacturerBrand(null, null, "NUC7CJYH")).toBe("Intel");
+    expect(manufacturerBrand("", null, "Something")).toBe("Unknown");
+  });
+
+  it("prefers the recorded manufacturer over the model", () => {
+    expect(manufacturerBrand("Dell Inc.", null, "PS-3316")).toBe("Dell");
+  });
+
+  it("drops a model that is only the brand name", () => {
+    expect(modelForBrand("Mecer", "Mecer")).toBeNull();
+    expect(modelForBrand("Mecer", "X22S")).toBe("X22S");
   });
 });
