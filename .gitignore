@@ -37,6 +37,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# MaxMind GeoLite2 (downloaded at build time; licence forbids redistribution)
+/data/geoip/
+*.mmdb
+GeoIP.conf
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

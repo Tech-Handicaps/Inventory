@@ -21,7 +21,7 @@ import {
   ZOHO_ASSIST_DEVICES_MAX_COUNT,
 } from "@/lib/zoho/client";
 
-/** ip-api.com free tier ~45 req/min — stay under with spacing between lookups. */
+/** Spacing between Zoho Assist detail calls (GeoIP lookups are local). */
 const DELAY_MS = 1500;
 
 function delay(ms: number): Promise<void> {

@@ -1,0 +1,24 @@
+name: Refresh GeoLite2
+
+# MaxMind updates GeoLite2 on Tuesdays and Fridays. A weekly production redeploy re-runs
+# scripts/fetch-geolite.mjs, which downloads the latest database during the build.
+
+on:
+  schedule:
+    - cron: "0 2 * * 3"
+  workflow_dispatch:
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Trigger Vercel deploy hook
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Add the VERCEL_DEPLOY_HOOK_URL repository secret (Vercel → Project → Settings → Git → Deploy Hooks, branch main)."
+            exit 1
+          fi
+          curl -fsS -X POST -o /dev/null -w "deploy hook %{http_code}\n" "$VERCEL_DEPLOY_HOOK_URL"

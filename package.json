@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node --env-file-if-exists=.env.local scripts/fetch-geolite.mjs",
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
@@ -21,6 +22,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
+    "@maxmind/geoip2-node": "^7.1.0",
     "@prisma/client": "^6",
     "@react-pdf/renderer": "^4.3.2",
     "@sparticuz/chromium": "^133.0.0",

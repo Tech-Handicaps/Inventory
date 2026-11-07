@@ -6,6 +6,8 @@ import { catchToJsonError } from "@/lib/api/error-response";
 import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
 import { linkAssistToAsset } from "@/lib/zoho/link-assist-to-asset";
 
+export const runtime = "nodejs";
+
 const linkAssistSchema = z.object({
   resourceId: z.string().trim().min(1, "resourceId is required"),
   displayName: z.string().optional(),
