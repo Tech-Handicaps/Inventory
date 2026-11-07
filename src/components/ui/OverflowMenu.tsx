@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import { useRef } from "react";
 
 export type OverflowMenuItem = {
   label: string;
@@ -17,99 +18,66 @@ type Props = {
   disabled?: boolean;
 };
 
-type Position = { top: number; right: number };
-
+/**
+ * Rendered in a portal so table and card wrappers with overflow can't clip it; flips up or left
+ * near the viewport edge. Esc closes and returns focus to the trigger.
+ */
 export function OverflowMenu({ label, items, disabled }: Props) {
-  const [position, setPosition] = useState<Position | null>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
-  const open = position !== null;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const itemChosen = useRef(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setPosition(null);
-    const onPointer = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      close();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        close();
-        buttonRef.current?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", onPointer);
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    menuRef.current
-      ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
-      ?.focus({ preventScroll: true });
-    return () => {
-      document.removeEventListener("pointerdown", onPointer);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [open]);
-
-  function toggle() {
-    if (open) {
-      setPosition(null);
-      return;
-    }
-    const rect = buttonRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setPosition({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  /** After an item opens a dialog or panel, leave focus there instead of pulling it back to the trigger. */
+  function onCloseAutoFocus(e: Event) {
+    if (!itemChosen.current) return;
+    itemChosen.current = false;
+    e.preventDefault();
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) triggerRef.current?.focus();
+    });
   }
 
   return (
-    <>
-      <button
-        ref={buttonRef}
-        type="button"
+    <DropdownMenu.Root modal={false}>
+      <DropdownMenu.Trigger
+        ref={triggerRef}
         disabled={disabled}
-        onClick={toggle}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-black/[0.06] hover:text-ink disabled:opacity-50"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-black/[0.06] hover:text-ink focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50 data-[state=open]:bg-black/[0.06] data-[state=open]:text-ink"
         aria-label={`More actions for ${label}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
       >
         <MoreHorizontal className="h-4 w-4" aria-hidden />
-      </button>
-      {position ? (
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          side="bottom"
+          sideOffset={4}
+          collisionPadding={8}
+          avoidCollisions
           aria-label={`Actions for ${label}`}
-          className="fixed z-[55] min-w-[9rem] rounded-lg border border-[#e5e9ec] bg-white py-1"
-          style={{ top: position.top, right: position.right }}
+          onClick={(e) => e.stopPropagation()}
+          onCloseAutoFocus={onCloseAutoFocus}
+          className="z-[55] min-w-[9rem] rounded-lg border border-[#e5e9ec] bg-white py-1 shadow-sm"
         >
           {items.map((item) => (
-            <button
+            <DropdownMenu.Item
               key={item.label}
-              type="button"
-              role="menuitem"
               disabled={item.disabled}
-              onClick={() => {
-                setPosition(null);
+              onSelect={() => {
+                itemChosen.current = true;
                 item.onSelect();
               }}
-              className={`block w-full px-3 py-2 text-left text-sm disabled:opacity-50 ${
+              className={`block w-full cursor-pointer px-3 py-2 text-left text-sm outline-none data-[disabled]:cursor-default data-[disabled]:opacity-50 ${
                 item.destructive
-                  ? "text-red-700 hover:bg-red-50"
-                  : "text-ink hover:bg-black/[0.04]"
+                  ? "text-red-700 data-[highlighted]:bg-red-50"
+                  : "text-ink data-[highlighted]:bg-black/[0.04]"
               }`}
             >
               {item.label}
-            </button>
+            </DropdownMenu.Item>
           ))}
-        </div>
-      ) : null}
-    </>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

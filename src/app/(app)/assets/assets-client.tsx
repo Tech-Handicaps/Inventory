@@ -134,7 +134,7 @@ export function StatusBadge({ status }: { status: Status }) {
 
 /** Minimum width (px) per column; the table only scrolls sideways once these no longer fit. */
 const COLUMN_MIN_WIDTH: Record<AssetColumnId, number> = {
-  club: 110,
+  club: 140,
   name: 160,
   model: 110,
   serial: 110,
