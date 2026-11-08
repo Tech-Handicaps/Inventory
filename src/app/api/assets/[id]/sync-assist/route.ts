@@ -3,6 +3,8 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { syncPublicIpForOneAsset } from "@/lib/zoho/sync-public-ip";
 import { prisma } from "@/lib/prisma";
 
+export const runtime = "nodejs";
+
 /** POST /api/assets/:id/sync-assist — refresh public IP + geo from Zoho Assist for this asset */
 export async function POST(
   request: NextRequest,

@@ -34,6 +34,19 @@ export function SiteFooter() {
           <p className="text-xs leading-relaxed text-muted">
             © 2026 Digital Fingers Pty Ltd. All rights reserved.
           </p>
+          <p className="text-xs leading-relaxed text-muted">
+            IP geolocation by MaxMind GeoLite2. This product includes GeoLite2 data created by
+            MaxMind, available from{" "}
+            <a
+              href="https://www.maxmind.com"
+              className="underline hover:text-ink"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              maxmind.com
+            </a>
+            .
+          </p>
         </div>
       </div>
     </footer>

@@ -605,7 +605,17 @@ export function ZohoAssistSettingsSection() {
       <p className="mt-4 text-xs text-muted">
         <strong>Public IP sync:</strong> Weekly job (Vercel Cron, Sundays 05:00 UTC) refreshes
         public IP and approximate region for every Assist-linked asset. Use the button above for
-        an on-demand run.
+        an on-demand run. IP geolocation by MaxMind GeoLite2: this product includes GeoLite2 data
+        created by MaxMind, available from{" "}
+        <a
+          href="https://www.maxmind.com"
+          className="underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          maxmind.com
+        </a>
+        .
       </p>
 
       {ipSyncResult ? (

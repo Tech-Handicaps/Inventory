@@ -27,6 +27,8 @@ import {
 } from "@/lib/inventory/asset-tags";
 import { prisma } from "@/lib/prisma";
 
+export const runtime = "nodejs";
+
 type ImportBody = {
   resourceId?: string;
   displayName?: string;
