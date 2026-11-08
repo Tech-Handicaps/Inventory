@@ -291,6 +291,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const unlinkedSameName = await prisma.asset.findFirst({
+      where: { assetName: { equals: assetName, mode: "insensitive" }, zohoAssistDeviceId: null },
+      select: { id: true, assetName: true },
+    });
+    if (unlinkedSameName) {
+      return NextResponse.json(
+        {
+          code: "NAME_EXISTS_UNLINKED",
+          error: `"${unlinkedSameName.assetName}" is already on the board but not linked to Zoho Assist. Open it and use Link to Assist instead of importing a second copy.`,
+          assetId: unlinkedSameName.id,
+        },
+        { status: 409 }
+      );
+    }
+
     // Assist-sourced fields only — purchaseDate / warrantyEndDate are never set here (Postgres-only; edit asset after import).
     let asset;
     try {

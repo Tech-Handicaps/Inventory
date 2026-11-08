@@ -232,11 +232,11 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
         );
         return;
       }
-      if (res.status === 409 && data.code === "DUPLICATE_SERIAL") {
+      if (res.status === 409 && (data.code === "DUPLICATE_SERIAL" || data.code === "NAME_EXISTS_UNLINKED")) {
         const msg =
           typeof data.error === "string"
             ? data.error
-            : "This serial number is already registered in inventory.";
+            : "This device is already registered in inventory.";
         setFormError(msg);
         setDuplicateAssetId(
           typeof data.assetId === "string" ? data.assetId : null
@@ -379,7 +379,13 @@ export function ImportAssistAssetModal({ open, onClose, onImported }: Props) {
               <p>{formError}</p>
               {duplicateAssetId ? (
                 <p className="mt-3 border-t border-red-200/80 pt-3 text-red-950/95">
-                  {formError?.includes("Serial number") ? (
+                  {formError?.includes("not linked to Zoho Assist") ? (
+                    <>
+                      Open the existing asset, click <strong>Edit</strong>, and use{" "}
+                      <strong>Link to Assist</strong> in the Zoho Assist section so the
+                      register keeps one record for this terminal.
+                    </>
+                  ) : formError?.includes("Serial number") ? (
                     <>
                       Open the existing asset, click <strong>Edit</strong>, and use{" "}
                       <strong>Link to Assist</strong> in the Zoho Assist section — your
