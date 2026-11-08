@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node --env-file-if-exists=.env.local scripts/fetch-geolite.mjs",
+    "prebuild": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/fetch-geolite.mjs",
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",

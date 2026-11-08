@@ -48,7 +48,7 @@ async function download() {
     }
     fail(
       "MAXMIND_ACCOUNT_ID and MAXMIND_LICENSE_KEY must be set to download GeoLite2-City.\n" +
-        "Set them in Vercel (Project → Settings → Environment Variables) or in .env.local for local builds."
+        "Set them in Vercel (Project → Settings → Environment Variables) or in .env / .env.local for local builds."
     );
   }
 
