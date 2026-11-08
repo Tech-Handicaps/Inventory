@@ -236,6 +236,13 @@ export function AppShell({ children }: Props) {
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar onOpenMenu={() => setOpen(true)} />
           <div className="app-canvas min-w-0 flex-1">{children}</div>
+          <footer className="border-t border-line px-6 py-3 text-center text-xs text-muted" role="contentinfo">
+            IP geolocation by MaxMind GeoLite2. This product includes GeoLite2 data created by MaxMind, available from{" "}
+            <a href="https://www.maxmind.com" className="underline hover:text-ink" target="_blank" rel="noopener noreferrer">
+              maxmind.com
+            </a>
+            .
+          </footer>
         </div>
       </div>
       <AddHardwareModal />

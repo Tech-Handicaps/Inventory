@@ -74,6 +74,10 @@ export function buildAssetWhere(params: AssetListParams): Prisma.AssetWhereInput
   if (params.club === NO_CLUB_PARAM) and.push({ clubId: null });
   else if (params.club) and.push({ clubId: params.club });
   if (params.source) and.push({ dataSource: params.source });
+  if (params.missing === "purchase") and.push({ purchaseDate: null });
+  else if (params.missing === "warranty") and.push({ warrantyEndDate: null });
+  else if (params.missing === "serial") and.push({ OR: [{ serialNumber: null }, { serialNumber: "" }] });
+  else if (params.missing === "geo") and.push({ geoCountryCode: null, NOT: { status: { code: "written_off" } } });
   const q = params.q.trim();
   if (q) {
     const contains = { contains: q, mode: "insensitive" as const };

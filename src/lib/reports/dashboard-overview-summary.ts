@@ -32,6 +32,8 @@ export type OverviewAsset = {
   hasSerial: boolean;
   location: string | null;
   hasClub: boolean;
+  /** GeoIP country from the public IP; approximate, never a confirmed site. */
+  hasGeo: boolean;
   dateAdded: Date;
   purchaseDate: Date | null;
   warrantyEndDate: Date | null;
@@ -45,10 +47,12 @@ export type CoverageStat = {
 };
 
 export type DataQualityItem = {
-  key: "purchase" | "warranty" | "location" | "serial" | "club";
+  key: "purchase" | "warranty" | "club" | "geo" | "location" | "serial";
   label: string;
   have: number;
   of: number;
+  /** All assets list filtered to the units missing this, when there is such a filter. */
+  missingHref?: string;
 };
 
 export type ModelRow = { brand: string; model: string; inUse: number; writtenOff: number; total: number };
@@ -181,11 +185,12 @@ export function summariseOverview(
 
   const deployed = assets.filter((a) => a.statusCode === "deployed");
   const dataQuality: DataQualityItem[] = [
-    { key: "purchase", label: "have a purchase date", have: assets.filter((a) => a.purchaseDate).length, of: assets.length },
-    { key: "warranty", label: "have a warranty end date", have: assets.filter((a) => a.warrantyEndDate).length, of: assets.length },
-    { key: "location", label: "have a real location (not “My Department”)", have: assets.filter((a) => hasRealLocation(a.location)).length, of: assets.length },
-    { key: "serial", label: "have a serial number", have: assets.filter((a) => a.hasSerial).length, of: assets.length },
-    { key: "club", label: "deployed units have a club", have: deployed.filter((a) => a.hasClub).length, of: deployed.length },
+    { key: "purchase", label: "have a purchase date", have: assets.filter((a) => a.purchaseDate).length, of: assets.length, missingHref: "/assets?missing=purchase" },
+    { key: "warranty", label: "have a warranty end date", have: assets.filter((a) => a.warrantyEndDate).length, of: assets.length, missingHref: "/assets?missing=warranty" },
+    { key: "club", label: "deployed units have a confirmed club location", have: deployed.filter((a) => a.hasClub).length, of: deployed.length, missingHref: "/assets?status=deployed&club=none" },
+    { key: "geo", label: "units in use have an approximate location from their IP address (GeoIP, not confirmed)", have: inUse.filter((a) => a.hasGeo).length, of: inUse.length, missingHref: "/assets?missing=geo" },
+    { key: "location", label: "have a location typed in (Zoho Assist only sends “My Department”)", have: assets.filter((a) => hasRealLocation(a.location)).length, of: assets.length },
+    { key: "serial", label: "have a serial number", have: assets.filter((a) => a.hasSerial).length, of: assets.length, missingHref: "/assets?missing=serial" },
   ];
 
   return {

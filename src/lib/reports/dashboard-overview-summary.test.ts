@@ -21,6 +21,7 @@ function asset(over: Partial<OverviewAsset>): OverviewAsset {
     hasSerial: true,
     location: "My Department",
     hasClub: true,
+    hasGeo: false,
     dateAdded: new Date("2026-05-01T00:00:00Z"),
     purchaseDate: null,
     warrantyEndDate: null,
@@ -31,7 +32,7 @@ function asset(over: Partial<OverviewAsset>): OverviewAsset {
 describe("summariseOverview", () => {
   const assets = [
     asset({}),
-    asset({ brand: "Lenovo", model: "10Q0S0CU00" }),
+    asset({ brand: "Lenovo", model: "10Q0S0CU00", hasGeo: true }),
     asset({ statusCode: "new_stock", type: "usb_hid_msr", brand: "Gigatek", model: "MSR250HK", hasClub: false }),
     asset({ statusCode: "refurbished", brand: "Unknown", model: null, location: "Durban", hasClub: false }),
     asset({ statusCode: "written_off", purchaseDate: new Date("2020-10-31T12:00:00Z") }),
@@ -68,7 +69,13 @@ describe("summariseOverview", () => {
     const location = o.dataQuality.find((d) => d.key === "location");
     expect(location).toMatchObject({ have: 1, of: 6 });
     const club = o.dataQuality.find((d) => d.key === "club");
-    expect(club).toMatchObject({ have: 2, of: 3 });
+    expect(club).toMatchObject({ have: 2, of: 3, missingHref: "/assets?status=deployed&club=none" });
+  });
+
+  it("counts approximate GeoIP locations over units in use, separately from confirmed clubs", () => {
+    const geo = o.dataQuality.find((d) => d.key === "geo");
+    expect(geo).toMatchObject({ have: 1, of: 5, missingHref: "/assets?missing=geo" });
+    expect(geo?.label).toMatch(/approximate/);
   });
 
   it("uses plain stage labels that match the KPI cards", () => {

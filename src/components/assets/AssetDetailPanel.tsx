@@ -7,6 +7,7 @@ import { AssetTagChips } from "@/components/ui/AssetTagChips";
 import { STAGE_DOT } from "@/components/board/types";
 import { formatDate, formatDateTime } from "@/lib/dates/format";
 import { formatGeoLabel } from "@/lib/geo/region-display";
+import { assetLocation } from "@/lib/inventory/asset-location";
 import {
   displayAssetManufacturer,
   displayAssetModel,
@@ -202,6 +203,7 @@ export function AssetDetailPanel({ assetId, statuses, suspendEsc, onClose, onEdi
 
   const a = detail?.asset;
   const geo = a ? formatGeoLabel(a.geoCountryCode, a.geoRegionCode, a.geoCity, a.geoRegionName) : "—";
+  const location = a ? assetLocation(a) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="asset-panel-title">
@@ -278,7 +280,7 @@ export function AssetDetailPanel({ assetId, statuses, suspendEsc, onClose, onEdi
               <Section title="Details">
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                   <Field label="Club" value={a.club?.name} />
-                  <Field label="Location" value={a.deviceLocation} />
+                  <Field label="Location" value={location ? <span title={location.tip}>{location.text}</span> : null} />
                   <Field label="Manufacturer" value={displayAssetManufacturer(a)} />
                   <Field label="Model" value={displayAssetModel(a)} />
                   <Field label="Serial" value={a.serialNumber} mono />
@@ -294,7 +296,7 @@ export function AssetDetailPanel({ assetId, statuses, suspendEsc, onClose, onEdi
                     <Field label="GPU" value={a.systemGpu} />
                   </div>
                   <Field label="Public IP" value={a.publicIp} mono />
-                  <Field label="Region (GeoIP)" value={geo} />
+                  <Field label="Approximate location (GeoIP)" value={geo} />
                   <Field label="Purchase" value={formatDate(a.purchaseDate, "")} />
                   <Field label="Warranty end" value={formatDate(a.warrantyEndDate, "")} />
                   {a.reason ? (

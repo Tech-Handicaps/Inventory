@@ -32,6 +32,7 @@ import {
   ASSET_COLUMNS_PREFERENCE_KEY,
   AVAILABLE_STATUS_PARAM,
   DEFAULT_ASSET_COLUMNS,
+  MISSING_FILTERS,
   NO_CLUB_PARAM,
   PAGE_SIZES,
   assetListSearch,
@@ -41,6 +42,7 @@ import {
   type SortKey,
 } from "@/lib/inventory/asset-table";
 import { displayDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
+import { assetLocation } from "@/lib/inventory/asset-location";
 
 export type AssetRow = {
   id: string;
@@ -167,8 +169,15 @@ function renderCell(id: AssetColumnId, a: AssetRow) {
       return <Truncated value={a.serialNumber} mono />;
     case "status":
       return <StatusBadge status={a.status} />;
-    case "location":
-      return <Truncated value={a.deviceLocation} />;
+    case "location": {
+      const loc = assetLocation(a);
+      if (!loc) return <Truncated value={null} />;
+      return (
+        <span className={`block truncate ${loc.kind === "geo" ? "text-muted" : ""}`} data-tip={`${loc.text} – ${loc.tip}`}>
+          {loc.text}
+        </span>
+      );
+    }
     case "updated":
       return <span className="whitespace-nowrap">{formatDate(a.dateUpdated)}</span>;
     case "manufacturer":
@@ -336,7 +345,7 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
   const pageCount = Math.max(1, Math.ceil(total / view.pageSize));
   const firstRow = total === 0 ? 0 : (view.page - 1) * view.pageSize + 1;
   const lastRow = Math.min(total, view.page * view.pageSize);
-  const filtersActive = Boolean(view.q || view.status || view.club || view.source);
+  const filtersActive = Boolean(view.q || view.status || view.club || view.source || view.missing);
   const exportHref = `/api/assets/export${assetListSearch({ ...view, page: 1 })}`;
 
   const toggleSort = (key: SortKey) => {
@@ -429,6 +438,21 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
                 <option value="zoho_assist">Zoho Assist</option>
               </select>
             </label>
+            <label className="block lg:w-52">
+              <span className="text-xs font-semibold text-muted">Missing</span>
+              <select
+                value={view.missing}
+                onChange={(e) => navigate({ missing: e.target.value as AssetListParams["missing"] })}
+                className="mt-1 w-full rounded-lg border border-line bg-white px-2 py-2 text-sm"
+              >
+                <option value="">Anything</option>
+                {Object.entries(MISSING_FILTERS).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
 
@@ -450,7 +474,7 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
               type="button"
               onClick={() => {
                 setSearch("");
-                navigate({ q: "", status: "", club: "", source: "" });
+                navigate({ q: "", status: "", club: "", source: "", missing: "" });
               }}
               className="font-semibold text-brand-deep hover:underline"
             >

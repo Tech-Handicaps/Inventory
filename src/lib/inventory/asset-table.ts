@@ -60,6 +60,15 @@ export function statusCodesFromParam(status: string): string[] {
     .filter(Boolean);
 }
 
+/** "Missing" filter values: units without this detail (geo also leaves out written-off units). */
+export const MISSING_FILTERS = {
+  purchase: "No purchase date",
+  warranty: "No warranty end date",
+  serial: "No serial number",
+  geo: "No location from IP (in use)",
+} as const;
+export type MissingFilter = keyof typeof MISSING_FILTERS;
+
 export type AssetListParams = {
   page: number;
   pageSize: PageSize;
@@ -72,6 +81,8 @@ export type AssetListParams = {
   club: string;
   /** "manual" | "zoho_assist" | "" */
   source: string;
+  /** A MissingFilter key, or "". */
+  missing: MissingFilter | "";
 };
 
 export const DEFAULT_LIST_PARAMS: AssetListParams = {
@@ -83,6 +94,7 @@ export const DEFAULT_LIST_PARAMS: AssetListParams = {
   status: "",
   club: "",
   source: "",
+  missing: "",
 };
 
 type ParamSource = { get(name: string): string | null };
@@ -109,6 +121,7 @@ export function parseAssetListParams(
   const dirRaw = get("dir");
   const dir = dirRaw === "asc" || dirRaw === "desc" ? dirRaw : sort === "updated" || sort === "added" ? "desc" : "asc";
   const source = get("source") ?? "";
+  const missing = get("missing") ?? "";
   return {
     page: Math.max(1, Math.floor(Number(get("page")) || 1)),
     pageSize,
@@ -118,6 +131,7 @@ export function parseAssetListParams(
     status: (get("status") ?? "").slice(0, 40),
     club: (get("club") ?? "").slice(0, 40),
     source: source === "manual" || source === "zoho_assist" ? source : "",
+    missing: Object.hasOwn(MISSING_FILTERS, missing) ? (missing as MissingFilter) : "",
   };
 }
 
@@ -128,6 +142,7 @@ export function assetListSearch(params: AssetListParams): string {
   if (params.status) sp.set("status", params.status);
   if (params.club) sp.set("club", params.club);
   if (params.source) sp.set("source", params.source);
+  if (params.missing) sp.set("missing", params.missing);
   if (params.sort !== DEFAULT_LIST_PARAMS.sort || params.dir !== DEFAULT_LIST_PARAMS.dir) {
     sp.set("sort", params.sort);
     sp.set("dir", params.dir);

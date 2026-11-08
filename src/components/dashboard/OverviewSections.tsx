@@ -230,7 +230,7 @@ export function TopModels({ skus, distinctModels }: { skus: DashboardOverview["t
 }
 
 function sentence(have: number, of: number, label: string, key: string) {
-  const units = key === "club" ? "" : " units";
+  const units = key === "club" || key === "geo" ? "" : " units";
   if (have === 0 && of > 0) return `None of ${of}${units} ${label}`;
   const prefix = of > 0 && have / of < 0.5 ? "Only " : "";
   return `${prefix}${have} of ${of}${units} ${label}`;
@@ -254,7 +254,17 @@ export function DataQualityCard({
           const pct = d.of ? d.have / d.of : 1;
           return (
             <li key={d.key}>
-              <p className={`text-sm ${pct < 0.5 ? "font-medium text-ink" : "text-muted"}`}>{sentence(d.have, d.of, d.label, d.key)}</p>
+              <p className={`text-sm ${pct < 0.5 ? "font-medium text-ink" : "text-muted"}`}>
+                {sentence(d.have, d.of, d.label, d.key)}
+                {d.missingHref && d.have < d.of ? (
+                  <>
+                    {" "}
+                    <Link href={d.missingHref} className="whitespace-nowrap text-xs font-semibold text-brand-deep hover:underline">
+                      Show the {nf.format(d.of - d.have)} missing
+                    </Link>
+                  </>
+                ) : null}
+              </p>
               <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-line" aria-hidden>
                 <span
                   className={`block h-full rounded-full ${pct < 0.5 ? "bg-amber-500" : "bg-hna-green-strong"}`}

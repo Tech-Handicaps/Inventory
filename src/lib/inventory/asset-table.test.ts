@@ -14,7 +14,7 @@ describe("parseAssetListParams", () => {
 
   it("reads valid values from URLSearchParams and Next searchParams records", () => {
     const fromUrl = parseAssetListParams(
-      new URLSearchParams("q=lenovo&status=deployed&club=none&source=zoho_assist&sort=serial&dir=desc&size=100&page=3")
+      new URLSearchParams("q=lenovo&status=deployed&club=none&source=zoho_assist&missing=warranty&sort=serial&dir=desc&size=100&page=3")
     );
     expect(fromUrl).toEqual({
       page: 3,
@@ -25,6 +25,7 @@ describe("parseAssetListParams", () => {
       status: "deployed",
       club: "none",
       source: "zoho_assist",
+      missing: "warranty",
     });
     expect(parseAssetListParams({ size: ["50", "100"], sort: "name" })).toMatchObject({
       pageSize: 50,
@@ -35,8 +36,8 @@ describe("parseAssetListParams", () => {
 
   it("ignores unknown sort keys, page sizes and sources", () => {
     expect(
-      parseAssetListParams(new URLSearchParams("sort=tags&size=30&source=excel&page=-2"))
-    ).toMatchObject({ sort: "updated", dir: "desc", pageSize: 25, source: "", page: 1 });
+      parseAssetListParams(new URLSearchParams("sort=tags&size=30&source=excel&missing=club&page=-2"))
+    ).toMatchObject({ sort: "updated", dir: "desc", pageSize: 25, source: "", missing: "", page: 1 });
   });
 });
 
