@@ -1,3 +1,4 @@
+import type { ReplacementReservation } from "@/lib/finance/reservation-shared";
 import { isPlaceholderValue } from "@/lib/inventory/template-duplicates";
 
 export type BoardStatus = {
@@ -48,7 +49,13 @@ export type BoardAsset = {
   club?: { id: string; name: string } | null;
   /** Open assessments for this asset (API returns at most one). */
   assessments?: OpenAssessmentBrief[];
+  /** Set while this stock unit is reserved for a club; excluded from available stock. */
+  replacementReservation?: ReplacementReservation | null;
 };
+
+export function isDepotStock(asset: BoardAsset): boolean {
+  return asset.status.code === "new_stock" || asset.status.code === "refurbished";
+}
 
 /** Board column order, left to right. */
 export const BOARD_STAGE_ORDER = [

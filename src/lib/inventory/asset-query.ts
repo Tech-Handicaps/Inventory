@@ -1,4 +1,8 @@
 import { Prisma } from "@prisma/client";
+import {
+  findReplacementReservations,
+  type ReplacementReservation,
+} from "@/lib/finance/replacement-unit";
 import { prisma } from "@/lib/prisma";
 import {
   NO_CLUB_PARAM,
@@ -11,7 +15,11 @@ const assetInclude = { status: true, deviceTemplate: true, club: true } satisfie
 
 export type AssetWithRelations = Prisma.AssetGetPayload<{ include: typeof assetInclude }>;
 export type OpenAssessmentBrief = { id: string; referenceNumber: string; workflowStatus: string };
-export type ListedAsset = AssetWithRelations & { assessments: OpenAssessmentBrief[] };
+export type ListedAsset = AssetWithRelations & {
+  assessments: OpenAssessmentBrief[];
+  /** Set while this stock unit is reserved for a club (write-off replacement or "Send to club"). */
+  replacementReservation: ReplacementReservation | null;
+};
 
 type OpenAssessmentRow = OpenAssessmentBrief & { assetId: string };
 
@@ -38,10 +46,28 @@ async function openAssessmentsFor(assetIds: string[] | "all"): Promise<Map<strin
   );
 }
 
-function withAssessments(rows: AssetWithRelations[], open: Map<string, OpenAssessmentBrief>): ListedAsset[] {
+/** Active replacement reservations; empty on error so lists still load. */
+async function reservationsForLists(): Promise<Map<string, ReplacementReservation>> {
+  try {
+    return await findReplacementReservations("all");
+  } catch (e) {
+    console.warn("asset-query: could not load replacement reservations; continuing without.", e);
+    return new Map();
+  }
+}
+
+function withAssessments(
+  rows: AssetWithRelations[],
+  open: Map<string, OpenAssessmentBrief>,
+  reservations: Map<string, ReplacementReservation>
+): ListedAsset[] {
   return rows.map((a) => {
     const one = open.get(a.id);
-    return { ...a, assessments: one ? [one] : [] };
+    return {
+      ...a,
+      assessments: one ? [one] : [],
+      replacementReservation: reservations.get(a.id) ?? null,
+    };
   });
 }
 
@@ -52,7 +78,7 @@ export async function listAssetsSimple(opts: {
   offset?: number;
 }): Promise<{ assets: ListedAsset[]; total: number }> {
   const where = opts.where ?? {};
-  const [rows, total, open] = await Promise.all([
+  const [rows, total, open, reservations] = await Promise.all([
     prisma.asset.findMany({
       where,
       include: assetInclude,
@@ -62,8 +88,9 @@ export async function listAssetsSimple(opts: {
     }),
     prisma.asset.count({ where }),
     openAssessmentsFor("all"),
+    reservationsForLists(),
   ]);
-  return { assets: withAssessments(rows, open), total };
+  return { assets: withAssessments(rows, open, reservations), total };
 }
 
 export function buildAssetWhere(params: AssetListParams): Prisma.AssetWhereInput {
@@ -158,8 +185,11 @@ export async function listAssetsPage(params: AssetListParams): Promise<{
   const lastPage = Math.max(1, Math.ceil(total / params.pageSize));
   const page = Math.min(params.page, lastPage);
   const rows = page === params.page ? firstTry : await fetchPage(page);
-  const open = await openAssessmentsFor(rows.map((r) => r.id));
-  return { assets: withAssessments(rows, open), total, page };
+  const [open, reservations] = await Promise.all([
+    openAssessmentsFor(rows.map((r) => r.id)),
+    reservationsForLists(),
+  ]);
+  return { assets: withAssessments(rows, open, reservations), total, page };
 }
 
 /** Every row matching the filters (CSV export), in the chosen sort order. */

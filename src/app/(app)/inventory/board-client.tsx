@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { BoardSkeleton } from "@/components/Skeleton";
 import { EditAssetModal } from "@/components/EditAssetModal";
 import { LogRepairModal } from "@/components/LogRepairModal";
+import { ReservationDialog } from "@/components/ReservationDialog";
 import { StartAssessmentModal } from "@/components/StartAssessmentModal";
 import { useToast } from "@/components/ToastProvider";
 import { WriteOffModal } from "@/components/WriteOffModal";
@@ -72,6 +73,7 @@ export function InventoryBoard({
   const [assessAsset, setAssessAsset] = useState<BoardAsset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<BoardAsset | null>(null);
+  const [reservationAsset, setReservationAsset] = useState<BoardAsset | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [pendingMove, setPendingMove] = useState<{
     asset: BoardAsset;
@@ -193,6 +195,10 @@ export function InventoryBoard({
                   ...updated,
                   status: updated.status ?? target,
                   assessments: target.code === "assessment" ? x.assessments : [],
+                  replacementReservation:
+                    target.code === "new_stock" || target.code === "refurbished"
+                      ? x.replacementReservation
+                      : null,
                 }
               : x
           )
@@ -282,6 +288,8 @@ export function InventoryBoard({
       onCancelAssessment: (a) => void cancelOpenAssessment(a),
       onWriteOff: openWriteOff,
       onDelete: (a) => setPendingDelete(a),
+      onReserve: (a) => setReservationAsset(a),
+      onReleaseReservation: (a) => setReservationAsset(a),
       onDragStart: (a) => setDragging(a),
       onDragEnd: () => {
         setDragging(null);
@@ -330,7 +338,7 @@ export function InventoryBoard({
           </>
         }
         actions={
-          <button type="button" onClick={openAddHardware} className="btn-primary">
+          <button type="button" onClick={() => openAddHardware()} className="btn-primary">
             <Plus className="h-5 w-5" aria-hidden />
             Add hardware
           </button>
@@ -498,6 +506,18 @@ export function InventoryBoard({
           }}
           onSaved={() => {
             setEditingId(null);
+            void load();
+          }}
+        />
+      ) : null}
+
+      {reservationAsset ? (
+        <ReservationDialog
+          asset={reservationAsset}
+          onClose={() => setReservationAsset(null)}
+          onDone={(message) => {
+            setReservationAsset(null);
+            toast.showSuccess(message);
             void load();
           }}
         />

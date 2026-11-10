@@ -10,6 +10,8 @@ export function dispatchFromStatusLabel(code: string): string {
   if (code === "assessment") return "Assessment / Maintenance";
   if (code === "repair") return "In Repairs";
   if (code === "written_off") return "Written off";
+  if (code === "new_stock") return "New Stock (replacement)";
+  if (code === "refurbished") return "Refurbished (replacement)";
   return code;
 }
 

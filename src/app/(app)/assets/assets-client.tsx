@@ -364,7 +364,7 @@ export function AssetsView({ params, assets, total, loadError, statuses, clubs, 
             <button type="button" onClick={() => setAssistImportOpen(true)} className="btn-secondary">
               Import from Zoho Assist
             </button>
-            <button type="button" onClick={openAddHardware} className="btn-primary">
+            <button type="button" onClick={() => openAddHardware()} className="btn-primary">
               <Plus className="h-5 w-5" aria-hidden />
               Add hardware
             </button>

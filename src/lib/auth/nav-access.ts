@@ -4,6 +4,7 @@ export type NavKey =
   | "dashboard"
   | "inventory"
   | "assets"
+  | "scan"
   | "reports"
   | "settings";
 

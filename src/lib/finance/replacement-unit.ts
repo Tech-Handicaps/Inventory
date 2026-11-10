@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { withDerivedDeviceTemplateLabel } from "@/lib/inventory/device-template-label";
+import {
+  reservationLabel,
+  type ReplacementReservation,
+} from "@/lib/finance/reservation-shared";
 
 /** Lifecycle stages a replacement unit can be taken from. */
 export const REPLACEMENT_STOCK_STATUS_CODES = ["new_stock", "refurbished"] as const;
@@ -16,11 +20,7 @@ export type ReplacementSnapshot = {
   replacementSerialNumber: string | null;
 };
 
-export type ReplacementReservation = {
-  certificateReference: string;
-  writtenOffAssetName: string;
-  clubName: string | null;
-};
+export { reservationLabel, type ReplacementReservation };
 
 export type ReplacementStockOption = {
   id: string;
@@ -59,55 +59,53 @@ function sameText(a: string | null | undefined, b: string | null | undefined) {
 }
 
 /**
- * Stock units already promised on another write-off and not dispatched since.
- * A dispatch voucher issued after the write-off releases the reservation.
+ * Stock units currently reserved for a club (from the write-off form or "Send to club").
+ * Pass "all" to load every active reservation (board, available counts).
+ * `excludeWrittenOffAssetId` ignores reservations made for that write-off (re-saving the same write-off).
  */
 export async function findReplacementReservations(
-  stockAssetIds: string[],
+  stockAssetIds: string[] | "all",
   excludeWrittenOffAssetId?: string
 ): Promise<Map<string, ReplacementReservation>> {
   const out = new Map<string, ReplacementReservation>();
-  if (stockAssetIds.length === 0) return out;
+  if (stockAssetIds !== "all" && stockAssetIds.length === 0) return out;
 
-  const certs = await prisma.writeOffCertificate.findMany({
+  const rows = await prisma.asset.findMany({
     where: {
-      replacementAssetId: { in: stockAssetIds },
+      reservedAt: { not: null },
+      status: { code: { in: [...REPLACEMENT_STOCK_STATUS_CODES] } },
+      ...(stockAssetIds === "all" ? {} : { id: { in: stockAssetIds } }),
       ...(excludeWrittenOffAssetId
-        ? { NOT: { assetId: excludeWrittenOffAssetId } }
+        ? { NOT: { reservedForWriteOff: { assetId: excludeWrittenOffAssetId } } }
         : {}),
     },
-    orderBy: { writtenOffAt: "desc" },
     select: {
-      replacementAssetId: true,
-      referenceNumber: true,
-      assetName: true,
-      clubName: true,
-      writtenOffAt: true,
-      replacementAsset: {
-        select: {
-          dispatchVouchers: {
-            orderBy: { dispatchedAt: "desc" },
-            take: 1,
-            select: { dispatchedAt: true },
-          },
-        },
-      },
+      id: true,
+      reservedAt: true,
+      reservedForClubId: true,
+      reservedForClub: { select: { name: true } },
+      reservedForWriteOffId: true,
+      reservedForWriteOff: { select: { referenceNumber: true, assetName: true } },
     },
   });
 
-  for (const c of certs) {
-    if (!c.replacementAssetId || out.has(c.replacementAssetId)) continue;
-    const lastDispatch = c.replacementAsset?.dispatchVouchers[0]?.dispatchedAt;
-    if (lastDispatch && lastDispatch > c.writtenOffAt) continue;
-    out.set(c.replacementAssetId, {
-      certificateReference: c.referenceNumber,
-      writtenOffAssetName: c.assetName,
-      clubName: c.clubName,
+  for (const r of rows) {
+    out.set(r.id, {
+      reservedAt: r.reservedAt!.toISOString(),
+      clubId: r.reservedForClubId,
+      clubName: r.reservedForClub?.name ?? null,
+      writeOffId: r.reservedForWriteOffId,
+      certificateReference: r.reservedForWriteOff?.referenceNumber ?? null,
+      writtenOffAssetName: r.reservedForWriteOff?.assetName ?? null,
     });
   }
   return out;
 }
 
+/** Ids of stock units currently reserved — left out of "available to distribute". */
+export async function reservedReplacementAssetIds(): Promise<Set<string>> {
+  return new Set((await findReplacementReservations("all")).keys());
+}
 /** Stock units and device templates offered on the write-off form, closest match first. */
 export async function listReplacementOptions(writtenOffAssetId: string): Promise<{
   stock: ReplacementStockOption[];
@@ -240,7 +238,7 @@ export async function resolveReplacementSnapshot(
     return {
       ok: false,
       status: 409,
-      error: `"${unit.assetName}" is already promised as the replacement on ${reserved.certificateReference} (${reserved.writtenOffAssetName}).`,
+      error: `"${unit.assetName}" is already reserved for ${reservationLabel(reserved)}. Release it first or pick another unit.`,
     };
   }
   return {

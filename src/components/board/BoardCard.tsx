@@ -3,7 +3,8 @@
 import { memo } from "react";
 import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import { displayAssetModel } from "@/lib/inventory/asset-hardware-display";
-import { openAssessment, type BoardAsset } from "@/components/board/types";
+import { reservationLabel } from "@/lib/finance/reservation-shared";
+import { isDepotStock, openAssessment, type BoardAsset } from "@/components/board/types";
 
 export type BoardCardActions = {
   onEdit: (asset: BoardAsset) => void;
@@ -13,6 +14,8 @@ export type BoardCardActions = {
   onCancelAssessment: (asset: BoardAsset) => void;
   onWriteOff: (asset: BoardAsset) => void;
   onDelete: (asset: BoardAsset) => void;
+  onReserve: (asset: BoardAsset) => void;
+  onReleaseReservation: (asset: BoardAsset) => void;
   onDragStart: (asset: BoardAsset) => void;
   onDragEnd: () => void;
 };
@@ -48,6 +51,13 @@ function menuItems(asset: BoardAsset, a: BoardCardActions): OverflowMenuItem[] {
     { label: "Edit", onSelect: () => a.onEdit(asset) },
     { label: "Move to…", onSelect: () => a.onMoveTo(asset) },
   ];
+  if (isDepotStock(asset)) {
+    items.push(
+      asset.replacementReservation
+        ? { label: "Release reservation", onSelect: () => a.onReleaseReservation(asset) }
+        : { label: "Send to club (reserve)…", onSelect: () => a.onReserve(asset) }
+    );
+  }
   if (code === "deployed") {
     items.push({ label: "Send for Assessment/Maintenance", onSelect: () => a.onStartAssessment(asset) });
   } else if (code !== "written_off") {
@@ -82,6 +92,7 @@ export const BoardCard = memo(function BoardCard({
 }) {
   const model = displayAssetModel(asset);
   const intake = asset.status.code === "assessment" ? openAssessment(asset) : null;
+  const reservation = isDepotStock(asset) ? asset.replacementReservation ?? null : null;
   const showReason =
     asset.reason && (asset.status.code === "repair" || asset.status.code === "written_off");
 
@@ -95,7 +106,9 @@ export const BoardCard = memo(function BoardCard({
       }}
       onDragEnd={actions.onDragEnd}
       aria-busy={busy}
-      className={`rounded-lg border border-line bg-white p-2.5 ${
+      className={`rounded-lg border p-2.5 ${
+        reservation ? "border-dashed border-amber-300 bg-amber-50/40" : "border-line bg-white"
+      } ${
         busy ? "opacity-60" : "cursor-grab active:cursor-grabbing"
       }`}
     >
@@ -130,6 +143,14 @@ export const BoardCard = memo(function BoardCard({
       ) : null}
       <div className="mt-1.5 flex items-end gap-1">
         <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+        {reservation ? (
+          <Chip
+            tone="amber"
+            title={`Reserved for ${reservationLabel(reservation)} — moves to Deployed when it appears in Zoho Assist`}
+          >
+            Reserved → {reservation.clubName ?? "club"}
+          </Chip>
+        ) : null}
         {asset.status.code !== "written_off" && !asset.warrantyEndDate ? (
           <Chip tone="amber" title="No warranty end date recorded">
             Warranty?

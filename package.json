@@ -29,6 +29,7 @@
     "@sparticuz/chromium": "^133.0.0",
     "@supabase/ssr": "^0.5",
     "@supabase/supabase-js": "^2.100.1",
+    "barcode-detector": "^3.2.3",
     "chart.js": "^4",
     "lucide-react": "^1.25.0",
     "next": "16.2.0",

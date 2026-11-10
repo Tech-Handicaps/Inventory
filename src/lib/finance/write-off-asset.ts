@@ -2,6 +2,10 @@ import type { Prisma } from "@prisma/client";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { createWrittenOffAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
 import {
+  releaseReplacementReservation,
+  reserveAssetForClub,
+} from "@/lib/finance/replacement-reservation";
+import {
   resolveReplacementSnapshot,
   type ReplacementSelection,
   type ReplacementSnapshot,
@@ -225,6 +229,32 @@ export async function writeOffAsset(
     replacementXeroFixedAssetNumber,
     replacementAssetId,
   });
+
+  const previouslyReserved = await prisma.asset.findMany({
+    where: {
+      reservedForWriteOffId: certificate.id,
+      ...(replacementAssetId ? { NOT: { id: replacementAssetId } } : {}),
+    },
+    select: { id: true },
+  });
+  for (const p of previouslyReserved) {
+    await releaseReplacementReservation({
+      assetId: p.id,
+      userId: input.userId,
+      reason: `write-off ${certificate.referenceNumber} now uses a different replacement`,
+    });
+  }
+  if (replacementAssetId) {
+    const reserved = await reserveAssetForClub({
+      assetId: replacementAssetId,
+      clubId: asset.clubId,
+      userId: input.userId,
+      writeOffId: certificate.id,
+    });
+    if (!reserved.ok && reserved.status !== 409) {
+      console.error("writeOffAsset reserveAssetForClub", reserved.error);
+    }
+  }
 
   if (assessmentRow) {
     await createAuditLog({

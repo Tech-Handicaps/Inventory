@@ -40,6 +40,7 @@ async function computeDashboardOverview(): Promise<DashboardOverview> {
         dateAdded: true,
         purchaseDate: true,
         warrantyEndDate: true,
+        reservedAt: true,
         status: { select: { code: true } },
         deviceTemplate: { select: { manufacturer: true, model: true } },
       },
@@ -75,6 +76,7 @@ async function computeDashboardOverview(): Promise<DashboardOverview> {
       dateAdded: a.dateAdded,
       purchaseDate: a.purchaseDate,
       warrantyEndDate: a.warrantyEndDate,
+      reserved: a.reservedAt !== null,
     };
   });
 

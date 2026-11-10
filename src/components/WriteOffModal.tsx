@@ -5,6 +5,7 @@ import type {
   ReplacementStockOption,
   ReplacementTemplateOption,
 } from "@/lib/finance/replacement-unit";
+import { reservationLabel } from "@/lib/finance/reservation-shared";
 
 type ReplacementSource = "stock" | "procure";
 
@@ -395,7 +396,7 @@ export function WriteOffModal({
                           [
                             ["Same model", (o: ReplacementStockOption) => !o.reservedBy && o.sameModel],
                             ["Other stock", (o: ReplacementStockOption) => !o.reservedBy && !o.sameModel],
-                            ["Already promised on another write-off", (o: ReplacementStockOption) => Boolean(o.reservedBy)],
+                            ["Already reserved for a club", (o: ReplacementStockOption) => Boolean(o.reservedBy)],
                           ] as const
                         ).map(([groupLabel, test]) => {
                           const rows = filteredStock.filter(test);
@@ -410,7 +411,7 @@ export function WriteOffModal({
                                 >
                                   {stockOptionLabel(o)}
                                   {o.reservedBy
-                                    ? ` (${o.reservedBy.certificateReference})`
+                                    ? ` (reserved → ${reservationLabel(o.reservedBy)})`
                                     : ""}
                                 </option>
                               ))}

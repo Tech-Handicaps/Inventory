@@ -16,8 +16,13 @@ import {
   shouldIssueDispatchVoucher,
 } from "@/lib/finance/dispatch-notify";
 import {
+  deployReservedReplacement,
+  releaseReplacementReservation,
+} from "@/lib/finance/replacement-reservation";
+import {
   detachAssistFromAsset,
   hardwareBoardMoveError,
+  isDepotStockStatus,
 } from "@/lib/zoho/assist-lifecycle";
 import { prisma } from "@/lib/prisma";
 
@@ -522,15 +527,45 @@ export async function PUT(
       }
     }
 
+    let responseAsset = asset;
+    const leftStock =
+      isDepotStockStatus(before.status.code) &&
+      !isDepotStockStatus(asset.status.code);
+    if (leftStock && asset.status.code === "deployed") {
+      try {
+        const deployed = await deployReservedReplacement({
+          assetId: id,
+          fromStatusCode: before.status.code,
+          userId: user.id,
+          via: "status_change",
+        });
+        if (deployed) {
+          responseAsset = await prisma.asset.findUniqueOrThrow({
+            where: { id },
+            include: { status: true, deviceTemplate: true, club: true },
+          });
+        }
+      } catch (e) {
+        console.error("PUT /api/assets/[id] deployReservedReplacement", e);
+        notifyWarnings.push("dispatch_notify_failed");
+      }
+    } else if (leftStock) {
+      await releaseReplacementReservation({
+        assetId: id,
+        userId: user.id,
+        reason: `moved to ${asset.status.label}`,
+      });
+    }
+
     if (notifyWarnings.length > 0) {
       return NextResponse.json({
-        ...asset,
+        ...responseAsset,
         warning: "Asset saved, but a finance notification failed.",
         notifyWarnings,
       });
     }
 
-    return NextResponse.json(asset);
+    return NextResponse.json(responseAsset);
   } catch (error) {
     const { catchToJsonError } = await import("@/lib/api/error-response");
     return catchToJsonError("PUT /api/assets/[id]", error, "Failed to update asset");

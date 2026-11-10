@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { HardwareCaptureForm } from "@/components/HardwareCaptureForm";
 import { useToast } from "@/components/ToastProvider";
-import { ADD_HARDWARE_EVENT, HARDWARE_CREATED_EVENT } from "@/lib/client/add-hardware";
+import {
+  ADD_HARDWARE_EVENT,
+  HARDWARE_CREATED_EVENT,
+  type AddHardwarePrefill,
+} from "@/lib/client/add-hardware";
 
 /**
  * Global Add hardware dialog, mounted once in the app shell. Opens on ADD_HARDWARE_EVENT and
@@ -14,6 +18,7 @@ export function AddHardwareModal() {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [prefill, setPrefill] = useState<AddHardwarePrefill>({});
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const close = useCallback(() => {
@@ -22,8 +27,9 @@ export function AddHardwareModal() {
   }, []);
 
   useEffect(() => {
-    const onOpen = () => {
+    const onOpen = (e: Event) => {
       returnFocusRef.current = document.activeElement as HTMLElement | null;
+      setPrefill((e as CustomEvent<AddHardwarePrefill | undefined>).detail ?? {});
       setFormKey((k) => k + 1);
       setOpen(true);
     };
@@ -79,6 +85,7 @@ export function AddHardwareModal() {
         <HardwareCaptureForm
           key={formKey}
           statuses={[]}
+          initialSerialNumber={prefill.serialNumber}
           onCancel={close}
           onCreated={() => {
             toast.showSuccess("Hardware added to the board.");

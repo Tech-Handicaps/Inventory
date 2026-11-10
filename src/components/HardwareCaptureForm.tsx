@@ -33,6 +33,8 @@ type Club = {
 type Props = {
   /** Optional: parent may pass statuses; if empty, the form fetches `/api/statuses` itself. */
   statuses: Status[];
+  /** Pre-fills the serial, e.g. from the scanner. */
+  initialSerialNumber?: string;
   onCreated: () => void;
   onCancel: () => void;
 };
@@ -61,6 +63,7 @@ type SerialCheck =
 
 export function HardwareCaptureForm({
   statuses: statusesProp,
+  initialSerialNumber,
   onCreated,
   onCancel,
 }: Props) {
@@ -118,7 +121,7 @@ export function HardwareCaptureForm({
   const { suggestions: tagSuggestions } = useAssetTagSuggestions();
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
-  const [serialNumber, setSerialNumber] = useState("");
+  const [serialNumber, setSerialNumber] = useState(initialSerialNumber ?? "");
   const [deviceLocation, setDeviceLocation] = useState("");
   const [processorName, setProcessorName] = useState("");
   const [systemRam, setSystemRam] = useState("");

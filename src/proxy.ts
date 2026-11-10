@@ -100,6 +100,7 @@ export async function proxy(request: NextRequest) {
 
   const isPublicAsset =
     pathname.startsWith("/brand/") ||
+    pathname === "/manifest.webmanifest" ||
     /\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/i.test(pathname);
 
   if (isPublicAsset) {

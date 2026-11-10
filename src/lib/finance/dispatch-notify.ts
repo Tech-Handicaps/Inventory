@@ -34,8 +34,11 @@ export { shouldIssueDispatchVoucher };
 export async function createDispatchVoucherAndNotify(params: {
   assetId: string;
   fromStatusCode: string;
+  /** New Stock / Refurbished unit going out as the replacement promised on a write-off. */
+  reservedReplacement?: boolean;
 }): Promise<{ referenceNumber: string } | null> {
   if (
+    !params.reservedReplacement &&
     !shouldIssueDispatchVoucher(params.fromStatusCode, "deployed")
   ) {
     return null;

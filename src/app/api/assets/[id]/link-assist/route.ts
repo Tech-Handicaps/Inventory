@@ -4,6 +4,9 @@ import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { catchToJsonError } from "@/lib/api/error-response";
 import { isNextResponse, parseJsonBody } from "@/lib/api/parse-json";
+import { deployReservedReplacement } from "@/lib/finance/replacement-reservation";
+import { prisma } from "@/lib/prisma";
+import { isDepotStockStatus } from "@/lib/zoho/assist-lifecycle";
 import { linkAssistToAsset } from "@/lib/zoho/link-assist-to-asset";
 
 export const runtime = "nodejs";
@@ -56,8 +59,25 @@ export async function POST(
       },
     });
 
+    const replacementDeployed = isDepotStockStatus(result.asset.status.code)
+      ? await deployReservedReplacement({
+          assetId: id,
+          fromStatusCode: result.asset.status.code,
+          userId: user.id,
+          via: "assist_link",
+          setDeployedStatus: true,
+        })
+      : null;
+    const asset = replacementDeployed
+      ? await prisma.asset.findUniqueOrThrow({
+          where: { id },
+          include: { status: true, deviceTemplate: true, club: true },
+        })
+      : result.asset;
+
     return NextResponse.json({
-      asset: result.asset,
+      asset,
+      replacementDeployed,
       assistDeviceId: result.assistDeviceId,
       assistDisplayName: result.assistDisplayName,
       serialMismatchWarning: result.serialMismatchWarning,

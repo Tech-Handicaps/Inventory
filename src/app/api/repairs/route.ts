@@ -12,6 +12,8 @@ import {
   normalizeDeskTicketLookup,
 } from "@/lib/zoho/desk";
 import { createRepairAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
+import { releaseReplacementReservation } from "@/lib/finance/replacement-reservation";
+import { isDepotStockStatus } from "@/lib/zoho/assist-lifecycle-shared";
 import { prisma } from "@/lib/prisma";
 
 const createRepairSchema = z.object({
@@ -259,6 +261,14 @@ export async function POST(request: NextRequest) {
 
       return { repair: r, movedStatus: moved };
     });
+
+    if (movedStatus && isDepotStockStatus(movedStatus.from)) {
+      await releaseReplacementReservation({
+        assetId,
+        userId: user.id,
+        reason: "repair logged",
+      });
+    }
 
     if (movedStatus) {
       await createAuditLog({

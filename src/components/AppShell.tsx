@@ -8,6 +8,7 @@ import {
   Package,
   FileText,
   Plus,
+  ScanBarcode,
   Settings,
   SquareKanban,
   X,
@@ -30,6 +31,7 @@ function navKeyFromPath(pathname: string): AppShellCurrent | undefined {
   if (pathname.startsWith("/dashboard")) return "dashboard";
   if (pathname.startsWith("/inventory")) return "inventory";
   if (pathname.startsWith("/assets")) return "assets";
+  if (pathname.startsWith("/scan")) return "scan";
   if (pathname.startsWith("/reports")) return "reports";
   if (pathname.startsWith("/settings")) return "settings";
   return undefined;
@@ -44,6 +46,7 @@ const NAV_ITEMS: {
   { href: "/inventory", key: "inventory", label: "Hardware board", icon: SquareKanban },
   { href: "/dashboard", key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/assets", key: "assets", label: "All assets", icon: Package },
+  { href: "/scan", key: "scan", label: "Scan", icon: ScanBarcode },
   { href: "/reports", key: "reports", label: "Reports", icon: FileText },
   { href: "/settings", key: "settings", label: "Settings", icon: Settings },
 ];
@@ -177,7 +180,7 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
           className="btn-primary shrink-0"
           aria-label="Add hardware"
           aria-haspopup="dialog"
-          onClick={openAddHardware}
+          onClick={() => openAddHardware()}
         >
           <Plus className="h-5 w-5" aria-hidden />
           <span className="hidden sm:inline">Add hardware</span>

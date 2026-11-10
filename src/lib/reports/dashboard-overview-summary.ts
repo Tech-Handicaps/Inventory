@@ -37,6 +37,8 @@ export type OverviewAsset = {
   dateAdded: Date;
   purchaseDate: Date | null;
   warrantyEndDate: Date | null;
+  /** Stock unit reserved for a club; still in its stage but not available to distribute. */
+  reserved?: boolean;
 };
 
 export type CoverageStat = {
@@ -141,7 +143,7 @@ export function summariseOverview(
   }
 
   const availableByType: Record<ReportAssetTypeId, number> = { hardware: 0, usb_hid_msr: 0, other: 0 };
-  for (const a of assets) if (AVAILABLE_CODES.has(a.statusCode)) availableByType[a.type] += 1;
+  for (const a of assets) if (AVAILABLE_CODES.has(a.statusCode) && !a.reserved) availableByType[a.type] += 1;
 
   const manufacturers = [...countBy(assets, (a) => a.brand)]
     .map(([name, count]) => ({ name, count }))

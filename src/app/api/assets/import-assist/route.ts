@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { deployReservedReplacement } from "@/lib/finance/replacement-reservation";
 import { prismaGeoFieldsFromPublicIp } from "@/lib/geo/lookup-ip";
 import {
   mapAssistDeviceJsonToHardwareFields,
@@ -272,8 +273,21 @@ export async function POST(request: NextRequest) {
             },
           });
 
+          const replacementDeployed = await deployReservedReplacement({
+            assetId: redeployed.id,
+            fromStatusCode: serialConflict.status.code,
+            userId: user.id,
+            via: "assist_import",
+          });
+
           return NextResponse.json({
-            asset: redeployed,
+            asset: replacementDeployed
+              ? await prisma.asset.findUniqueOrThrow({
+                  where: { id: redeployed.id },
+                  include: { status: true, deviceTemplate: true, club: true },
+                })
+              : redeployed,
+            replacementDeployed,
             action: "redeployed_from_serial",
             message:
               "Existing depot stock matched by serial — linked to Assist, renamed, and moved to Deployed.",

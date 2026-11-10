@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.assetStatus.findMany(),
       prisma.asset.findMany({
-        where: { status: { code: { in: availableStatusCodes } } },
+        where: { status: { code: { in: availableStatusCodes } }, reservedAt: null },
         select: {
           category: true,
           tags: true,

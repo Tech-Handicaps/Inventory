@@ -21,11 +21,12 @@ datasource db {
 
 /// Fixed list of club/site names — assets reference via clubId for reporting and registry columns.
 model Club {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  assets    Asset[]
+  id             String   @id @default(cuid())
+  name           String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  assets         Asset[]  @relation("AssetClub")
+  reservedAssets Asset[]  @relation("AssetReservedForClub")
 }
 
 model DeviceTemplate {
@@ -72,7 +73,7 @@ model Asset {
   deviceTemplateId        String?
   deviceTemplate          DeviceTemplate?          @relation(fields: [deviceTemplateId], references: [id], onDelete: SetNull)
   clubId                  String?
-  club                    Club?                    @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  club                    Club?                    @relation("AssetClub", fields: [clubId], references: [id], onDelete: SetNull)
   statusId                String
   status                  AssetStatus              @relation(fields: [statusId], references: [id])
   reason                  String? // e.g. write-off reason
@@ -125,6 +126,17 @@ model Asset {
   writeOffCertificates    WriteOffCertificate[]    @relation("WriteOffCertificateAsset")
   /// Write-offs that chose this stock unit as the club's replacement.
   replacementForWriteOffs WriteOffCertificate[]    @relation("WriteOffReplacementAsset")
+  /// New Stock / Refurbished unit reserved for a club; moves to Deployed when it appears in Zoho Assist.
+  reservedForClubId       String?
+  reservedForClub         Club?                    @relation("AssetReservedForClub", fields: [reservedForClubId], references: [id], onDelete: SetNull)
+  /// Set while the unit is reserved (cleared on deploy or release).
+  reservedAt              DateTime?
+  reservedByUserId        String?
+  /// Write-off this unit replaces, when the reservation came from the write-off form.
+  reservedForWriteOffId   String?
+  reservedForWriteOff     WriteOffCertificate?     @relation("AssetReservedForWriteOff", fields: [reservedForWriteOffId], references: [id], onDelete: SetNull)
+
+  @@index([reservedAt])
 }
 
 /// Issued when hardware is dispatched to the field (Assessment or Repairs → Deployed).
@@ -179,6 +191,8 @@ model WriteOffCertificate {
   /// Stock unit (New Stock / Refurbished) chosen as the replacement; null when it is still to be procured.
   replacementAssetId              String?
   replacementAsset                Asset?                  @relation("WriteOffReplacementAsset", fields: [replacementAssetId], references: [id], onDelete: SetNull)
+  /// Stock unit currently reserved for this write-off's club (cleared when it deploys or is released).
+  reservedAssets                  Asset[]                 @relation("AssetReservedForWriteOff")
   fromStatusCode                  String
   writtenOffAt                    DateTime                @default(now())
   createdAt                       DateTime                @default(now())
