@@ -86,38 +86,40 @@ export async function writeOffAsset(
 
   if (asset.status.code === "assessment") {
     const assessmentId = input.assessmentId?.trim();
-    if (!assessmentId) {
-      return {
-        ok: false,
-        status: 400,
-        error:
-          "assessmentId is required — open Write off from the Assessment/Maintenance card so the intake is completed correctly.",
-      };
+    const select = {
+      id: true,
+      assetId: true,
+      workflowStatus: true,
+      referenceNumber: true,
+    } as const;
+    if (assessmentId) {
+      const row = await prisma.assessment.findUnique({
+        where: { id: assessmentId },
+        select,
+      });
+      if (!row || row.assetId !== asset.id) {
+        return {
+          ok: false,
+          status: 400,
+          error: "Assessment/Maintenance intake not found for this asset.",
+        };
+      }
+      if (row.workflowStatus !== "open") {
+        return {
+          ok: false,
+          status: 400,
+          error: `Assessment/Maintenance intake ${row.referenceNumber} is not open.`,
+        };
+      }
+      assessmentRow = row;
+    } else {
+      // Units can sit in Assessment/Maintenance without an intake ("No intake" on the board).
+      assessmentRow = await prisma.assessment.findFirst({
+        where: { assetId: asset.id, workflowStatus: "open" },
+        orderBy: { createdAt: "desc" },
+        select,
+      });
     }
-    const row = await prisma.assessment.findUnique({
-      where: { id: assessmentId },
-      select: {
-        id: true,
-        assetId: true,
-        workflowStatus: true,
-        referenceNumber: true,
-      },
-    });
-    if (!row || row.assetId !== asset.id) {
-      return {
-        ok: false,
-        status: 400,
-        error: "Assessment/Maintenance intake not found for this asset.",
-      };
-    }
-    if (row.workflowStatus !== "open") {
-      return {
-        ok: false,
-        status: 400,
-        error: `Assessment/Maintenance intake ${row.referenceNumber} is not open.`,
-      };
-    }
-    assessmentRow = row;
   } else if (input.assessmentId?.trim()) {
     return {
       ok: false,
