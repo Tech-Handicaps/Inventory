@@ -18,43 +18,35 @@ const writeOffSchema = z
     xeroFixedAssetNumber: optionalTrimmed,
     replacementRequested: z.boolean().optional(),
     replacementNotes: z.string().optional(),
-    replacementAssetName: optionalTrimmed,
-    replacementAssetType: optionalTrimmed,
-    replacementMakeModel: optionalTrimmed,
-    replacementSerialNumber: optionalTrimmed,
+    replacementSource: z.enum(["stock", "procure"]).optional(),
+    replacementStockAssetId: optionalTrimmed,
+    replacementDeviceTemplateId: optionalTrimmed,
     replacementXeroFixedAssetNumber: optionalTrimmed,
     assessmentId: z.string().trim().min(1).optional(),
   })
   .superRefine((val, ctx) => {
-    if (val.replacementRequested === true) {
-      if (!val.replacementAssetName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Replacement asset name is required",
-          path: ["replacementAssetName"],
-        });
-      }
-      if (!val.replacementAssetType) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Replacement asset type is required",
-          path: ["replacementAssetType"],
-        });
-      }
-      if (!val.replacementMakeModel) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Replacement make / model is required",
-          path: ["replacementMakeModel"],
-        });
-      }
-      if (!val.replacementSerialNumber) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Replacement serial number is required",
-          path: ["replacementSerialNumber"],
-        });
-      }
+    if (val.replacementRequested !== true) return;
+    if (val.replacementSource === "stock" && !val.replacementStockAssetId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pick the replacement unit from New Stock / Refurbished",
+        path: ["replacementStockAssetId"],
+      });
+    } else if (
+      val.replacementSource === "procure" &&
+      !val.replacementDeviceTemplateId
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pick the model to procure",
+        path: ["replacementDeviceTemplateId"],
+      });
+    } else if (!val.replacementSource) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose a stock unit or a model to procure",
+        path: ["replacementSource"],
+      });
     }
   });
 
@@ -80,10 +72,18 @@ export async function POST(
       xeroFixedAssetNumber: parsed.xeroFixedAssetNumber,
       replacementRequested: parsed.replacementRequested === true,
       replacementNotes: parsed.replacementNotes,
-      replacementAssetName: parsed.replacementAssetName,
-      replacementAssetType: parsed.replacementAssetType,
-      replacementMakeModel: parsed.replacementMakeModel,
-      replacementSerialNumber: parsed.replacementSerialNumber,
+      replacement:
+        parsed.replacementRequested !== true
+          ? undefined
+          : parsed.replacementSource === "stock"
+            ? {
+                source: "stock",
+                stockAssetId: parsed.replacementStockAssetId ?? "",
+              }
+            : {
+                source: "procure",
+                deviceTemplateId: parsed.replacementDeviceTemplateId ?? "",
+              },
       replacementXeroFixedAssetNumber: parsed.replacementXeroFixedAssetNumber,
       assessmentId: parsed.assessmentId,
     });

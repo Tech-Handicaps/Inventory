@@ -265,6 +265,7 @@ export async function createWriteOffCertificate(params: {
   replacementMakeModel?: string | null;
   replacementSerialNumber?: string | null;
   replacementXeroFixedAssetNumber?: string | null;
+  replacementAssetId?: string | null;
 }): Promise<WriteOffCertificateRecord> {
   const asset = await prisma.asset.findUnique({
     where: { id: params.assetId },
@@ -292,6 +293,9 @@ export async function createWriteOffCertificate(params: {
     : null;
   const replacementXeroFixedAssetNumber = replacementRequested
     ? trimOrNull(params.replacementXeroFixedAssetNumber)
+    : null;
+  const replacementAssetId = replacementRequested
+    ? trimOrNull(params.replacementAssetId)
     : null;
   const assessmentReference = trimOrNull(params.assessmentReference);
   const reason = trimOrNull(params.reason);
@@ -348,6 +352,11 @@ export async function createWriteOffCertificate(params: {
           : existing.replacementRequested
             ? existing.replacementXeroFixedAssetNumber
             : null,
+        replacementAssetId: replacementRequested
+          ? replacementAssetId
+          : existing.replacementRequested
+            ? existing.replacementAssetId
+            : null,
         fromStatusCode:
           params.fromStatusCode !== "written_off"
             ? params.fromStatusCode
@@ -379,6 +388,7 @@ export async function createWriteOffCertificate(params: {
       replacementMakeModel,
       replacementSerialNumber,
       replacementXeroFixedAssetNumber,
+      replacementAssetId,
       fromStatusCode: params.fromStatusCode,
       writtenOffAt,
     },

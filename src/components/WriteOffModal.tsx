@@ -1,6 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  ReplacementStockOption,
+  ReplacementTemplateOption,
+} from "@/lib/finance/replacement-unit";
+
+type ReplacementSource = "stock" | "procure";
+
+type ReplacementOptions = {
+  stock: ReplacementStockOption[];
+  templates: ReplacementTemplateOption[];
+};
+
+function makeModelText(
+  manufacturer: string | null | undefined,
+  model: string | null | undefined
+): string {
+  return [manufacturer?.trim(), model?.trim()].filter(Boolean).join(" · ");
+}
+
+function stockOptionLabel(o: ReplacementStockOption): string {
+  return [
+    o.assetName,
+    makeModelText(o.manufacturer, o.model),
+    o.serialNumber ? `S/N ${o.serialNumber}` : "no serial",
+    o.statusLabel,
+  ]
+    .filter(Boolean)
+    .join(" — ");
+}
 
 type Asset = {
   id: string;
@@ -28,10 +57,14 @@ export function WriteOffModal({
   const [serialNumber, setSerialNumber] = useState("");
   const [xeroFixedAssetNumber, setXeroFixedAssetNumber] = useState("");
   const [replacementRequested, setReplacementRequested] = useState(false);
-  const [replacementAssetName, setReplacementAssetName] = useState("");
-  const [replacementAssetType, setReplacementAssetType] = useState("");
-  const [replacementMakeModel, setReplacementMakeModel] = useState("");
-  const [replacementSerialNumber, setReplacementSerialNumber] = useState("");
+  const [replacementSource, setReplacementSource] =
+    useState<ReplacementSource>("stock");
+  const [replacementStockAssetId, setReplacementStockAssetId] = useState("");
+  const [replacementDeviceTemplateId, setReplacementDeviceTemplateId] =
+    useState("");
+  const [stockSearch, setStockSearch] = useState("");
+  const [options, setOptions] = useState<ReplacementOptions | null>(null);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
   const [replacementXeroFixedAssetNumber, setReplacementXeroFixedAssetNumber] =
     useState("");
   const [replacementNotes, setReplacementNotes] = useState("");
@@ -44,15 +77,76 @@ export function WriteOffModal({
       setSerialNumber(asset.serialNumber ?? "");
       setXeroFixedAssetNumber("");
       setReplacementRequested(false);
-      setReplacementAssetName("");
-      setReplacementAssetType("");
-      setReplacementMakeModel("");
-      setReplacementSerialNumber("");
+      setReplacementSource("stock");
+      setReplacementStockAssetId("");
+      setReplacementDeviceTemplateId("");
+      setStockSearch("");
+      setOptions(null);
+      setOptionsError(null);
       setReplacementXeroFixedAssetNumber("");
       setReplacementNotes("");
       setError(null);
     }
   }, [asset]);
+
+  const assetId = asset?.id;
+  useEffect(() => {
+    if (!replacementRequested || !assetId || options) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/assets/${assetId}/replacement-options`);
+        const j = (await res.json().catch(() => ({}))) as
+          | ReplacementOptions
+          | { error?: string };
+        if (!res.ok || !("stock" in j)) {
+          throw new Error(
+            "error" in j && typeof j.error === "string"
+              ? j.error
+              : "Could not load stock"
+          );
+        }
+        if (cancelled) return;
+        setOptions(j);
+        const firstFree = j.stock.find((o) => !o.reservedBy);
+        if (firstFree) {
+          setReplacementSource("stock");
+        } else {
+          setReplacementSource("procure");
+          const sameTemplate = j.templates.find((t) => t.sameModel);
+          if (sameTemplate) setReplacementDeviceTemplateId(sameTemplate.id);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setOptionsError(
+            err instanceof Error ? err.message : "Could not load stock"
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [replacementRequested, assetId, options]);
+
+  const filteredStock = useMemo(() => {
+    const all = options?.stock ?? [];
+    const q = stockSearch.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter((o) =>
+      [o.assetName, o.manufacturer, o.model, o.serialNumber, o.category]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q))
+    );
+  }, [options, stockSearch]);
+
+  const selectedStock =
+    options?.stock.find((o) => o.id === replacementStockAssetId) ?? null;
+  const selectedTemplate =
+    options?.templates.find((t) => t.id === replacementDeviceTemplateId) ??
+    null;
+  const freeStockCount =
+    options?.stock.filter((o) => !o.reservedBy).length ?? 0;
 
   if (!asset) return null;
 
@@ -69,20 +163,12 @@ export function WriteOffModal({
     }
 
     if (replacementRequested) {
-      if (!replacementAssetName.trim()) {
-        setError("Enter the replacement asset name (from finance / procurement).");
+      if (replacementSource === "stock" && !selectedStock) {
+        setError("Pick the replacement unit from New Stock / Refurbished.");
         return;
       }
-      if (!replacementAssetType.trim()) {
-        setError("Enter the replacement asset type (e.g. AIO, POS).");
-        return;
-      }
-      if (!replacementMakeModel.trim()) {
-        setError("Enter the replacement make / model.");
-        return;
-      }
-      if (!replacementSerialNumber.trim()) {
-        setError("Enter the replacement serial number.");
+      if (replacementSource === "procure" && !selectedTemplate) {
+        setError("Pick the model to procure.");
         return;
       }
     }
@@ -98,18 +184,17 @@ export function WriteOffModal({
           serialNumber: serialNumber.trim() || null,
           xeroFixedAssetNumber: xeroFixedAssetNumber.trim() || undefined,
           replacementRequested,
-          replacementAssetName: replacementRequested
-            ? replacementAssetName.trim()
+          replacementSource: replacementRequested
+            ? replacementSource
             : undefined,
-          replacementAssetType: replacementRequested
-            ? replacementAssetType.trim()
-            : undefined,
-          replacementMakeModel: replacementRequested
-            ? replacementMakeModel.trim()
-            : undefined,
-          replacementSerialNumber: replacementRequested
-            ? replacementSerialNumber.trim()
-            : undefined,
+          replacementStockAssetId:
+            replacementRequested && replacementSource === "stock"
+              ? replacementStockAssetId
+              : undefined,
+          replacementDeviceTemplateId:
+            replacementRequested && replacementSource === "procure"
+              ? replacementDeviceTemplateId
+              : undefined,
           replacementXeroFixedAssetNumber: replacementRequested
             ? replacementXeroFixedAssetNumber.trim() || undefined
             : undefined,
@@ -250,59 +335,160 @@ export function WriteOffModal({
               <p className="text-xs font-semibold text-muted">
                 Replacement unit
               </p>
-              <label className="block">
-                <span className="text-xs font-medium text-ink">
-                  Asset name <span className="text-red-600">*</span>
-                </span>
-                <input
-                  type="text"
-                  value={replacementAssetName}
-                  onChange={(e) => setReplacementAssetName(e.target.value)}
-                  required={replacementRequested}
-                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
-                  placeholder="e.g. Posiflex PS-3000 PS3316-E"
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium text-ink">
-                  Asset type <span className="text-red-600">*</span>
-                </span>
-                <input
-                  type="text"
-                  value={replacementAssetType}
-                  onChange={(e) => setReplacementAssetType(e.target.value)}
-                  required={replacementRequested}
-                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
-                  placeholder="e.g. AIO, POS, Laptop"
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium text-ink">
-                  Make / model <span className="text-red-600">*</span>
-                </span>
-                <input
-                  type="text"
-                  value={replacementMakeModel}
-                  onChange={(e) => setReplacementMakeModel(e.target.value)}
-                  required={replacementRequested}
-                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
-                  placeholder="e.g. Posiflex · PS3316-E"
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-medium text-ink">
-                  Serial number <span className="text-red-600">*</span>
-                </span>
-                <input
-                  type="text"
-                  value={replacementSerialNumber}
-                  onChange={(e) => setReplacementSerialNumber(e.target.value)}
-                  required={replacementRequested}
-                  autoComplete="off"
-                  className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 font-mono text-sm"
-                  placeholder="Replacement unit serial"
-                />
-              </label>
+              {optionsError ? (
+                <p className="text-sm text-red-700" role="alert">
+                  {optionsError}
+                </p>
+              ) : !options ? (
+                <p className="text-xs text-muted">Loading stock…</p>
+              ) : (
+                <>
+                  <fieldset className="space-y-1.5">
+                    <legend className="text-xs font-medium text-ink">
+                      Where does the replacement come from?{" "}
+                      <span className="text-red-600">*</span>
+                    </legend>
+                    <label className="flex items-center gap-2 text-sm text-ink">
+                      <input
+                        type="radio"
+                        name="replacement-source"
+                        checked={replacementSource === "stock"}
+                        onChange={() => setReplacementSource("stock")}
+                        disabled={freeStockCount === 0}
+                      />
+                      From stock (New Stock / Refurbished) —{" "}
+                      {freeStockCount} available
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-ink">
+                      <input
+                        type="radio"
+                        name="replacement-source"
+                        checked={replacementSource === "procure"}
+                        onChange={() => setReplacementSource("procure")}
+                      />
+                      Not in stock — to be procured
+                    </label>
+                  </fieldset>
+
+                  {replacementSource === "stock" ? (
+                    <label className="block">
+                      <span className="text-xs font-medium text-ink">
+                        Replacement unit <span className="text-red-600">*</span>
+                      </span>
+                      <input
+                        type="search"
+                        value={stockSearch}
+                        onChange={(e) => setStockSearch(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
+                        placeholder="Search name, model or serial"
+                        aria-label="Search stock"
+                      />
+                      <select
+                        value={replacementStockAssetId}
+                        onChange={(e) =>
+                          setReplacementStockAssetId(e.target.value)
+                        }
+                        className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="">Choose a unit…</option>
+                        {(
+                          [
+                            ["Same model", (o: ReplacementStockOption) => !o.reservedBy && o.sameModel],
+                            ["Other stock", (o: ReplacementStockOption) => !o.reservedBy && !o.sameModel],
+                            ["Already promised on another write-off", (o: ReplacementStockOption) => Boolean(o.reservedBy)],
+                          ] as const
+                        ).map(([groupLabel, test]) => {
+                          const rows = filteredStock.filter(test);
+                          if (rows.length === 0) return null;
+                          return (
+                            <optgroup key={groupLabel} label={groupLabel}>
+                              {rows.map((o) => (
+                                <option
+                                  key={o.id}
+                                  value={o.id}
+                                  disabled={Boolean(o.reservedBy)}
+                                >
+                                  {stockOptionLabel(o)}
+                                  {o.reservedBy
+                                    ? ` (${o.reservedBy.certificateReference})`
+                                    : ""}
+                                </option>
+                              ))}
+                            </optgroup>
+                          );
+                        })}
+                      </select>
+                      {filteredStock.length === 0 ? (
+                        <p className="mt-1 text-xs text-muted">
+                          No stock matches “{stockSearch}”.
+                        </p>
+                      ) : null}
+                    </label>
+                  ) : (
+                    <label className="block">
+                      <span className="text-xs font-medium text-ink">
+                        Model to procure <span className="text-red-600">*</span>
+                      </span>
+                      <select
+                        value={replacementDeviceTemplateId}
+                        onChange={(e) =>
+                          setReplacementDeviceTemplateId(e.target.value)
+                        }
+                        className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="">Choose a model…</option>
+                        {options.templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label} — {t.category}
+                            {t.sameModel ? " (same as written-off unit)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-muted">
+                        Models come from Settings → Devices. Add the model there
+                        first if it is missing.
+                      </p>
+                    </label>
+                  )}
+
+                  {(replacementSource === "stock"
+                    ? selectedStock
+                    : selectedTemplate) ? (
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg border border-line bg-white px-3 py-2 text-xs">
+                      <dt className="text-muted">Asset name</dt>
+                      <dd className="text-ink">
+                        {replacementSource === "stock"
+                          ? selectedStock?.assetName
+                          : selectedTemplate?.label}
+                      </dd>
+                      <dt className="text-muted">Asset type</dt>
+                      <dd className="text-ink">
+                        {replacementSource === "stock"
+                          ? selectedStock?.category
+                          : selectedTemplate?.category}
+                      </dd>
+                      <dt className="text-muted">Make / model</dt>
+                      <dd className="text-ink">
+                        {replacementSource === "stock"
+                          ? makeModelText(
+                              selectedStock?.manufacturer,
+                              selectedStock?.model
+                            ) || "—"
+                          : makeModelText(
+                              selectedTemplate?.manufacturer,
+                              selectedTemplate?.model
+                            )}
+                      </dd>
+                      <dt className="text-muted">Serial number</dt>
+                      <dd className="font-mono text-ink">
+                        {replacementSource === "stock"
+                          ? selectedStock?.serialNumber || "— (none on register)"
+                          : "To be procured"}
+                      </dd>
+                    </dl>
+                  ) : null}
+                </>
+              )}
               <label className="block">
                 <span className="text-xs font-medium text-ink">
                   Xero fixed asset number

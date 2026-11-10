@@ -46,7 +46,7 @@ export function buildWriteOffCertificateHtml(
       <tr><th>Replacement asset name</th><td>${escOptional(fields.replacementAssetName)}</td></tr>
       <tr><th>Replacement asset type</th><td>${escOptional(fields.replacementAssetType)}</td></tr>
       <tr><th>Replacement make / model</th><td>${escOptional(fields.replacementMakeModel)}</td></tr>
-      <tr><th>Replacement serial number</th><td>${escOptional(fields.replacementSerialNumber)}</td></tr>
+      <tr><th>Replacement serial number</th><td>${fields.replacementSerialNumber?.trim() ? escHtml(fields.replacementSerialNumber) : "To be procured"}</td></tr>
       <tr><th>Replacement Xero fixed asset number</th><td>${escOptional(fields.replacementXeroFixedAssetNumber)}</td></tr>
       ${
         fields.replacementNotes
