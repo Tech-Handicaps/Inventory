@@ -240,7 +240,7 @@ export function buildWrittenOffEmail(params: {
       <tr><td style="padding:6px 0;color:${MUTED};">Replacement asset name</td><td style="padding:6px 0;">${escOptional(params.replacementAssetName ?? null)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Replacement asset type</td><td style="padding:6px 0;">${escOptional(params.replacementAssetType ?? null)}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Replacement make / model</td><td style="padding:6px 0;">${escOptional(params.replacementMakeModel ?? null)}</td></tr>
-      <tr><td style="padding:6px 0;color:${MUTED};">Replacement serial number</td><td style="padding:6px 0;">${escOptional(params.replacementSerialNumber ?? null)}</td></tr>
+      <tr><td style="padding:6px 0;color:${MUTED};">Replacement serial number</td><td style="padding:6px 0;">${params.replacementSerialNumber?.trim() ? esc(params.replacementSerialNumber) : "To be procured"}</td></tr>
       <tr><td style="padding:6px 0;color:${MUTED};">Replacement Xero FA #</td><td style="padding:6px 0;">${escOptional(params.replacementXeroFixedAssetNumber ?? null)}</td></tr>
       ${
         params.replacementNotes

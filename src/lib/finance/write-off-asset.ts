@@ -1,6 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import { createAuditLog } from "@/lib/audit/audit-log";
 import { createWrittenOffAcknowledgementAndNotify } from "@/lib/finance/acknowledgement-notify";
+import {
+  resolveReplacementSnapshot,
+  type ReplacementSelection,
+  type ReplacementSnapshot,
+} from "@/lib/finance/replacement-unit";
 import { createWriteOffCertificate } from "@/lib/finance/write-off-certificate";
 import { prisma } from "@/lib/prisma";
 
@@ -12,10 +17,8 @@ export type WriteOffAssetInput = {
   xeroFixedAssetNumber?: string | null;
   replacementRequested?: boolean;
   replacementNotes?: string | null;
-  replacementAssetName?: string | null;
-  replacementAssetType?: string | null;
-  replacementMakeModel?: string | null;
-  replacementSerialNumber?: string | null;
+  /** Required when `replacementRequested`; details are read from the register. */
+  replacement?: ReplacementSelection;
   replacementXeroFixedAssetNumber?: string | null;
   assessmentId?: string;
 };
@@ -148,55 +151,38 @@ export async function writeOffAsset(
   const replacementNotes = replacementRequested
     ? input.replacementNotes?.trim() || null
     : null;
-  const replacementAssetName = replacementRequested
-    ? input.replacementAssetName?.trim() || null
-    : null;
-  const replacementAssetType = replacementRequested
-    ? input.replacementAssetType?.trim() || null
-    : null;
-  const replacementMakeModel = replacementRequested
-    ? input.replacementMakeModel?.trim() || null
-    : null;
-  const replacementSerialNumber = replacementRequested
-    ? input.replacementSerialNumber?.trim() || null
-    : null;
   const replacementXeroFixedAssetNumber = replacementRequested
     ? input.replacementXeroFixedAssetNumber?.trim() || null
     : null;
   const xeroFixedAssetNumber = input.xeroFixedAssetNumber?.trim() || null;
 
+  let replacement: ReplacementSnapshot | null = null;
   if (replacementRequested) {
-    if (!replacementAssetName) {
-      return {
-        ok: false,
-        status: 400,
-        error: "Replacement asset name is required when requesting a replacement.",
-      };
-    }
-    if (!replacementAssetType) {
-      return {
-        ok: false,
-        status: 400,
-        error: "Replacement asset type is required when requesting a replacement.",
-      };
-    }
-    if (!replacementMakeModel) {
+    if (!input.replacement) {
       return {
         ok: false,
         status: 400,
         error:
-          "Replacement make / model is required when requesting a replacement.",
+          "Choose the replacement unit from New Stock / Refurbished, or the model to procure.",
       };
     }
-    if (!replacementSerialNumber) {
-      return {
-        ok: false,
-        status: 400,
-        error:
-          "Replacement serial number is required when requesting a replacement.",
-      };
-    }
+    const resolved = await resolveReplacementSnapshot(
+      input.replacement,
+      asset.id
+    );
+    if (!resolved.ok) return resolved;
+    replacement = resolved.snapshot;
   }
+  const replacementAssetId = replacement?.replacementAssetId ?? null;
+  const replacementAssetName = replacement?.replacementAssetName ?? null;
+  const replacementAssetType = replacement?.replacementAssetType ?? null;
+  const replacementMakeModel = replacement?.replacementMakeModel ?? null;
+  const replacementSerialNumber = replacement?.replacementSerialNumber ?? null;
+  const replacementSource = replacement
+    ? replacementAssetId
+      ? "stock"
+      : "procure"
+    : null;
 
   const fromStatusCode = asset.status.code;
 
@@ -235,6 +221,7 @@ export async function writeOffAsset(
     replacementMakeModel,
     replacementSerialNumber,
     replacementXeroFixedAssetNumber,
+    replacementAssetId,
   });
 
   if (assessmentRow) {
@@ -269,6 +256,8 @@ export async function writeOffAsset(
       replacementMakeModel,
       replacementSerialNumber,
       replacementXeroFixedAssetNumber,
+      replacementSource,
+      replacementAssetId,
       fromStatusCode,
       writeOffCertificate: certificate.referenceNumber,
       ...(assessmentRow

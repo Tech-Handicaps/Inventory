@@ -122,7 +122,9 @@ model Asset {
   xeroSyncs               XeroSync[]
   financeAcknowledgements FinanceAcknowledgement[]
   dispatchVouchers        DispatchVoucher[]
-  writeOffCertificates    WriteOffCertificate[]
+  writeOffCertificates    WriteOffCertificate[]    @relation("WriteOffCertificateAsset")
+  /// Write-offs that chose this stock unit as the club's replacement.
+  replacementForWriteOffs WriteOffCertificate[]    @relation("WriteOffReplacementAsset")
 }
 
 /// Issued when hardware is dispatched to the field (Assessment or Repairs → Deployed).
@@ -147,7 +149,7 @@ model DispatchVoucher {
 model WriteOffCertificate {
   id                              String                  @id @default(cuid())
   assetId                         String
-  asset                           Asset                   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset                           Asset                   @relation("WriteOffCertificateAsset", fields: [assetId], references: [id], onDelete: Cascade)
   /// e.g. HNA-WOF-2026-A1B2C3D4
   referenceNumber                 String                  @unique
   /// Assessment intake that led to write-off (kept for lineage; not replaced).
@@ -174,12 +176,16 @@ model WriteOffCertificate {
   replacementSerialNumber         String?
   /// Xero Fixed Asset number for the replacement unit (from finance).
   replacementXeroFixedAssetNumber String?
+  /// Stock unit (New Stock / Refurbished) chosen as the replacement; null when it is still to be procured.
+  replacementAssetId              String?
+  replacementAsset                Asset?                  @relation("WriteOffReplacementAsset", fields: [replacementAssetId], references: [id], onDelete: SetNull)
   fromStatusCode                  String
   writtenOffAt                    DateTime                @default(now())
   createdAt                       DateTime                @default(now())
   financeAcknowledgement          FinanceAcknowledgement?
 
   @@index([assetId, writtenOffAt])
+  @@index([replacementAssetId])
 }
 
 /// Intake / triage between deployed field returns and formal repair authorization; also used for depot maintenance (reloads, etc.) without implying hardware repair.
