@@ -6,7 +6,7 @@ import { useToast } from "@/components/ToastProvider";
 import { AssetTagChips } from "@/components/ui/AssetTagChips";
 import { STAGE_DOT } from "@/components/board/types";
 import { formatDate, formatDateTime } from "@/lib/dates/format";
-import { formatGeoLabel } from "@/lib/geo/region-display";
+import { formatGeoLabel, internetProviderLabel } from "@/lib/geo/region-display";
 import { assetLocation } from "@/lib/inventory/asset-location";
 import {
   displayAssetManufacturer,
@@ -46,6 +46,8 @@ type Detail = {
     geoRegionCode: string | null;
     geoRegionName: string | null;
     geoCity: string | null;
+    ispName: string | null;
+    ispAsn: number | null;
     purchaseDate: string | null;
     warrantyEndDate: string | null;
     reason: string | null;
@@ -297,6 +299,9 @@ export function AssetDetailPanel({ assetId, statuses, suspendEsc, onClose, onEdi
                   </div>
                   <Field label="Public IP" value={a.publicIp} mono />
                   <Field label="Approximate location (GeoIP)" value={geo} />
+                  <div className="col-span-2" title="Company registered as owning the network (GeoLite2-ASN). Usually the ISP; resellers show their upstream network.">
+                    <Field label="Internet provider" value={internetProviderLabel(a.ispName, a.ispAsn) || "N/A"} />
+                  </div>
                   <Field label="Purchase" value={formatDate(a.purchaseDate, "")} />
                   <Field label="Warranty end" value={formatDate(a.warrantyEndDate, "")} />
                   {a.reason ? (

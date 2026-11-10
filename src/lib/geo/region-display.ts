@@ -50,3 +50,13 @@ export function regionNameForCode(
   if (rn) return rn;
   return regionCode ?? null;
 }
+
+/** Internet provider label, e.g. "Vodacom (AS29975)"; empty when unknown. */
+export function internetProviderLabel(
+  name: string | null | undefined,
+  asn: number | null | undefined
+): string {
+  const n = name?.trim();
+  if (!n) return "";
+  return asn ? `${n} (AS${asn})` : n;
+}

@@ -6,7 +6,7 @@ import { TagInput } from "@/components/ui/TagInput";
 import { toDateInputValue } from "@/lib/dates/optional-iso-date";
 import { assetTagsForDisplay } from "@/lib/inventory/asset-tags";
 import { useAssetTagSuggestions } from "@/lib/inventory/use-asset-tag-suggestions";
-import { formatGeoLabel } from "@/lib/geo/region-display";
+import { formatGeoLabel, internetProviderLabel } from "@/lib/geo/region-display";
 
 type StatusOpt = { id: string; code: string; label: string };
 type TemplateOpt = {
@@ -56,6 +56,7 @@ export function EditAssetModal({
   const [warrantyEndDate, setWarrantyEndDate] = useState("");
   const [publicIpDisplay, setPublicIpDisplay] = useState("");
   const [geoLine, setGeoLine] = useState("");
+  const [providerLine, setProviderLine] = useState("");
   const [zohoAssistDeviceId, setZohoAssistDeviceId] = useState("");
   const [assistDisplayName, setAssistDisplayName] = useState("");
   const [assistLinkBusy, setAssistLinkBusy] = useState(false);
@@ -128,6 +129,12 @@ export function EditAssetModal({
           aJson.geoRegionCode as string | undefined,
           aJson.geoCity as string | undefined,
           aJson.geoRegionName as string | undefined
+        )
+      );
+      setProviderLine(
+        internetProviderLabel(
+          typeof aJson.ispName === "string" ? aJson.ispName : null,
+          typeof aJson.ispAsn === "number" ? aJson.ispAsn : null
         )
       );
       setAssistLinkNotice(null);
@@ -579,6 +586,12 @@ export function EditAssetModal({
                         {publicIpDisplay || "—"}
                       </p>
                       <p className="mt-0.5 text-xs text-muted">{geoLine}</p>
+                      <p
+                        className="mt-0.5 text-xs text-muted"
+                        title="Company registered as owning the network (GeoLite2-ASN). Usually the ISP; resellers show their upstream network."
+                      >
+                        Internet provider: {providerLine || "N/A"}
+                      </p>
                     </div>
                     <button
                       type="button"

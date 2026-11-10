@@ -105,6 +105,12 @@ model Asset {
   geoCity                 String?
   /// When GeoIP was last resolved for `publicIp`.
   geoSyncedAt             DateTime?
+  /// Internet provider from GeoLite2-ASN: registered network owner (often the ISP brand; resellers show their upstream).
+  ispName                 String?                  @db.VarChar(120)
+  /// Autonomous system number for `ispName`; null when unknown.
+  ispAsn                  Int?
+  /// When the provider was last looked up — set even when none was found.
+  ispUpdatedAt            DateTime?
   /// **App / Postgres only** — never read or written by Zoho Assist import or device APIs. Set via Register hardware / Edit asset; improves age & procurement analytics.
   purchaseDate            DateTime?
   /// **App / Postgres only** — never read or written by Zoho Assist. Set manually for renewal planning.

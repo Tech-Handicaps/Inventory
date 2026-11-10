@@ -10,8 +10,12 @@ import {
   geoFromCityRecord,
   isNonPublicIp,
   lookupGeoFromPublicIp,
+  lookupProviderFromPublicIp,
+  NO_PROVIDER,
   prismaGeoFieldsFromPublicIp,
+  providerFromAsnRecord,
 } from "./lookup-ip";
+import { internetProviderLabel } from "./region-display";
 
 describe("isNonPublicIp", () => {
   it.each(["10.1.2.3", "172.20.0.1", "192.168.1.10", "127.0.0.1", "169.254.1.1", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:192.168.0.1", "not-an-ip"])(
@@ -74,5 +78,41 @@ describe("lookups without a database", () => {
 
   it("still clear geo when the IP is cleared", async () => {
     await expect(prismaGeoFieldsFromPublicIp(null)).resolves.toMatchObject({ geoCountryCode: null, geoSyncedAt: null });
+  });
+
+  it("return NO_PROVIDER for private and public IPs", async () => {
+    await expect(lookupProviderFromPublicIp("10.0.0.5")).resolves.toEqual(NO_PROVIDER);
+    await expect(lookupProviderFromPublicIp("8.8.8.8")).resolves.toEqual(NO_PROVIDER);
+  });
+
+  it("stamp an empty provider for a private IP so it isn't looked up again", async () => {
+    const fields = await prismaGeoFieldsFromPublicIp("192.168.1.10");
+    expect(fields).toMatchObject({ ispName: null, ispAsn: null });
+    expect(fields.ispUpdatedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe("providerFromAsnRecord", () => {
+  it("maps the organisation and AS number", () => {
+    expect(
+      providerFromAsnRecord({ autonomousSystemNumber: 37611, autonomousSystemOrganization: "  Afrihost (Pty) Ltd " })
+    ).toEqual({ name: "Afrihost (Pty) Ltd", asn: 37611 });
+  });
+
+  it("drops a missing or invalid AS number and an empty name", () => {
+    expect(providerFromAsnRecord({})).toEqual(NO_PROVIDER);
+    expect(providerFromAsnRecord({ autonomousSystemNumber: 0, autonomousSystemOrganization: "X" })).toEqual({ name: "X", asn: null });
+  });
+
+  it("caps the name at 120 characters", () => {
+    expect(providerFromAsnRecord({ autonomousSystemOrganization: "a".repeat(200) }).name).toHaveLength(120);
+  });
+});
+
+describe("internetProviderLabel", () => {
+  it("formats name and AS number", () => {
+    expect(internetProviderLabel("Vodacom", 29975)).toBe("Vodacom (AS29975)");
+    expect(internetProviderLabel("Vodacom", null)).toBe("Vodacom");
+    expect(internetProviderLabel(null, 29975)).toBe("");
   });
 });

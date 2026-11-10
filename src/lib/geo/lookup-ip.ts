@@ -1,6 +1,6 @@
 import { isIP } from "node:net";
 import path from "node:path";
-import { Reader, type City, type ReaderModel } from "@maxmind/geoip2-node";
+import { Reader, type Asn, type City, type ReaderModel } from "@maxmind/geoip2-node";
 
 export type GeoFromIp = {
   countryCode: string;
@@ -24,17 +24,54 @@ export const GEOLITE_CITY_PATH = path.join(
   "GeoLite2-City.mmdb"
 );
 
-let readerPromise: Promise<ReaderModel | null> | null = null;
+/** Same build-time download as City; internet provider (autonomous system) per IP. */
+export const GEOLITE_ASN_PATH = path.join(
+  /*turbopackIgnore: true*/ process.cwd(),
+  "data",
+  "geoip",
+  "GeoLite2-ASN.mmdb"
+);
 
-function cityReader(): Promise<ReaderModel | null> {
-  readerPromise ??= Reader.open(GEOLITE_CITY_PATH).catch((e: unknown) => {
-    console.warn(
-      "GeoLite2-City database could not be opened; geolocation is off",
-      e instanceof Error ? e.message : e
-    );
-    return null;
-  });
-  return readerPromise;
+const readers = new Map<string, Promise<ReaderModel | null>>();
+
+function openReader(file: string, offMessage: string): Promise<ReaderModel | null> {
+  let p = readers.get(file);
+  if (!p) {
+    p = Reader.open(file).catch((e: unknown) => {
+      console.warn(offMessage, e instanceof Error ? e.message : e);
+      return null;
+    });
+    readers.set(file, p);
+  }
+  return p;
+}
+
+const cityReader = () =>
+  openReader(GEOLITE_CITY_PATH, "GeoLite2-City database could not be opened; geolocation is off");
+const asnReader = () =>
+  openReader(GEOLITE_ASN_PATH, "GeoLite2-ASN database could not be opened; internet provider lookup is off");
+
+type ReaderLookup<T> = { value: T; databaseMissing: boolean };
+
+/** Shared path for every GeoLite2 edition: `empty` for private/invalid/unknown IPs and read errors. */
+async function lookupWith<T>(
+  ip: string | null | undefined,
+  open: () => Promise<ReaderModel | null>,
+  map: (reader: ReaderModel, ip: string) => T,
+  empty: T
+): Promise<ReaderLookup<T>> {
+  const t = ip?.trim();
+  if (!t || !isIP(t) || isNonPublicIp(t)) return { value: empty, databaseMissing: false };
+  const reader = await open();
+  if (!reader) return { value: empty, databaseMissing: true };
+  try {
+    return { value: map(reader, t), databaseMissing: false };
+  } catch (e) {
+    if (!(e instanceof Error && e.name === "AddressNotFoundError")) {
+      console.warn("GeoLite2 lookup failed", e instanceof Error ? e.message : e);
+    }
+    return { value: empty, databaseMissing: false };
+  }
 }
 
 const PRIVATE_V4: [number, number][] = [
@@ -94,25 +131,39 @@ export function geoFromCityRecord(r: City): GeoFromIp | null {
   };
 }
 
-type Lookup = { geo: GeoFromIp | null; databaseMissing: boolean };
-
-async function lookup(ip: string | null | undefined): Promise<Lookup> {
-  const t = ip?.trim();
-  if (!t || !isIP(t) || isNonPublicIp(t)) return { geo: null, databaseMissing: false };
-  const reader = await cityReader();
-  if (!reader) return { geo: null, databaseMissing: true };
-  try {
-    return { geo: geoFromCityRecord(reader.city(t)), databaseMissing: false };
-  } catch {
-    return { geo: null, databaseMissing: false };
-  }
-}
+const lookupGeo = (ip: string | null | undefined) =>
+  lookupWith<GeoFromIp | null>(ip, cityReader, (r, t) => geoFromCityRecord(r.city(t)), null);
 
 /** Local GeoLite2 lookup. Null for private/invalid IPs, unknown addresses, or a missing database; never throws. */
 export async function lookupGeoFromPublicIp(
   ip: string | null | undefined
 ): Promise<GeoFromIp | null> {
-  return (await lookup(ip)).geo;
+  return (await lookupGeo(ip)).value;
+}
+
+/** Registered owner of the network an IP belongs to — often, not always, the ISP brand. */
+export type InternetProvider = { name: string; asn: number | null };
+
+export const NO_PROVIDER: InternetProvider = { name: "", asn: null };
+
+const ISP_NAME_MAX = 120;
+
+export function providerFromAsnRecord(r: Pick<Asn, "autonomousSystemNumber" | "autonomousSystemOrganization">): InternetProvider {
+  const asn = r.autonomousSystemNumber;
+  return {
+    name: (r.autonomousSystemOrganization ?? "").trim().slice(0, ISP_NAME_MAX),
+    asn: typeof asn === "number" && Number.isInteger(asn) && asn > 0 ? asn : null,
+  };
+}
+
+const lookupProvider = (ip: string | null | undefined) =>
+  lookupWith<InternetProvider>(ip, asnReader, (r, t) => providerFromAsnRecord(r.asn(t)), NO_PROVIDER);
+
+/** Local GeoLite2-ASN lookup; NO_PROVIDER for private/invalid/unknown IPs or a missing database. Never throws. */
+export async function lookupProviderFromPublicIp(
+  ip: string | null | undefined
+): Promise<InternetProvider> {
+  return (await lookupProvider(ip)).value;
 }
 
 type PrismaGeoFields = {
@@ -123,15 +174,36 @@ type PrismaGeoFields = {
   geoSyncedAt: Date | null;
 };
 
+type PrismaIspFields = {
+  ispName: string | null;
+  ispAsn: number | null;
+  ispUpdatedAt: Date;
+};
+
 /**
- * Prisma fields derived from current public IP (clears geo when the IP is cleared or not found).
- * Returns no fields when the database is missing, so a bad deploy can't wipe stored locations.
+ * Prisma fields derived from the current public IP: GeoIP location plus internet provider.
+ * Location is cleared when the IP is cleared or not found; the provider is stamped even when
+ * nothing is found. Each part is left out when its database is missing, so a bad deploy can't
+ * wipe stored values.
  */
 export async function prismaGeoFieldsFromPublicIp(
   publicIp: string | null | undefined
-): Promise<PrismaGeoFields | Record<string, never>> {
-  const { geo, databaseMissing } = await lookup(publicIp);
-  if (databaseMissing) return {};
+): Promise<Partial<PrismaGeoFields & PrismaIspFields>> {
+  const [geoLookup, providerLookup] = await Promise.all([
+    lookupGeo(publicIp),
+    lookupProvider(publicIp),
+  ]);
+
+  const isp: Partial<PrismaIspFields> = providerLookup.databaseMissing
+    ? {}
+    : {
+        ispName: providerLookup.value.name || null,
+        ispAsn: providerLookup.value.asn,
+        ispUpdatedAt: new Date(),
+      };
+
+  if (geoLookup.databaseMissing) return isp;
+  const geo = geoLookup.value;
   if (!geo) {
     return {
       geoCountryCode: null,
@@ -139,6 +211,7 @@ export async function prismaGeoFieldsFromPublicIp(
       geoRegionName: null,
       geoCity: null,
       geoSyncedAt: null,
+      ...isp,
     };
   }
   return {
@@ -147,5 +220,6 @@ export async function prismaGeoFieldsFromPublicIp(
     geoRegionName: geo.regionName,
     geoCity: geo.city,
     geoSyncedAt: new Date(),
+    ...isp,
   };
 }
