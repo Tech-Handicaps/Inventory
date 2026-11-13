@@ -4,6 +4,10 @@ import { loadLogoForPdf } from "@/lib/pdf/load-logo";
 import { renderWriteOffCertificatePdf } from "@/lib/pdf/write-off-certificate-html";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/dates/format";
+import {
+  displayAssetManufacturer,
+  displayAssetModel,
+} from "@/lib/inventory/asset-hardware-display";
 
 export type WriteOffCertificateRecord = {
   id: string;
@@ -269,11 +273,16 @@ export async function createWriteOffCertificate(params: {
 }): Promise<WriteOffCertificateRecord> {
   const asset = await prisma.asset.findUnique({
     where: { id: params.assetId },
-    include: { club: { select: { name: true } } },
+    include: {
+      club: { select: { name: true } },
+      deviceTemplate: { select: { manufacturer: true, model: true } },
+    },
   });
   if (!asset) {
     throw new Error("Asset not found for write-off certificate");
   }
+  const manufacturer = displayAssetManufacturer(asset);
+  const model = displayAssetModel(asset);
 
   const replacementRequested = params.replacementRequested === true;
   const replacementNotes = replacementRequested
@@ -314,8 +323,8 @@ export async function createWriteOffCertificate(params: {
         assetName: asset.assetName,
         clubName: asset.club?.name ?? existing.clubName,
         category: asset.category,
-        manufacturer: asset.manufacturer,
-        model: asset.model,
+        manufacturer,
+        model,
         serialNumber: asset.serialNumber,
         xeroFixedAssetNumber:
           xeroFixedAssetNumber ?? existing.xeroFixedAssetNumber,
@@ -376,8 +385,8 @@ export async function createWriteOffCertificate(params: {
       assetName: asset.assetName,
       clubName: asset.club?.name ?? null,
       category: asset.category,
-      manufacturer: asset.manufacturer,
-      model: asset.model,
+      manufacturer,
+      model,
       serialNumber: asset.serialNumber,
       xeroFixedAssetNumber,
       reason,
@@ -434,6 +443,22 @@ export async function renderWriteOffCertificatePdfForRecord(
   cert: WriteOffCertificateRecord
 ): Promise<Buffer> {
   const logo = await loadLogoForPdf();
+  let manufacturer = cert.manufacturer;
+  let model = cert.model;
+  if (!manufacturer?.trim() || !model?.trim()) {
+    const asset = await prisma.asset.findUnique({
+      where: { id: cert.assetId },
+      select: {
+        manufacturer: true,
+        model: true,
+        deviceTemplate: { select: { manufacturer: true, model: true } },
+      },
+    });
+    if (asset) {
+      manufacturer = manufacturer?.trim() ? manufacturer : displayAssetManufacturer(asset);
+      model = model?.trim() ? model : displayAssetModel(asset);
+    }
+  }
   return renderWriteOffCertificatePdf(
     {
       referenceNumber: cert.referenceNumber,
@@ -441,8 +466,8 @@ export async function renderWriteOffCertificatePdfForRecord(
       assetName: cert.assetName,
       clubName: cert.clubName,
       category: cert.category,
-      manufacturer: cert.manufacturer,
-      model: cert.model,
+      manufacturer,
+      model,
       serialNumber: cert.serialNumber,
       xeroFixedAssetNumber: cert.xeroFixedAssetNumber ?? null,
       reason: cert.reason,
