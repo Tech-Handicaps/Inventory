@@ -41,8 +41,20 @@ export {
 export type DetachAssistOptions = {
   userId?: string | null;
   reason: string;
-  /** When true, replace Assist display name with inventory stock/hardware label. */
+  /** When true, replace Assist display name with inventory stock/hardware label (e.g. HNA-ST…). */
   resetAssistDisplayName?: boolean;
+  /**
+   * When true, attempt DELETE of the unattended computer in Zoho Assist before unlinking locally.
+   * Local unlink + optional rename still run if Assist delete fails.
+   */
+  deleteInAssist?: boolean;
+};
+
+export type DetachAssistResult = Prisma.AssetGetPayload<{
+  include: { status: true; deviceTemplate: true; club: true };
+}> & {
+  assistDeleted?: boolean;
+  assistDeleteError?: string | null;
 };
 
 async function loadExistingStockNames(): Promise<string[]> {
@@ -186,16 +198,12 @@ export async function retireAssetAfterWriteOff(params: {
 
 /**
  * Remove Zoho Assist association from an asset.
- * Optionally renames depot-stock units so the board no longer shows stale Assist names.
+ * Optionally deletes the device in Assist, and renames depot-stock units to HNA-ST….
  */
 export async function detachAssistFromAsset(
   assetId: string,
   options: DetachAssistOptions
-): Promise<
-  Prisma.AssetGetPayload<{
-    include: { status: true; deviceTemplate: true; club: true };
-  }> | null
-> {
+): Promise<DetachAssistResult | null> {
   const before = await prisma.asset.findUnique({
     where: { id: assetId },
     include: { status: true, deviceTemplate: true, club: true },
@@ -203,6 +211,18 @@ export async function detachAssistFromAsset(
   if (!before?.zohoAssistDeviceId) return before;
 
   const prevAssistId = before.zohoAssistDeviceId;
+  let assistDeleted = false;
+  let assistDeleteError: string | null = null;
+
+  if (options.deleteInAssist === true) {
+    const deleted = await tryDeleteAssistDeviceForAsset(before);
+    if (deleted?.ok) {
+      assistDeleted = true;
+    } else if (deleted && !deleted.ok) {
+      assistDeleteError = deleted.error;
+    }
+  }
+
   const resetName = options.resetAssistDisplayName === true;
   const stockNames = resetName ? await loadExistingStockNames() : [];
   const nextAssetName = resetName
@@ -226,18 +246,33 @@ export async function detachAssistFromAsset(
   await createAuditLog({
     userId: options.userId ?? null,
     actionType: "asset.unlinked_from_zoho_assist",
-    notes: `Assist link removed (${options.reason}): ${before.assetName}`,
+    notes: `Assist link removed (${options.reason}): ${before.assetName}${
+      options.deleteInAssist
+        ? assistDeleted
+          ? " (deleted in Zoho Assist)"
+          : assistDeleteError
+            ? ` (Assist delete failed: ${assistDeleteError})`
+            : ""
+        : ""
+    }`,
     metadata: {
       assetId,
       zohoAssistDeviceId: prevAssistId,
       reason: options.reason,
       resetAssistDisplayName: resetName,
+      deleteInAssist: options.deleteInAssist === true,
+      assistDeleted,
+      assistDeleteError,
       previousAssetName: before.assetName,
       newAssetName: resetName ? updated.assetName : undefined,
     },
   });
 
-  return updated;
+  return {
+    ...updated,
+    assistDeleted,
+    assistDeleteError,
+  };
 }
 
 /** On sync failure: auto-detach when Assist device was deleted. */

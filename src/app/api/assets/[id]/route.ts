@@ -236,6 +236,8 @@ export async function PUT(
     let fromClubNameForRefurb: string | null = null;
     let completedAssessmentReference: string | null = null;
     let assessmentOutcome: string | null = null;
+    const notifyWarnings: string[] = [];
+    let assistDeleteWarning: string | null = null;
 
     if (typeof updateData.statusId === "string") {
       const nextStatus = await prisma.assetStatus.findUnique({
@@ -283,6 +285,7 @@ export async function PUT(
       }
 
       // Refurbished pool is unassigned stock — drop club ownership on the asset.
+      // Assist delete + HNA-ST rename run after the status update (see below).
       if (
         (before.status.code === "assessment" ||
           before.status.code === "repair") &&
@@ -292,17 +295,6 @@ export async function PUT(
           fromClubNameForRefurb = before.club?.name?.trim() || null;
         }
         updateData.clubId = null;
-
-        // When triaged into Refurbished/New stock, we should clear any Assist-derived
-        // nickname and source branding. The unit will be associated to a new Assist
-        // device only when it is redeployed from a fresh Assist import (serial match).
-        if (before.zohoAssistDeviceId) {
-          await detachAssistFromAsset(id, {
-            userId: user.id,
-            reason: "triage_to_refurbished_clears_assist",
-            resetAssistDisplayName: true,
-          });
-        }
       }
 
       // Returned to club after triage — complete open assessment intake.
@@ -311,11 +303,34 @@ export async function PUT(
       }
     }
 
-    const asset = await prisma.asset.update({
+    let asset = await prisma.asset.update({
       where: { id },
       data: updateData,
       include: { status: true, deviceTemplate: true, club: true },
     });
+
+    // After status is refurbished: delete in Zoho Assist, unlink, rename to HNA-ST….
+    // Status must already be refurbished so stock naming always allocates HNA-ST….
+    if (
+      (before.status.code === "assessment" || before.status.code === "repair") &&
+      asset.status.code === "refurbished" &&
+      before.zohoAssistDeviceId
+    ) {
+      const detached = await detachAssistFromAsset(id, {
+        userId: user.id,
+        reason: "triage_to_refurbished_clears_assist",
+        resetAssistDisplayName: true,
+        deleteInAssist: true,
+      });
+      if (detached?.assistDeleteError) {
+        assistDeleteWarning = detached.assistDeleteError;
+        notifyWarnings.push("assist_delete_failed");
+      }
+      asset = await prisma.asset.findUniqueOrThrow({
+        where: { id },
+        include: { status: true, deviceTemplate: true, club: true },
+      });
+    }
 
     const changes: Record<string, { from: unknown; to: unknown }> = {};
     if (before.assetName !== asset.assetName) {
@@ -416,8 +431,6 @@ export async function PUT(
     const transitionAssessmentToDeployed =
       before.status.code === "assessment" &&
       asset.status.code === "deployed";
-
-    const notifyWarnings: string[] = [];
 
     if (transitionAssessmentToRefurbished || transitionAssessmentToDeployed) {
       const openAssessment = await prisma.assessment.findFirst({
@@ -558,10 +571,20 @@ export async function PUT(
     }
 
     if (notifyWarnings.length > 0) {
+      const warningParts = [
+        notifyWarnings.some((w) => w.endsWith("_notify_failed"))
+          ? "Asset saved, but a finance notification failed."
+          : null,
+        assistDeleteWarning
+          ? `Assist was unlinked and renamed for stock, but Zoho Assist delete failed: ${assistDeleteWarning}`
+          : null,
+      ].filter(Boolean);
+
       return NextResponse.json({
         ...responseAsset,
-        warning: "Asset saved, but a finance notification failed.",
+        warning: warningParts.join(" ") || "Asset saved with warnings.",
         notifyWarnings,
+        ...(assistDeleteWarning ? { assistDeleteWarning } : {}),
       });
     }
 
