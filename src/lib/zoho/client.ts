@@ -18,9 +18,12 @@ export const ZOHO_ASSIST_API_BASE = "https://assist.zoho.com/api/v2";
 /** Assist GET /api/v2/devices — `count` must be 1–50 per Zoho docs (default 25). */
 export const ZOHO_ASSIST_DEVICES_MAX_COUNT = 50;
 
-/** Scopes for Assist user info + unattended devices (future sync). */
+/**
+ * Scopes for Assist user info, unattended device list/sync, and write-off delete.
+ * After changing scopes, reconnect Zoho Assist in Settings so the refresh token picks them up.
+ */
 export const ZOHO_ASSIST_OAUTH_SCOPES =
-  "ZohoAssist.userapi.READ,ZohoAssist.unattended.computer.READ";
+  "ZohoAssist.userapi.READ,ZohoAssist.unattended.computer.READ,ZohoAssist.unattended.computer.DELETE";
 
 export function getAccountsBaseUrl(dataCenter: string): string {
   const dc = (dataCenter in ACCOUNTS_BASE
@@ -307,6 +310,107 @@ export async function fetchAssistDevicesList(
   }
 
   return json;
+}
+
+/**
+ * DELETE https://assist.zoho.com/api/v2/devices/{resource_id}
+ * Removes the unattended computer record from Zoho Assist.
+ * Requires ZohoAssist.unattended.computer.DELETE and a department id.
+ * @see https://www.zoho.com/assist/api/deleteunattendedcomputer.html
+ */
+export async function deleteAssistUnattendedComputer(
+  accessToken: string,
+  resourceId: string,
+  options: { departmentId: string; orgId?: string | null }
+): Promise<void> {
+  const headers: Record<string, string> = {
+    Authorization: `Zoho-oauthtoken ${accessToken}`,
+    "x-com-zoho-assist-department-id": options.departmentId,
+  };
+  if (options.orgId) {
+    headers["x-com-zoho-assist-orgid"] = options.orgId;
+  }
+
+  const res = await fetch(
+    `${ZOHO_ASSIST_API_BASE}/devices/${encodeURIComponent(resourceId)}`,
+    { method: "DELETE", headers, cache: "no-store" }
+  );
+
+  if (res.ok || res.status === 204 || res.status === 404) {
+    // 404: already gone in Assist — treat as success for write-off cleanup.
+    return;
+  }
+
+  const text = await res.text();
+  let msg = text.slice(0, 200);
+  try {
+    const json = JSON.parse(text) as Record<string, unknown>;
+    if (typeof json.message === "string") msg = json.message;
+    else if (typeof json.error === "string") msg = json.error;
+  } catch {
+    /* keep text */
+  }
+  throw new Error(`Assist API ${res.status}: ${msg}`);
+}
+
+/**
+ * Delete an unattended computer using the saved Assist OAuth settings.
+ * Returns a soft result so write-off can continue even when Assist refuses.
+ */
+export async function tryDeleteAssistDeviceForAsset(asset: {
+  zohoAssistDeviceId: string | null;
+  zohoAssistOrgId: string | null;
+  zohoAssistDepartmentId: string | null;
+}): Promise<{ ok: true; alreadyGone?: boolean } | { ok: false; error: string } | null> {
+  if (!asset.zohoAssistDeviceId) return null;
+
+  try {
+    const c = await loadZohoAssistSettings();
+    if (!c.refreshToken || !c.clientId || !c.clientSecret) {
+      return {
+        ok: false,
+        error: "Zoho Assist is not connected — reconnect in Settings, then unlink this unit if needed.",
+      };
+    }
+    const departmentId =
+      asset.zohoAssistDepartmentId?.trim() || c.defaultDepartmentId?.trim() || "";
+    if (!departmentId) {
+      return {
+        ok: false,
+        error:
+          "No Assist department id on this unit or in Settings — cannot delete it in Zoho Assist.",
+      };
+    }
+    const { access_token } = await refreshZohoAccessToken(c);
+    await deleteAssistUnattendedComputer(access_token, asset.zohoAssistDeviceId, {
+      departmentId,
+      orgId: asset.zohoAssistOrgId ?? c.defaultOrgId,
+    });
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (isAssistScopeOrAuthError(msg)) {
+      return {
+        ok: false,
+        error:
+          "Zoho Assist refused the delete (missing DELETE scope or auth). Reconnect Zoho Assist in Settings to grant delete permission.",
+      };
+    }
+    return { ok: false, error: msg };
+  }
+}
+
+function isAssistScopeOrAuthError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("scope") ||
+    lower.includes("unauthorized") ||
+    lower.includes("forbidden") ||
+    lower.includes("invalid_oauth") ||
+    lower.includes("access denied") ||
+    /\b401\b/.test(message) ||
+    /\b403\b/.test(message)
+  );
 }
 
 export async function testZohoAssistConnection(): Promise<{

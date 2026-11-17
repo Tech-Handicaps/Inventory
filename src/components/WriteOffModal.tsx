@@ -39,12 +39,18 @@ type Asset = {
   status: { code: string };
 };
 
+export type WriteOffSuccessInfo = {
+  certificateReference?: string;
+  retiredAs?: string;
+  warning?: string;
+};
+
 type Props = {
   asset: Asset | null;
   assessmentId?: string | null;
   assessmentReference?: string | null;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (info?: WriteOffSuccessInfo) => void;
 };
 
 export function WriteOffModal({
@@ -207,13 +213,22 @@ export function WriteOffModal({
             : undefined,
         }),
       });
-      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      const j = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        warning?: string;
+        certificateReference?: string;
+        retiredAs?: string;
+      };
       if (!res.ok) {
         throw new Error(
           typeof j.error === "string" ? j.error : "Could not complete write-off"
         );
       }
-      onSuccess();
+      onSuccess({
+        certificateReference: j.certificateReference,
+        retiredAs: j.retiredAs,
+        warning: j.warning,
+      });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Write-off failed");

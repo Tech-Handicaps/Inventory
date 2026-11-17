@@ -85,22 +85,41 @@ export function isAssistDeviceNotFoundError(error: unknown): boolean {
 }
 
 const HNA_STOCK_NAME_RE = /^HNA-ST(\d+)$/i;
+const HNA_WRITE_OFF_NAME_RE = /^HNA-WRO(\d+)$/i;
 
-/** True for club/field Assist nicknames like HNA-ATLANTIC-01 (not stock numbers). */
+/** True for club/field Assist nicknames like HNA-ATLANTIC-01 (not stock or write-off numbers). */
 export function looksLikeHnaAssistDeploymentName(assetName: string): boolean {
-  return /^HNA-(?!ST)/i.test(assetName.trim());
+  return /^HNA-(?!ST|WRO)/i.test(assetName.trim());
 }
 
-/** Next sequential stock label: HNA-ST001, HNA-ST002, … */
-export function nextHnaStockAssetName(existingNames: readonly string[]): string {
+function nextSequentialHnaName(
+  existingNames: readonly string[],
+  pattern: RegExp,
+  prefix: string
+): string {
   let max = 0;
   for (const name of existingNames) {
-    const match = name.trim().match(HNA_STOCK_NAME_RE);
+    const match = name.trim().match(pattern);
     if (match) {
       max = Math.max(max, Number.parseInt(match[1], 10));
     }
   }
-  return `HNA-ST${String(max + 1).padStart(3, "0")}`;
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
+}
+
+/** Next sequential stock label: HNA-ST001, HNA-ST002, … */
+export function nextHnaStockAssetName(existingNames: readonly string[]): string {
+  return nextSequentialHnaName(existingNames, HNA_STOCK_NAME_RE, "HNA-ST");
+}
+
+/** Next sequential write-off label: HNA-WRO001, HNA-WRO002, … */
+export function nextHnaWriteOffAssetName(existingNames: readonly string[]): string {
+  return nextSequentialHnaName(existingNames, HNA_WRITE_OFF_NAME_RE, "HNA-WRO");
+}
+
+/** True when the board name is already a write-off label. */
+export function isHnaWriteOffAssetName(assetName: string): boolean {
+  return HNA_WRITE_OFF_NAME_RE.test(assetName.trim());
 }
 
 /** Inventory-native label for depot stock after Assist display name is cleared. */

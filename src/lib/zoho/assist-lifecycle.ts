@@ -12,9 +12,12 @@ import {
   isAssistDeviceNotFoundError,
   isAssistDeploymentUninstalled,
   isDepotStockStatus,
+  isHnaWriteOffAssetName,
+  nextHnaWriteOffAssetName,
   resolveReplacementAssetName,
   shouldClearAssistLink,
 } from "@/lib/zoho/assist-lifecycle-shared";
+import { tryDeleteAssistDeviceForAsset } from "@/lib/zoho/client";
 import { prisma } from "@/lib/prisma";
 
 export {
@@ -22,8 +25,10 @@ export {
   isAssistDeviceNotFoundError,
   isAssistDeploymentUninstalled,
   isDepotStockStatus,
+  isHnaWriteOffAssetName,
   looksLikeHnaAssistDeploymentName,
   nextHnaStockAssetName,
+  nextHnaWriteOffAssetName,
   resolveReplacementAssetName,
   shouldClearAssistLink,
 } from "@/lib/zoho/assist-lifecycle-shared";
@@ -46,6 +51,137 @@ async function loadExistingStockNames(): Promise<string[]> {
     select: { assetName: true },
   });
   return rows.map((row) => row.assetName);
+}
+
+async function loadExistingWriteOffNames(): Promise<string[]> {
+  const rows = await prisma.asset.findMany({
+    where: { assetName: { startsWith: "HNA-WRO", mode: "insensitive" } },
+    select: { assetName: true },
+  });
+  return rows.map((row) => row.assetName);
+}
+
+export type WriteOffAssistCleanup = {
+  previousAssetName: string;
+  newAssetName: string;
+  clubCleared: boolean;
+  previousClubName: string | null;
+  assistWasLinked: boolean;
+  assistDeleted: boolean;
+  assistDeleteError: string | null;
+};
+
+/**
+ * After the write-off certificate is saved: clear the club, rename to HNA-WRO…,
+ * delete the device in Zoho Assist when possible, and unlink Assist locally.
+ * Certificate already holds the original name/club for finance.
+ */
+export async function retireAssetAfterWriteOff(params: {
+  assetId: string;
+  userId: string | null;
+  certificateReference: string;
+}): Promise<WriteOffAssistCleanup> {
+  const before = await prisma.asset.findUnique({
+    where: { id: params.assetId },
+    select: {
+      assetName: true,
+      clubId: true,
+      club: { select: { name: true } },
+      zohoAssistDeviceId: true,
+      zohoAssistOrgId: true,
+      zohoAssistDepartmentId: true,
+    },
+  });
+  if (!before) {
+    throw new Error("Asset not found for write-off retirement");
+  }
+
+  const previousAssetName = before.assetName;
+  const previousClubName = before.club?.name ?? null;
+  const assistWasLinked = Boolean(before.zohoAssistDeviceId);
+
+  let assistDeleted = false;
+  let assistDeleteError: string | null = null;
+  if (assistWasLinked) {
+    const deleted = await tryDeleteAssistDeviceForAsset(before);
+    if (deleted?.ok) {
+      assistDeleted = true;
+    } else if (deleted && !deleted.ok) {
+      assistDeleteError = deleted.error;
+    }
+  }
+
+  const writeOffNames = await loadExistingWriteOffNames();
+  const newAssetName = isHnaWriteOffAssetName(previousAssetName)
+    ? previousAssetName
+    : nextHnaWriteOffAssetName(writeOffNames);
+
+  await prisma.asset.update({
+    where: { id: params.assetId },
+    data: {
+      clubId: null,
+      assetName: newAssetName,
+      dataSource: "manual",
+      zohoAssistDeviceId: null,
+      zohoAssistOrgId: null,
+      zohoAssistDepartmentId: null,
+      lastSyncedFromAssistAt: null,
+      publicIpAssistSyncedAt: null,
+    },
+  });
+
+  if (assistWasLinked) {
+    await createAuditLog({
+      userId: params.userId,
+      actionType: "asset.unlinked_from_zoho_assist",
+      notes: `Assist link removed on write-off ${params.certificateReference}: ${previousAssetName}${
+        assistDeleted
+          ? " (deleted in Zoho Assist)"
+          : assistDeleteError
+            ? ` (Assist delete failed: ${assistDeleteError})`
+            : ""
+      }`,
+      metadata: {
+        assetId: params.assetId,
+        zohoAssistDeviceId: before.zohoAssistDeviceId,
+        reason: "write_off",
+        writeOffCertificate: params.certificateReference,
+        assistDeleted,
+        assistDeleteError,
+        previousAssetName,
+        newAssetName,
+      },
+    });
+  }
+
+  await createAuditLog({
+    userId: params.userId,
+    actionType: "asset.write_off_retired",
+    notes: `Write-off retirement ${params.certificateReference}: ${previousAssetName} → ${newAssetName}; club cleared${
+      previousClubName ? ` (was ${previousClubName})` : ""
+    }`,
+    metadata: {
+      assetId: params.assetId,
+      writeOffCertificate: params.certificateReference,
+      previousAssetName,
+      newAssetName,
+      previousClubId: before.clubId,
+      previousClubName,
+      assistWasLinked,
+      assistDeleted,
+      assistDeleteError,
+    },
+  });
+
+  return {
+    previousAssetName,
+    newAssetName,
+    clubCleared: before.clubId !== null,
+    previousClubName,
+    assistWasLinked,
+    assistDeleted,
+    assistDeleteError,
+  };
 }
 
 /**

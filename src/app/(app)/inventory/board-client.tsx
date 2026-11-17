@@ -493,7 +493,17 @@ export function InventoryBoard({
           setWriteOffAsset(null);
           setWriteOffAssessment(null);
         }}
-        onSuccess={() => void load()}
+        onSuccess={(info) => {
+          if (info?.warning) toast.showError(info.warning);
+          else if (info?.retiredAs) {
+            toast.showSuccess(
+              `Written off as ${info.retiredAs}${
+                info.certificateReference ? ` (${info.certificateReference})` : ""
+              }. Club cleared; Assist unlinked.`
+            );
+          }
+          void load();
+        }}
       />
 
       {editingId ? (

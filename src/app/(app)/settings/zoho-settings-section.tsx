@@ -439,6 +439,12 @@ export function ZohoAssistSettingsSection() {
         <strong>department</strong> IDs (from Assist /{" "}
         <code className="rounded bg-black/5 px-1 text-xs">GET /api/v2/user</code>{" "}
         → departments) or pass them per request when fetching device details.
+        Write-off deletes the device in Assist and needs the{" "}
+        <code className="rounded bg-black/5 px-1 text-xs">
+          ZohoAssist.unattended.computer.DELETE
+        </code>{" "}
+        scope — click <strong>Connect Zoho Account</strong> again after deploying
+        that change so the stored refresh token includes delete permission.
       </p>
 
       {banner ? (

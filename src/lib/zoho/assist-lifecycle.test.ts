@@ -6,6 +6,7 @@ import {
   isDepotStockStatus,
   looksLikeHnaAssistDeploymentName,
   nextHnaStockAssetName,
+  nextHnaWriteOffAssetName,
   resolveReplacementAssetName,
   shouldClearAssistLink,
 } from "@/lib/zoho/assist-lifecycle-shared";
@@ -44,6 +45,12 @@ describe("stock naming", () => {
   it("detects club deployment names", () => {
     expect(looksLikeHnaAssistDeploymentName("HNA-ATLANTIC-01")).toBe(true);
     expect(looksLikeHnaAssistDeploymentName("HNA-ST002")).toBe(false);
+    expect(looksLikeHnaAssistDeploymentName("HNA-WRO001")).toBe(false);
+  });
+
+  it("allocates sequential HNA-WRO labels", () => {
+    expect(nextHnaWriteOffAssetName(["HNA-WRO001", "HNA-WRO003"])).toBe("HNA-WRO004");
+    expect(nextHnaWriteOffAssetName([])).toBe("HNA-WRO001");
   });
 
   it("replaces Assist club names with stock labels", () => {

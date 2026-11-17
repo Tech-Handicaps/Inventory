@@ -92,13 +92,30 @@ export async function POST(
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
+    const warnings: string[] = [];
+    if (result.notifyFailed) warnings.push("write_off_notify_failed");
+    if (result.assistDeleteWarning) warnings.push("assist_delete_failed");
+
     return NextResponse.json({
       asset: result.asset,
       certificateReference: result.certificateReference,
-      ...(result.notifyFailed
+      retiredAs: result.retiredAs,
+      ...(result.assistDeleteWarning
+        ? { assistDeleteWarning: result.assistDeleteWarning }
+        : {}),
+      ...(warnings.length > 0
         ? {
-            warning: "Write-off saved, but finance notification failed.",
-            notifyWarnings: ["write_off_notify_failed"],
+            warning: [
+              result.notifyFailed
+                ? "Write-off saved, but finance notification failed."
+                : null,
+              result.assistDeleteWarning
+                ? `Write-off saved and Assist was unlinked here, but Zoho Assist delete failed: ${result.assistDeleteWarning}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" "),
+            notifyWarnings: warnings,
           }
         : {}),
     });

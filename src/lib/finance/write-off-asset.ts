@@ -11,6 +11,7 @@ import {
   type ReplacementSnapshot,
 } from "@/lib/finance/replacement-unit";
 import { createWriteOffCertificate } from "@/lib/finance/write-off-certificate";
+import { retireAssetAfterWriteOff } from "@/lib/zoho/assist-lifecycle";
 import { prisma } from "@/lib/prisma";
 
 export type WriteOffAssetInput = {
@@ -37,6 +38,9 @@ export type WriteOffAssetResult =
       asset: WrittenOffAsset;
       certificateReference: string;
       notifyFailed?: boolean;
+      /** Present when Assist was linked but could not be deleted remotely. Local unlink still ran. */
+      assistDeleteWarning?: string;
+      retiredAs?: string;
     }
   | { ok: false; status: number; error: string };
 
@@ -301,6 +305,13 @@ export async function writeOffAsset(
     },
   });
 
+  // Certificate already captured the original club/name. Retire the live unit next.
+  const retired = await retireAssetAfterWriteOff({
+    assetId: asset.id,
+    userId: input.userId,
+    certificateReference: certificate.referenceNumber,
+  });
+
   let notifyFailed = false;
   try {
     await createWrittenOffAcknowledgementAndNotify({
@@ -326,10 +337,24 @@ export async function writeOffAsset(
     notifyFailed = true;
   }
 
+  const assetAfter = await prisma.asset.findUnique({
+    where: { id: asset.id },
+    include: { status: true, deviceTemplate: true, club: true },
+  });
+
   return {
     ok: true,
-    asset: updated,
+    asset: assetAfter ?? {
+      ...updated,
+      assetName: retired.newAssetName,
+      clubId: null,
+      club: null,
+    },
     certificateReference: certificate.referenceNumber,
+    retiredAs: retired.newAssetName,
     ...(notifyFailed ? { notifyFailed: true } : {}),
+    ...(retired.assistDeleteError
+      ? { assistDeleteWarning: retired.assistDeleteError }
+      : {}),
   };
 }
